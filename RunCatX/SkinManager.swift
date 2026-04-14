@@ -7,6 +7,15 @@ final class SkinManager: @unchecked Sendable {
     enum Skin: String, CaseIterable, Sendable {
         case cat; case dog; case frog; case snail; case bird
         var label: String { rawValue }
+        var emoji: String {
+            switch self {
+            case .cat:   return "🐱"
+            case .dog:   return "🐶"
+            case .frog:  return "🐸"
+            case .snail: return "🐌"
+            case .bird:  return "🐦"
+            }
+        }
     }
 
     static let shared = SkinManager()

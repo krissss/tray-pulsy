@@ -114,6 +114,14 @@ enum ThemeMode: String, CaseIterable, Sendable {
         }
     }
 
+    var emoji: String {
+        switch self {
+        case .system: return "🖥"
+        case .light: return "☀️"
+        case .dark: return "🌙"
+        }
+    }
+
     /// Whether dark appearance should be forced
     var isDarkOverride: Bool? {
         switch self {
