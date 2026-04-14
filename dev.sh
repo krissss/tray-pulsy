@@ -28,6 +28,8 @@ if command -v fswatch &>/dev/null; then
         echo "📝 Changed: $(basename "$changed") — rebuilding..."
         swift build -c debug 2>&1 | tail -2
         if [ -f "$BUILD" ]; then
+            # Ad-hoc sign to suppress Gatekeeper prompt on each launch
+            codesign --force --sign - "$BUILD" 2>/dev/null || true
             killall RunCatX 2>/dev/null || true
             sleep 0.4
             open "$BUILD"

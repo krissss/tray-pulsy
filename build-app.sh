@@ -80,8 +80,9 @@ cat > "${CONTENTS_DIR}/Info.plist" << 'PLIST'
 </plist>
 PLIST
 
-# 7️⃣ Set permissions
+# 7️⃣ Set permissions + ad-hoc sign (suppress Gatekeeper prompt)
 chmod +x "${MACOS_DIR}/${APP_NAME}"
+codesign --force --deep --sign - "${APP_DIR}" 2>/dev/null || true
 
 echo "✅ Built: ${APP_DIR} ($(du -sh "${APP_DIR}" | cut -f1))"
 echo ""

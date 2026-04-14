@@ -124,12 +124,18 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         }
         guard result == KERN_SUCCESS else { return MemInfo(usagePercent: 0, usedGB: 0, totalGB: 0) }
 
-        // Read page size via host_page_size() (safer C API)
         var pageSizeValue: vm_size_t = 0
-        let pageSizeResult = host_page_size(mach_host_self(), &pageSizeValue)
-        let pageSize = Double(pageSizeResult == KERN_SUCCESS ? pageSizeValue : 4096)
-        let used = Double(stats.active_count + stats.wire_count + stats.compressor_page_count) * pageSize
+        let _ = host_page_size(mach_host_self(), &pageSizeValue)
+        let pageSize = Double(pageSizeValue > 0 ? pageSizeValue : 4096)
         let total = Double(ProcessInfo.processInfo.physicalMemory)
+
+        // Standard macOS memory accounting (matches Activity Monitor):
+        //   Used = Active + Wired (resident) + Compressed
+        //   This is memory that's actually in use, not just cached.
+        let usedPages = UInt64(stats.active_count) +
+                        UInt64(stats.wire_count) +
+                        UInt64(stats.compressor_page_count)
+        let used = Double(usedPages) * pageSize
         let usage = total > 0 ? used / total * 100 : 0
         let gb: Double = 1024 * 1024 * 1024
         return MemInfo(usagePercent: min(100, usage), usedGB: used / gb, totalGB: total / gb)

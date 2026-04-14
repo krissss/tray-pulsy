@@ -122,8 +122,9 @@ enum SpeedSource: String, CaseIterable, Sendable {
             // Idle really is ~0%
             return max(0, min(100, rawValue))
         case .memory:
-            // macOS memory baseline ≈ 45% (wired + compressed + active)
-            let baseline: Double = 45.0
+            // macOS memory: active+wire+compressed typically 40–60% at idle.
+            // Baseline ≈ 40% means normal usage keeps cat at walking pace.
+            let baseline: Double = 40.0
             let normalized = (rawValue - baseline) / (100.0 - baseline) * 100.0
             return max(0, min(100, normalized))
         case .disk:
