@@ -189,31 +189,34 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         var totalIn: UInt64 = 0
         var totalOut: UInt64 = 0
 
-        guard let ifaddr = UnsafeMutablePointer<ifaddrs>.allocate(capacity: 1) else {
+        var ifaddr: UnsafeMutablePointer<ifaddrs>?
+        guard getifaddrs(&ifaddr) == 0, let first = ifaddr else {
             return (0, 0)
         }
-        defer { ifaddr.deallocate() }
+        defer { freeifaddrs(ifaddr) }
 
-        var ptr: UnsafeMutablePointer<ifaddrs>? = ifaddr
-        if getifaddrs(&ptr) != 0 || ptr == nil { return (0, 0) }
-        defer { freeifaddrs(ptr) }
-
-        var iface = ptr
-        while let ifa = iface?.pointee {
-            let name = String(cString: ifa.ifa_name)
+        var iface: UnsafeMutablePointer<ifaddrs>? = first
+        while let current = iface {
+            guard let namePtr = current.pointee.ifa_name else {
+                iface = current.pointee.ifa_next
+                continue
+            }
+            let name = String(cString: namePtr)
             // Only physical interfaces (en0=en1=..., bridge), skip loopback/tun/utun/pdp/ipsec
             guard name.hasPrefix("en") || name.hasPrefix("bridge") else {
-                iface = ifa.ifa_next; continue
+                iface = current.pointee.ifa_next
+                continue
             }
 
             // AF_LINK → data is struct if_data with ibytes/obytes
-            if Int32(ifa.ifa_addr.pointee.sa_family) == AF_LINK,
-               let data = ifa.ifa_data {
+            if let addr = current.pointee.ifa_addr,
+               Int32(addr.pointee.sa_family) == AF_LINK,
+               let data = current.pointee.ifa_data {
                 let ifData = data.assumingMemoryBound(to: if_data.self).pointee
                 totalIn += UInt64(ifData.ifi_ibytes)
                 totalOut += UInt64(ifData.ifi_obytes)
             }
-            iface = ifa.ifa_next
+            iface = current.pointee.ifa_next
         }
         return (totalIn, totalOut)
     }
