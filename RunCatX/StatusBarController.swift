@@ -75,6 +75,8 @@ final class StatusBarController: NSObject {
         animator.stop()
         tooltipTimer?.invalidate(); tooltipTimer = nil
         menuUpdateTimer?.invalidate(); menuUpdateTimer = nil
+        // Remove from menu bar so execv's new process gets a clean slate
+        NSStatusBar.system.removeStatusItem(statusItem)
     }
 
     func pause()  { animator.stop() }
@@ -172,7 +174,6 @@ final class StatusBarController: NSObject {
     // ═════════════════════════════════════════════════════════
 
     private func updateTooltip() {
-        guard !isMenuShowing else { return } // don't update while menu is up
         let src = SettingsStore.shared.speedSource
         let metricVal = monitor.valueForSource(src)
         statusItem.button?.toolTip = String(
@@ -187,9 +188,9 @@ final class StatusBarController: NSObject {
         tooltipTimer = Timer.scheduledTimer(withTimeInterval: 2.0, repeats: true) { [weak self] _ in
             self?.updateTooltip()
         }
-        // Menu display update — only when menu is NOT showing
+        // Menu display update — always updates, even while menu is showing
         menuUpdateTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { [weak self] _ in
-            guard let self = self, !self.isMenuShowing else { return }
+            guard let self = self else { return }
             self.updateMenuDisplay()
         }
     }
