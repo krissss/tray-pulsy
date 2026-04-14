@@ -6,7 +6,7 @@ import Darwin
 // ═══════════════════════════════════════════════════════════════
 
 /// Unified system metrics collector.
-/// Provides CPU%, memory usage, and disk usage via kernel APIs.
+/// Provides CPU%, memory usage, disk usage, and network speed via kernel APIs.
 final class SystemMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var cpuUsage: Double = 0.0
     @Published private(set) var memoryUsage: Double = 0.0
@@ -15,6 +15,8 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var diskUsage: Double = 0.0
     @Published private(set) var diskUsedGB: Double = 0.0
     @Published private(set) var diskTotalGB: Double = 0.0
+    @Published private(set) var netSpeedIn: Double = 0.0   // bytes/sec download
+    @Published private(set) var netSpeedOut: Double = 0.0  // bytes/sec upload
 
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
@@ -26,12 +28,18 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     private var prevIdle: UInt64 = 0
     private var prevNice: UInt64 = 0
 
+    // Network state (byte counters from getifaddrs)
+    private var prevNetInBytes: UInt64 = 0
+    private var prevNetOutBytes: UInt64 = 0
+    private var netInitialized: Bool = false
+
     init(sampleInterval: TimeInterval = 1.0) { self.interval = sampleInterval }
 
     func start() {
         _ = readCPUStats()
         _ = readMemoryStats()
         _ = readDiskStats()
+        _ = readNetBytes()  // seed initial counters
         timer = DispatchSource.makeTimerSource(queue: queue)
         timer?.schedule(deadline: .now() + interval, repeating: interval)
         timer?.setEventHandler { [weak self] in self?.tick() }
@@ -46,6 +54,7 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         let cpu = readCPUPercent()
         let mem = readMemoryStats()
         let disk = readDiskStats()
+        let (netIn, netOut) = readNetSpeed()
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
@@ -56,6 +65,8 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
             self.diskUsage = disk.usagePercent
             self.diskUsedGB = disk.usedGB
             self.diskTotalGB = disk.totalGB
+            self.netSpeedIn = netIn
+            self.netSpeedOut = netOut
         }
     }
 
@@ -166,5 +177,66 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         } catch {
             return DiskInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
         }
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - Network (getifaddrs)
+    // ═════════════════════════════════════════════════════════
+
+    /// Reads total bytes in/out across all physical interfaces (en*, bridge*).
+    /// Returns (inBytes, outBytes) — raw cumulative counters.
+    private func readNetBytes() -> (inBytes: UInt64, outBytes: UInt64) {
+        var totalIn: UInt64 = 0
+        var totalOut: UInt64 = 0
+
+        guard let ifaddr = UnsafeMutablePointer<ifaddrs>.allocate(capacity: 1) else {
+            return (0, 0)
+        }
+        defer { ifaddr.deallocate() }
+
+        var ptr: UnsafeMutablePointer<ifaddrs>? = ifaddr
+        if getifaddrs(&ptr) != 0 || ptr == nil { return (0, 0) }
+        defer { freeifaddrs(ptr) }
+
+        var iface = ptr
+        while let ifa = iface?.pointee {
+            let name = String(cString: ifa.ifa_name)
+            // Only physical interfaces (en0=en1=..., bridge), skip loopback/tun/utun/pdp/ipsec
+            guard name.hasPrefix("en") || name.hasPrefix("bridge") else {
+                iface = ifa.ifa_next; continue
+            }
+
+            // AF_LINK → data is struct if_data with ibytes/obytes
+            if Int32(ifa.ifa_addr.pointee.sa_family) == AF_LINK,
+               let data = ifa.ifa_data {
+                let ifData = data.assumingMemoryBound(to: if_data.self).pointee
+                totalIn += UInt64(ifData.ifi_ibytes)
+                totalOut += UInt64(ifData.ifi_obytes)
+            }
+            iface = ifa.ifa_next
+        }
+        return (totalIn, totalOut)
+    }
+
+    /// Computes current network speed in bytes/sec.
+    /// First call seeds the baseline, subsequent calls return delta / interval.
+    func readNetSpeed() -> (inBytesPerSec: Double, outBytesPerSec: Double) {
+        let (curIn, curOut) = readNetBytes()
+
+        guard netInitialized else {
+            prevNetInBytes = curIn
+            prevNetOutBytes = curOut
+            netInitialized = true
+            return (0, 0)
+        }
+
+        let deltaIn = curIn >= prevNetInBytes ? curIn - prevNetInBytes : 0
+        let deltaOut = curOut >= prevNetOutBytes ? curOut - prevNetOutBytes : 0
+
+        prevNetInBytes = curIn
+        prevNetOutBytes = curOut
+
+        let sec = max(interval, 0.01)  // avoid div-by-zero
+        return (Double(deltaIn) / sec, Double(deltaOut) / sec)
     }
 }

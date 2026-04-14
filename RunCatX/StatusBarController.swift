@@ -149,6 +149,8 @@ final class StatusBarController: NSObject {
     private var snapshotDiskUsage: Double = 0
     private var snapshotDiskUsedGB: Double = 0
     private var snapshotDiskTotalGB: Double = 0
+    private var snapshotNetIn: Double = 0   // bytes/sec
+    private var snapshotNetOut: Double = 0  // bytes/sec
     private var snapshotFPS: Double = 0
 
     /// Capture current values so menu shows stable data.
@@ -160,6 +162,8 @@ final class StatusBarController: NSObject {
         snapshotDiskUsage = monitor.diskUsage
         snapshotDiskUsedGB = monitor.diskUsedGB
         snapshotDiskTotalGB = monitor.diskTotalGB
+        snapshotNetIn = monitor.netSpeedIn
+        snapshotNetOut = monitor.netSpeedOut
         snapshotFPS = animator.computeFPS()
     }
 
@@ -446,6 +450,8 @@ final class StatusBarController: NSObject {
         let dU    = live ? monitor.diskUsage      : snapshotDiskUsage
         let dUb   = live ? monitor.diskUsedGB     : snapshotDiskUsedGB
         let dTb   = live ? monitor.diskTotalGB    : snapshotDiskTotalGB
+        let netIn  = live ? monitor.netSpeedIn    : snapshotNetIn
+        let netOut = live ? monitor.netSpeedOut   : snapshotNetOut
 
         // Primary metric = whatever drives the animation
         let primaryLabel = src.label
@@ -456,7 +462,7 @@ final class StatusBarController: NSObject {
         case .disk:    primaryValue = dU
         }
 
-        // Build string: primary first, then remaining two metrics
+        // Build string: primary first, then remaining two metrics + net speed
         let secondary: String
         switch src {
         case .cpu:
@@ -470,12 +476,30 @@ final class StatusBarController: NSObject {
                 percentString(cpu), percentString(mU), mUb, mTb)
         }
 
-        return "\(primaryLabel) \(percentString(primaryValue))  ·  \(secondary)"
+        let netStr = formatNetSpeed(inBytes: netIn, outBytes: netOut)
+        return "\(primaryLabel) \(percentString(primaryValue))  ·  \(secondary)  ·  ⬇\(netStr.in) ⬆\(netStr.out)"
     }
 
     /// Returns a fixed-width percentage string: "  3%", "12%", "100%"
     private func percentString(_ value: Double) -> String {
         String(format: "%5.1f%%", value)
+    }
+
+    /// Formats bytes/sec into human-readable speed string.
+    /// Returns (in: "1.2MB/s", out: "34KB/s") or ("—", "—") when idle.
+    private func formatNetSpeed(inBytes: Double, outBytes: Double) -> (in: String, out: String) {
+        let inStr = formatBPS(inBytes)
+        let outStr = formatBPS(outBytes)
+        return (in: inStr, out: outStr)
+    }
+
+    private func formatBPS(_ bytesPerSec: Double) -> String {
+        guard bytesPerSec > 512 else { return "—" }   // < 0.5 KB/s → show dash
+        let kb = bytesPerSec / 1024.0
+        if kb < 1024 { return String(format: "%.0fKB/s", kb) }
+        let mb = kb / 1024.0
+        if mb < 1024 { return String(format: "%.1fMB/s", mb) }
+        return String(format: "%.1fGB/s", mb / 1024.0)
     }
 
     // ═════════════════════════════════════════════════════════
