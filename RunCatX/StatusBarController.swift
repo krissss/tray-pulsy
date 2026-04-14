@@ -4,8 +4,11 @@ import Combine
 /// Owns NSStatusItem, wires SystemMonitor → Animator → icon.
 ///
 /// Interaction model:
-///   LEFT CLICK  → Toggle CPU% text display (quick, one-tap action)
+///   LEFT CLICK  → Toggle metric text display (quick, one-tap action)
 ///   RIGHT CLICK → Full settings menu
+///
+/// The displayed metric (CPU% or Memory%) automatically follows the current
+/// `speedSource` setting — no manual switching needed.
 final class StatusBarController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let monitor = SystemMonitor(sampleInterval: 1.0)
@@ -22,6 +25,7 @@ final class StatusBarController: NSObject {
     private var miSrc: NSMenuItem?
     private var miFPS: NSMenuItem?
     private var miTheme: NSMenuItem?
+    private var miShowText: NSMenuItem?   // "Show X% in Menu Bar"
 
     // ── Menu state ──
     private var isMenuShowing = false
@@ -36,6 +40,7 @@ final class StatusBarController: NSObject {
             guard let self = self else { return }
             self.statusItem.button?.image = image
             self.updateAccessibilityLabel(fps)
+            self.applyMetricTextMode()  // keep title in sync with live value
         }
 
         // 3. Apply saved settings BEFORE starting
@@ -79,7 +84,7 @@ final class StatusBarController: NSObject {
 
     private func setupButton() {
         guard let button = statusItem.button else { return }
-        button.toolTip = "RunCatX — Left-click: Toggle CPU% | Right-click: Menu"
+        button.toolTip = "RunCatX — Left-click: Toggle \(currentMetricLabel()) | Right-click: Menu"
         button.target = self
         button.action = #selector(handleButtonClick)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -89,7 +94,7 @@ final class StatusBarController: NSObject {
         let event = NSApp.currentEvent
         switch event?.type {
         case .leftMouseUp:
-            toggleCPUTextQuick()
+            toggleMetricTextQuick()
         case .rightMouseUp:
             // Show settings menu (inline to avoid Swift 6 sending check)
             guard let button = statusItem.button else { return }
@@ -101,12 +106,15 @@ final class StatusBarController: NSObject {
         }
     }
 
-    /// Quick toggle: flip CPU text mode without opening menu.
-    private func toggleCPUTextQuick() {
-        SettingsStore.shared.showCPUText.toggle()
-        applyCPUTextMode()
-        // Brief feedback: flash tooltip
-        showBriefFeedback(SettingsStore.shared.showCPUText ? "CPU% shown" : "CPU% hidden")
+    /// Quick toggle: flip metric text mode without opening menu.
+    /// Automatically shows/hides the metric matching current speedSource.
+    private func toggleMetricTextQuick() {
+        SettingsStore.shared.showMetricText.toggle()
+        applyMetricTextMode()
+        let label = currentMetricLabel()
+        showBriefFeedback(
+            SettingsStore.shared.showMetricText ? "\(label) shown" : "\(label) hidden"
+        )
     }
 
     /// Called when menu closes (via delegate/notification).
@@ -123,7 +131,8 @@ final class StatusBarController: NSObject {
         statusItem.button?.toolTip = "✅ \(message)"
         // Schedule restore on main queue
         Timer.scheduledTimer(withTimeInterval: 0.8, repeats: false) { [weak self] _ in
-            self?.statusItem.button?.toolTip = "RunCatX — Left-click: Toggle CPU% | Right-click: Menu"
+            self?.statusItem.button?.toolTip =
+                "RunCatX — Left-click: Toggle \(self?.currentMetricLabel() ?? "Metric") | Right-click: Menu"
         }
     }
 
@@ -158,10 +167,13 @@ final class StatusBarController: NSObject {
 
     private func updateTooltip() {
         guard !isMenuShowing else { return } // don't update while menu is up
+        let src = SettingsStore.shared.speedSource
+        let metricVal = monitor.valueForSource(src)
         statusItem.button?.toolTip = String(
-            format: "RunCatX\nCPU: %.1f%% | Mem: %.0f%% (%.1f/%.0f GB)\nLeft-click: Toggle CPU%%",
-            monitor.cpuUsage,
-            monitor.memoryUsage, monitor.memoryUsedGB, monitor.memoryTotalGB
+            format: "RunCatX\n%@: %.1f%% | Mem: %.0f%% (%.1f/%.0f GB)\nLeft-click: Toggle %@%%",
+            src.label, metricVal,
+            monitor.memoryUsage, monitor.memoryUsedGB, monitor.memoryTotalGB,
+            src.label
         )
     }
 
@@ -182,9 +194,11 @@ final class StatusBarController: NSObject {
 
     private func updateAccessibilityLabel(_ fps: Double) {
         guard let button = statusItem.button else { return }
+        let src = SettingsStore.shared.speedSource
+        let val = monitor.valueForSource(src)
         button.setAccessibilityLabel(String(
-            format: "RunCatX. CPU %.1f%%. %.0f fps.",
-            monitor.cpuUsage, fps
+            format: "RunCatX. %@ %.1f%%. %.0f fps.",
+            src.label, val, fps
         ))
         button.setAccessibilityRole(.image)
     }
@@ -206,6 +220,8 @@ final class StatusBarController: NSObject {
                 .store(in: &cancellables)
         }
         animator.updateValue(monitor.valueForSource(source))
+        // Update "Show X%" menu item title to reflect new source
+        refreshShowTextMenuItemTitle()
     }
 
     // ═════════════════════════════════════════════════════════
@@ -218,17 +234,34 @@ final class StatusBarController: NSObject {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - CPU Text Mode
+    // MARK: - Metric Text Mode (dynamic: CPU% or Memory%)
     // ═════════════════════════════════════════════════════════
 
-    private func applyCPUTextMode() {
-        if SettingsStore.shared.showCPUText {
-            statusItem.button?.title = String(format: "%.0f%%", monitor.cpuUsage)
+    /// Returns the human-readable label for the current speed source metric.
+    private func currentMetricLabel() -> String {
+        SettingsStore.shared.speedSource.label
+    }
+
+    /// Returns the current metric value for display (reads from monitor).
+    private func currentMetricValue() -> Double {
+        monitor.valueForSource(SettingsStore.shared.speedSource)
+    }
+
+    /// Applies (or removes) the metric text overlay on the status bar item.
+    /// Automatically shows CPU% or Memory% depending on `speedSource`.
+    private func applyMetricTextMode() {
+        if SettingsStore.shared.showMetricText {
+            statusItem.button?.title = String(format: "%.0f%%", currentMetricValue())
             statusItem.length = NSStatusItem.variableLength
         } else {
             statusItem.button?.title = ""
             statusItem.length = NSStatusItem.squareLength
         }
+    }
+
+    /// Updates the "Show X% in Menu Bar" menu item title to match current source.
+    private func refreshShowTextMenuItemTitle() {
+        miShowText?.title = "Show \(currentMetricLabel()) % in Menu Bar"
     }
 
     // ═════════════════════════════════════════════════════════
@@ -338,15 +371,16 @@ final class StatusBarController: NSObject {
         startupItem.target = self
         menu.addItem(startupItem)
 
-        let textToggle = NSMenuItem(
-            title: "Show CPU % in Menu Bar",
-            action: #selector(toggleShowCPUText(_:)),
+        // Dynamic: "Show CPU %" or "Show Memory %" based on current speedSource
+        miShowText = NSMenuItem(
+            title: "Show \(currentMetricLabel()) % in Menu Bar",
+            action: #selector(toggleShowMetricText(_:)),
             keyEquivalent: "t"
         )  // ⌘T shortcut
-        textToggle.keyEquivalentModifierMask = .command
-        textToggle.state = SettingsStore.shared.showCPUText ? .on : .off
-        textToggle.target = self
-        menu.addItem(textToggle)
+        miShowText?.keyEquivalentModifierMask = .command
+        miShowText?.state = SettingsStore.shared.showMetricText ? .on : .off
+        miShowText?.target = self
+        menu.addItem(miShowText!)
 
         menu.addItem(NSMenuItem.separator())
 
@@ -382,8 +416,8 @@ final class StatusBarController: NSObject {
         miSkin?.title = "\(skinManager.currentSkin.emoji) \(skinManager.currentSkin.label.capitalized)"
         miSrc?.title = "Speed: \(SettingsStore.shared.speedSource.label)"
 
-        // CPU text mode
-        applyCPUTextMode()
+        // Metric text mode (dynamic: CPU% or Memory%)
+        applyMetricTextMode()
     }
 
     /// Formats system info string. Uses frozen snapshot when menu is open.
@@ -458,12 +492,13 @@ final class StatusBarController: NSObject {
         showBriefFeedback(newState ? "Login: ON" : "Login: OFF")
     }
 
-    @objc private func toggleShowCPUText(_ sender: NSMenuItem) {
+    @objc private func toggleShowMetricText(_ sender: NSMenuItem) {
         let newState = sender.state == .off
         sender.state = newState ? .on : .off
-        SettingsStore.shared.showCPUText = newState
-        applyCPUTextMode()
-        showBriefFeedback(newState ? "CPU% ON" : "CPU% OFF")
+        SettingsStore.shared.showMetricText = newState
+        applyMetricTextMode()
+        let ml = currentMetricLabel()
+        showBriefFeedback(newState ? "\(ml)% ON" : "\(ml)% OFF")
     }
 
     @objc private func showAbout(_ sender: Any?) {
@@ -473,7 +508,7 @@ final class StatusBarController: NSObject {
         alert.informativeText = """
         🐱 A cute menu bar runner for macOS
 
-        Animation speed follows your CPU usage.
+        Animation speed follows your system usage.
         The harder you work, the faster it runs!
 
         Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1")

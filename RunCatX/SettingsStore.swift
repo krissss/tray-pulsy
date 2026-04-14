@@ -57,12 +57,16 @@ final class SettingsStore: @unchecked Sendable {
         set { defaults.set(newValue.rawValue, forKey: prefix + Key.theme.rawValue) }
     }
 
-    // MARK: - Show CPU Text in Menu Bar
+    // MARK: - Show Metric Text in Menu Bar
+    // Backing key remains "showCPUText" for backward compatibility with existing prefs.
 
-    var showCPUText: Bool {
+    var showMetricText: Bool {
         get { defaults.bool(forKey: prefix + Key.showCPUText.rawValue) }
         set { defaults.set(newValue, forKey: prefix + Key.showCPUText.rawValue) }
     }
+
+    /// Legacy alias — same storage.
+    var showCPUText: Bool { showMetricText }
 
     // MARK: - Restore
 
