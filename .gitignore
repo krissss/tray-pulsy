@@ -1,0 +1,22 @@
+# Build artifacts
+.build/
+*.xcodeproj/
+*.xcworkspace/
+swiftpm/
+
+# macOS
+.DS_Store
+*.dSYM.zip
+*.app/
+
+# Swift
+*.swift-sourceinfo
+*.resolved
+
+# IDE
+.vscode/
+.idea/
+*~
+
+# Debug
+/tmp/com.runcatx.lock
