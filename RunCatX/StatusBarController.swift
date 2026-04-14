@@ -36,11 +36,13 @@ final class StatusBarController: NSObject {
         animator = CatAnimator(initialFrames: initialFrames)
 
         // 2. Wire direct callback (zero overhead animation path)
+        //    NOTE: Only image + accessibility here — NO title/text updates.
+        //          Metric text updates at 1Hz via bindSpeedSource (Combine),
+        //          NOT at animation framerate (wasteful & causes jitter).
         animator.onFrameUpdate = { [weak self] image, fps in
             guard let self = self else { return }
             self.statusItem.button?.image = image
             self.updateAccessibilityLabel(fps)
-            self.applyMetricTextMode()  // keep title in sync with live value
         }
 
         // 3. Apply saved settings BEFORE starting
@@ -214,12 +216,21 @@ final class StatusBarController: NSObject {
             monitor.$cpuUsage.receive(on: DispatchQueue.main)
                 .sink { [weak self] v in
                     self?.animator.updateValue(source.normalizeForAnimation(v))
+                    self?.applyMetricTextMode()  // 1Hz update — NOT per-frame
                 }
                 .store(in: &cancellables)
         case .memory:
             monitor.$memoryUsage.receive(on: DispatchQueue.main)
                 .sink { [weak self] v in
                     self?.animator.updateValue(source.normalizeForAnimation(v))
+                    self?.applyMetricTextMode()  // 1Hz update — NOT per-frame
+                }
+                .store(in: &cancellables)
+        case .disk:
+            monitor.$diskUsage.receive(on: DispatchQueue.main)
+                .sink { [weak self] v in
+                    self?.animator.updateValue(source.normalizeForAnimation(v))
+                    self?.applyMetricTextMode()  // 1Hz update — NOT per-frame
                 }
                 .store(in: &cancellables)
         }
@@ -402,6 +413,8 @@ final class StatusBarController: NSObject {
     }
 
     /// Refreshes dynamic menu content (called by timer, NOT while menu is showing).
+    /// NOTE: Metric text (status bar title) is updated separately via
+    ///       bindSpeedSource Combine pipeline at 1Hz — NOT here.
     private func updateMenuDisplay() {
         let fps = animator.computeFPS()
 
@@ -420,9 +433,6 @@ final class StatusBarController: NSObject {
         // Submenu titles
         miSkin?.title = "\(skinManager.currentSkin.emoji) \(skinManager.currentSkin.label.capitalized)"
         miSrc?.title = "Speed: \(SettingsStore.shared.speedSource.label)"
-
-        // Metric text mode (dynamic: CPU% or Memory%)
-        applyMetricTextMode()
     }
 
     /// Formats system info string. Primary metric (first position) follows speedSource.
@@ -443,14 +453,24 @@ final class StatusBarController: NSObject {
         switch src {
         case .cpu:     primaryValue = cpu
         case .memory:  primaryValue = mU
+        case .disk:    primaryValue = dU
         }
 
-        return String(
-            format: "%@ %@  ·  Mem %@ (%.1f/%.0fG)  ·  Disk %@ (%.0f/%.0fG)",
-            primaryLabel, percentString(primaryValue),
-            percentString(mU), mUb, mTb,
-            percentString(dU), dUb, dTb
-        )
+        // Build string: primary first, then remaining two metrics
+        let secondary: String
+        switch src {
+        case .cpu:
+            secondary = String(format: "Mem %@ (%.1f/%.0fG)  ·  Disk %@ (%.0f/%.0fG)",
+                percentString(mU), mUb, mTb, percentString(dU), dUb, dTb)
+        case .memory:
+            secondary = String(format: "CPU %@  ·  Disk %@ (%.0f/%.0fG)",
+                percentString(cpu), percentString(dU), dUb, dTb)
+        case .disk:
+            secondary = String(format: "CPU %@  ·  Mem %@ (%.1f/%.0fG)",
+                percentString(cpu), percentString(mU), mUb, mTb)
+        }
+
+        return "\(primaryLabel) \(percentString(primaryValue))  ·  \(secondary)"
     }
 
     /// Returns a fixed-width percentage string: "  3%", "12%", "100%"

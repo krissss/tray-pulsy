@@ -97,12 +97,13 @@ enum FPSLimit: String, CaseIterable, Sendable {
 }
 
 enum SpeedSource: String, CaseIterable, Sendable {
-    case cpu = "cpu", memory = "memory"
+    case cpu = "cpu", memory = "memory", disk = "disk"
 
     var label: String {
         switch self {
         case .cpu: return "CPU"
         case .memory: return "Memory"
+        case .disk: return "Disk"
         }
     }
 
@@ -113,18 +114,21 @@ enum SpeedSource: String, CaseIterable, Sendable {
     /// Raw usage (0–100) → animation-friendly value (0–100).
     ///
     /// The animator's interval formula was designed for CPU where idle ≈ 0%.
-    /// Memory on macOS sits at 50–70% during normal use, so we remap it so
-    /// that typical usage feels "idle/slow" and only high pressure speeds up.
-    ///
-    /// CPU:   identity  (0→0, 100→100) — idle really is ~0%
-    /// Memory: remap [baseline…100] → [0…100] — baseline ≈ 45%
+    /// Memory on macOS sits at 50–70% during normal use, and disks are often
+    /// 60–80% full — so we remap them so typical usage feels "idle/slow".
     func normalizeForAnimation(_ rawValue: Double) -> Double {
         switch self {
         case .cpu:
+            // Idle really is ~0%
             return max(0, min(100, rawValue))
         case .memory:
-            // macOS memory: 45% = idle baseline, 80% = working, 95% = pressure
+            // macOS memory baseline ≈ 45% (wired + compressed + active)
             let baseline: Double = 45.0
+            let normalized = (rawValue - baseline) / (100.0 - baseline) * 100.0
+            return max(0, min(100, normalized))
+        case .disk:
+            // Disks commonly 60% full; pressure starts at 85%+
+            let baseline: Double = 60.0
             let normalized = (rawValue - baseline) / (100.0 - baseline) * 100.0
             return max(0, min(100, normalized))
         }

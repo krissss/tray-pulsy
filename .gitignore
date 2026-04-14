@@ -20,3 +20,6 @@ swiftpm/
 
 # Debug
 /tmp/com.runcatx.lock
+
+# Screenshots
+screenshot*.png

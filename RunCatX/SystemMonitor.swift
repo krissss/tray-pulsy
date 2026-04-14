@@ -64,6 +64,7 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         switch source {
         case .cpu: return cpuUsage
         case .memory: return memoryUsage
+        case .disk: return diskUsage
         }
     }
 
