@@ -420,19 +420,29 @@ final class StatusBarController: NSObject {
         applyMetricTextMode()
     }
 
-    /// Formats system info string. Uses frozen snapshot when menu is open.
+    /// Formats system info string. Primary metric (first position) follows speedSource.
+    /// Uses frozen snapshot when menu is open.
     private func formattedSystemInfo(live: Bool) -> String {
-        let cpu = live ? monitor.cpuUsage : snapshotCPU
-        let mU = live ? monitor.memoryUsage : snapshotMemUsage
-        let mUb = live ? monitor.memoryUsedGB : snapshotMemUsedGB
-        let mTb = live ? monitor.memoryTotalGB : snapshotMemTotalGB
-        let dU = live ? monitor.diskUsage : snapshotDiskUsage
-        let dUb = live ? monitor.diskUsedGB : snapshotDiskUsedGB
-        let dTb = live ? monitor.diskTotalGB : snapshotDiskTotalGB
+        let src = SettingsStore.shared.speedSource
+        let cpu   = live ? monitor.cpuUsage      : snapshotCPU
+        let mU    = live ? monitor.memoryUsage    : snapshotMemUsage
+        let mUb   = live ? monitor.memoryUsedGB   : snapshotMemUsedGB
+        let mTb   = live ? monitor.memoryTotalGB  : snapshotMemTotalGB
+        let dU    = live ? monitor.diskUsage      : snapshotDiskUsage
+        let dUb   = live ? monitor.diskUsedGB     : snapshotDiskUsedGB
+        let dTb   = live ? monitor.diskTotalGB    : snapshotDiskTotalGB
+
+        // Primary metric = whatever drives the animation
+        let primaryLabel = src.label
+        let primaryValue: Double
+        switch src {
+        case .cpu:     primaryValue = cpu
+        case .memory:  primaryValue = mU
+        }
 
         return String(
-            format: "CPU %@  ·  Mem %@ (%.1f/%.0fG)  ·  Disk %@ (%.0f/%.0fG)",
-            percentString(cpu),
+            format: "%@ %@  ·  Mem %@ (%.1f/%.0fG)  ·  Disk %@ (%.0f/%.0fG)",
+            primaryLabel, percentString(primaryValue),
             percentString(mU), mUb, mTb,
             percentString(dU), dUb, dTb
         )

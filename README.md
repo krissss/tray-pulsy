@@ -1,10 +1,10 @@
 # RunCatX 🐱
 
-> A cute menu bar runner for macOS — CPU-driven animation speed.
+> A cute menu bar runner for macOS — usage-driven animation speed.
 
 ![macOS 13+](https://img.shields.io/badge/macOS-13%2B-blue) ![Swift](https://img.shields.io/badge/Swift-6.0-orange) ![License: MIT](https://img.shields.io/badge/License-MIT-green)
 
-**RunCatX** is a lightweight, open-source macOS menu bar application that displays an animated cat (or other creature!) whose running speed scales with your system's CPU usage. The harder your Mac works, the faster it runs!
+**RunCatX** is a lightweight, open-source macOS menu bar application that displays an animated cat (or other creature!) whose running speed scales with your system usage (CPU or Memory). The harder your Mac works, the faster it runs!
 
 Inspired by [Kyome22's RunCat](https://github.com/Kyome22/RunCat) and feature-complete with ideas from [RunCat365](https://github.com/Yayasyan/RunCat_for_windows).
 
@@ -17,7 +17,7 @@ Inspired by [Kyome22's RunCat](https://github.com/Kyome22/RunCat) and feature-co
 | 🎯 **FPS Limits** | Cap at 40 / 30 / 20 / 10 fps to save battery |
 | 🌓 **Theme Support** | System / Light / Dark mode with automatic icon recoloring |
 | 📊 **Live System Info** | CPU%, Memory (GB), Disk (GB) in menu |
-| 🔢 **Menu Bar Text** | Optional CPU% display next to icon |
+| 🔢 **Menu Bar Text** | Optional metric% (CPU/Memory) display next to icon — auto-follows speed source |
 | 🚀 **Launch at Login** | Auto-start on boot (SMAppService) |
 | 🔒 **Single Instance** | Flock-based guard prevents duplicate processes |
 | 😴 **Sleep/Wake** | Pauses animation when display sleeps |
@@ -51,7 +51,7 @@ The interval formula matches the original exactly:
 
 ```
 interval = 0.2 / clamp(usage / 5.0, 1.0, 20.0)
-// → 5 fps at 0% CPU → 100 fps at 100% CPU
+// → 5 fps at 0% usage → 100 fps at 100% usage
 ```
 
 ## 🛠 Building
