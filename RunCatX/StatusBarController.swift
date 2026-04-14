@@ -212,14 +212,19 @@ final class StatusBarController: NSObject {
         switch source {
         case .cpu:
             monitor.$cpuUsage.receive(on: DispatchQueue.main)
-                .sink { [weak self] v in self?.animator.updateValue(v) }
+                .sink { [weak self] v in
+                    self?.animator.updateValue(source.normalizeForAnimation(v))
+                }
                 .store(in: &cancellables)
         case .memory:
             monitor.$memoryUsage.receive(on: DispatchQueue.main)
-                .sink { [weak self] v in self?.animator.updateValue(v) }
+                .sink { [weak self] v in
+                    self?.animator.updateValue(source.normalizeForAnimation(v))
+                }
                 .store(in: &cancellables)
         }
-        animator.updateValue(monitor.valueForSource(source))
+        // Feed normalized value to animator, keep raw for display
+        animator.updateValue(source.normalizeForAnimation(monitor.valueForSource(source)))
         // Update "Show X%" menu item title to reflect new source
         refreshShowTextMenuItemTitle()
     }
