@@ -3,8 +3,8 @@ import Foundation
 /// Persistent settings via UserDefaults.
 /// All configurable options are saved here and restored on launch.
 final class SettingsStore: @unchecked Sendable {
-    nonisolated(unsafe) static let shared = SettingsStore()
-    private let defaults = UserDefaults.standard
+    static let shared = SettingsStore()
+    private nonisolated(unsafe) let defaults = UserDefaults.standard
     private let prefix = "com.runcatx."
 
     // MARK: - Keys

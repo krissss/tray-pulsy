@@ -2,7 +2,7 @@ import AppKit
 import CoreImage
 
 /// Manages skin (image frame sets) for the runner.
-/// Supports Light/Dark theme-aware icon rendering.
+/// Supports Light/Dark theme-aware icon rendering with frame caching.
 final class SkinManager: @unchecked Sendable {
     enum Skin: String, CaseIterable, Sendable {
         case cat; case dog; case frog; case snail; case bird
@@ -13,8 +13,12 @@ final class SkinManager: @unchecked Sendable {
     private(set) var currentSkin: Skin = .cat
     private var currentTheme: ThemeMode = .system
 
+    /// Cache: (skin, themeHash) → themed frames.
+    /// Avoids re-running CIFilter on every frames() call.
+    private var frameCache: [String: [NSImage]] = [:]
+
     func setSkin(_ s: Skin) { currentSkin = s }
-    func setTheme(_ t: ThemeMode) { currentTheme = t }
+    func setTheme(_ t: ThemeMode) { currentTheme = t; clearCache() } // theme change → invalidate cache
     func nextSkin() -> Skin {
         let all = Skin.allCases
         guard let i = all.firstIndex(of: currentSkin) else { return .cat }
@@ -22,21 +26,52 @@ final class SkinManager: @unchecked Sendable {
         return currentSkin
     }
 
-    /// Returns frames themed for current mode.
+    /// Returns cached or freshly-themed frames for the given (or current) skin.
     func frames(for s: Skin? = nil) -> [NSImage] {
         let skin = s ?? currentSkin
-        let baseFrames: [NSImage]
-        switch skin {
-        case .cat:   baseFrames = CatRenderer.originalNSFrames
-        case .dog:   baseFrames = DogRenderer.nsFrames
-        case .frog:  baseFrames = FrogRenderer.nsFrames
-        case .snail: return SnailRenderer.nsFrames  // no theme needed
-        case .bird:  return BirdRenderer.nsFrames     // no theme needed
-        }
-        return applyTheme(to: baseFrames)
+        let cacheKey = cacheKeyFor(skin: skin)
+        if let cached = frameCache[cacheKey] { return cached }
+
+        let baseFrames = loadBaseFrames(for: skin)
+        let themed = applyCurrentTheme(to: baseFrames)
+        frameCache[cacheKey] = themed
+        return themed
     }
 
     func frameCount() -> Int { frames().count }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - Caching
+    // ═════════════════════════════════════════════════════════
+
+    private func cacheKeyFor(skin: Skin) -> String {
+        "\(skin.rawValue):\(themeHash)"
+    }
+
+    private var themeHash: String {
+        switch currentTheme {
+        case .system: return "sys"
+        case .dark:  return "dark"
+        case .light: return "light"
+        }
+    }
+
+    private func clearCache() { frameCache.removeAll() }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - Base Frame Loading (no theme applied)
+    // ═════════════════════════════════════════════════════════
+
+    /// Loads unthemed base frames for a skin.
+    private func loadBaseFrames(for skin: Skin) -> [NSImage] {
+        switch skin {
+        case .cat:   return CatRenderer.originalNSFrames
+        case .dog:   return DogRenderer.nsFrames
+        case .frog:  return FrogRenderer.nsFrames
+        case .snail: return SnailRenderer.nsFrames
+        case .bird:  return BirdRenderer.nsFrames
+        }
+    }
 
     // ═════════════════════════════════════════════════════════
     // MARK: - Theme Application (Light/Dark icon recoloring)
@@ -44,8 +79,8 @@ final class SkinManager: @unchecked Sendable {
 
     /// Applies theme-aware recoloring to frames.
     /// Dark mode: inverts luminance so dark icons show on light status bar.
-    /// Light mode / System: returns original.
-    private func applyTheme(to images: [NSImage]) -> [NSImage] {
+    /// Light mode / System: returns original (no processing).
+    private func applyCurrentTheme(to images: [NSImage]) -> [NSImage] {
         let isDark: Bool
         switch currentTheme {
         case .system:
@@ -63,11 +98,11 @@ final class SkinManager: @unchecked Sendable {
         guard let cgImg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return image }
         let ciImage = CIImage(cgImage: cgImg)
 
-        // Invert luminance + boost contrast → dark cat becomes light-colored
+        // Invert brightness + boost contrast → dark cat becomes light-colored
         let filter = CIFilter(name: "CIColorControls")!
         filter.setValue(ciImage, forKey: kCIInputImageKey)
-        filter.setValue(-1.0, forKey: kCIInputBrightnessKey)   // invert brightness
-        filter.setValue(1.2, forKey: kCIInputContrastKey)       // boost contrast
+        filter.setValue(-1.0, forKey: kCIInputBrightnessKey)
+        filter.setValue(1.2, forKey: kCIInputContrastKey)
         filter.setValue(0.0, forKey: kCIInputSaturationKey)
 
         guard let output = filter.outputImage,
@@ -94,13 +129,11 @@ final class SkinManager: @unchecked Sendable {
 private enum ImgFactory {
     private static let scale = NSScreen.main?.backingScaleFactor ?? 2.0
 
-    /// Draw into NSImage (legacy compat)
     static func draw(size: CGFloat = 18, _ body: (CGContext) -> Void) -> NSImage {
         guard let cg = drawCG(size: size, body) else { return fallback(size: size) }
         return NSImage(cgImage: cg, size: NSSize(width: size, height: size))
     }
 
-    /// Draw directly to CGImage — no NSImage wrapper overhead.
     static func drawCG(size: CGFloat = 18, _ body: (CGContext) -> Void) -> CGImage? {
         let px = Int(size * scale)
         guard let ctx = CGContext(data: nil, width: px, height: px,
@@ -135,11 +168,12 @@ private extension CGContext {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Cat Renderer — 16 frames (smooth run cycle)
+// MARK: - Cat Renderer — PNG sprites (Kyome22 original artwork)
 // ═══════════════════════════════════════════════════════════════
 
+/// Cat uses the original hand-drawn PNG sprites from Kyome22's menubar_runcat.
+/// 5 frames (126×77), artist-quality pixel art — looks far better than programmatic drawing.
 private enum CatRenderer {
-    /// Load original Kyome22 sprite PNGs (5 frames, 126×77 artist-drawn)
     static let originalNSFrames: [NSImage] = {
         (0..<5).compactMap { i -> NSImage? in
             guard let url = Bundle.module.url(forResource: "\(i)", withExtension: "png",
@@ -152,159 +186,25 @@ private enum CatRenderer {
             return img
         }
     }()
-    private static let f = CGColor(red: 1.00, green: 0.76, blue: 0.48, alpha: 1) // orange
-    private static let s = CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1) // stroke
-    private static let e = CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1) // eye
-
-    /// (headOffset, leftFront, rightFront, leftBack, rightBack, tailAngle, mouthLevel, bigEyes)
-    private static let keyframes: [(CGPoint, Int, Int, Int, Int, CGFloat, Int, Bool)] = [
-        (CGPoint(x: 0, y: 0),     0,   0,   0,   0,   0,    0, false),  // 0: idle
-        (CGPoint(x: 0.5, y: 0.3), 0,   0,   0,   0,   0.08, 0, false),  // 1
-        (CGPoint(x: 1, y: 0.5),   1,  -1,  -1,   1,   0.15, 0, false),  // 2: walk start
-        (CGPoint(x: 1.5, y: 0.8), 1,  -1,  -1,   1,   0.22, 0, false),  // 3
-        (CGPoint(x: 2, y: 1),     2,  -2,  -2,   2,   0.30, 1, false),  // 4: jog
-        (CGPoint(x: 2.5, y: 1.3), 2,  -2,  -2,   2,   0.38, 1, false),  // 5
-        (CGPoint(x: 3, y: 1.5),   3,  -3,  -3,   3,   0.45, 2, true ),  // 6: run
-        (CGPoint(x: 3.3, y: 1.7), 3,  -3,  -3,   3,   0.52, 2, true ),  // 7
-        (CGPoint(x: 3.5, y: 1.9), 3,  -3,  -3,   3,   0.58, 3, true ),  // 8: fast run
-        (CGPoint(x: 3.8, y: 2.1), 3,  -3,  -3,   3,   0.64, 3, true ),  // 9
-        (CGPoint(x: 4, y: 2.2),   4,  -4,  -4,   4,   0.70, 4, true ),  // 10: sprint
-        (CGPoint(x: 4.2, y: 2.3), 4,  -4,  -4,   4,   0.76, 4, true ),  // 11
-        (CGPoint(x: 4.4, y: 2.4), 4,  -4,  -4,   4,   0.82, 4, true ),  // 12: blazing
-        (CGPoint(x: 4.5, y: 2.5), 4,  -4,  -4,   4,   0.88, 4, true ),  // 13
-        (CGPoint(x: 4.6, y: 2.5), 4,  -4,  -4,   4,   0.94, 4, true ),  // 14
-        (CGPoint(x: 4.7, y: 2.5), 4,  -4,  -4,   4,   1.0, 4, true ),  // 15: max
-    ]
-
-    private static func drawCGFrame(_ i: Int) -> CGImage? {
-        ImgFactory.drawCG { c in
-            if i == 0 { idle(c); return }
-            let kf = keyframes[i]
-            pose(c, hOff: kf.0, lF: kf.1, rF: kf.2, lB: kf.3, rB: kf.4, tA: kf.5, ml: kf.6, big: kf.7)
-        }
-    }
-
-    // ── Poses ──
-
-    private static func idle(_ c: CGContext) {
-        c.fillStrokeEllipse(CGRect(x: 3, y: 4, width: 12, height: 9))     // body
-        c.fillStrokeEllipse(CGRect(x: 11, y: 10, width: 7, height: 6))      // head
-        ear(c, at: CGPoint(x: 12, y: 15.5), a: -0.3)
-        ear(c, at: CGPoint(x: 16, y: 15.5), a: 0.3)
-        // closed eyes
-        c.setStrokeColor(e); c.setLineWidth(0.8)
-        qCurve(c, f: CGPoint(x: 13, y: 12.5), cp: CGPoint(x: 14.25, y: 13), t: CGPoint(x: 15.5, y: 12.5))
-        qCurve(c, f: CGPoint(x: 13, y: 11.5), cp: CGPoint(x: 14.25, y: 12), t: CGPoint(x: 15.5, y: 11.5))
-        // zzz
-        c.setFillColor(e)
-        let attr: [NSAttributedString.Key: Any] = [.font: NSFont.boldSystemFont(ofSize: 5),
-                                                     .foregroundColor: NSColor(cgColor: e)!]
-        ("z" as NSString).draw(at: CGPoint(x: 17, y: 14), withAttributes: attr)
-    }
-
-    private static func pose(_ c: CGContext, hOff: CGPoint, lF: Int, rF: Int, lB: Int, rB: Int,
-                             tA: CGFloat, ml: Int = 0, big: Bool = false) {
-        bodyHead(c, offset: hOff)
-        legs(c, lF: lF, rF: rF, lB: lB, rB: rB)
-        tail(c, angle: tA)
-        dotEyes(c, cx: 10 + hOff.x + 4, cy: 9 + hOff.y + 2.5, big: big)
-        if ml > 0 { motionLines(c, n: ml) }
-    }
-
-    private static func blazing(_ c: CGContext) {
-        c.fillStrokeEllipse(CGRect(x: 1, y: 6, width: 16, height: 6))
-        c.fillStrokeEllipse(CGRect(x: 14, y: 9, width: 5, height: 5))
-        ear(c, at: CGPoint(x: 14.5, y: 13.5), a: -0.4)
-        ear(c, at: CGPoint(x: 17.5, y: 13.5), a: 0.4)
-        c.setFillColor(e)
-        c.fillOval(CGRect(x: 15.5, y: 11, width: 1.5, height: 1.5))
-        c.fillOval(CGRect(x: 17, y: 11, width: 1.5, height: 1.5))
-        motionLines(c, n: 8)
-    }
-
-    // ── Shared parts ──
-
-    private static func bodyHead(_ c: CGContext, offset: CGPoint) {
-        c.fillStrokeEllipse(CGRect(x: 3, y: 5, width: 11, height: 8))
-        let hx = 10 + offset.x, hy = 9 + offset.y
-        c.fillStrokeEllipse(CGRect(x: hx, y: hy, width: 6.5, height: 5.5))
-        ear(c, at: CGPoint(x: hx + 0.5, y: hy + 5.2), a: -0.3)
-        ear(c, at: CGPoint(x: hx + 4.5, y: hy + 5.2), a: 0.3)
-    }
-
-    private static func ear(_ c: CGContext, at p: CGPoint, a: CGFloat) {
-        c.saveGState(); c.translateBy(x: p.x, y: p.y); c.rotate(by: a)
-        var path = CGMutablePath()
-        path.move(to: CGPoint(x: -1.5, y: 0))
-        path.addLine(to: CGPoint(x: 0, y: 3.5))
-        path.addLine(to: CGPoint(x: 1.5, y: 0))
-        c.addPath(path); c.fillPath(); c.strokePath()
-        c.restoreGState()
-    }
-
-    private static func dotEyes(_ c: CGContext, cx: CGFloat, cy: CGFloat, big: Bool = false) {
-        c.setFillColor(e)
-        let sz: CGFloat = big ? 1.8 : 1.4
-        c.fillOval(CGRect(x: cx, y: cy, width: sz, height: sz))
-        c.fillOval(CGRect(x: cx + 2, y: cy, width: sz, height: sz))
-    }
-
-    private static func legs(_ c: CGContext, lF: Int, rF: Int, lB: Int, rB: Int) {
-        c.setStrokeColor(s); c.setLineWidth(1.5)
-        let baseY: CGFloat = 5
-        leg(c, x: 6, y: baseY, o: lF); leg(c, x: 8.5, y: baseY, o: rF)
-        leg(c, x: 8, y: baseY, o: lB); leg(c, x: 10.5, y: baseY, o: rB)
-    }
-
-    private static func leg(_ c: CGContext, x: CGFloat, y: CGFloat, o: Int) {
-        let lift = CGFloat(o) * 0.8, fwd = CGFloat(abs(o)) * 0.6
-        let d: CGFloat = o >= 0 ? 1 : -1
-        c.move(to: CGPoint(x: x, y: y))
-        c.addQuadCurve(to: CGPoint(x: x + fwd * d, y: y - lift - 2),
-                       control: CGPoint(x: x + fwd * 0.5 * d, y: y - lift * 0.5))
-        c.strokePath()
-    }
-
-    private static func tail(_ c: CGContext, angle: CGFloat) {
-        c.setStrokeColor(s); c.setLineWidth(1.3)
-        c.saveGState(); c.translateBy(x: 3, y: 9); c.rotate(by: angle)
-        c.move(to: .zero)
-        c.addQuadCurve(to: CGPoint(x: -3, y: 4), control: CGPoint(x: -2, y: 2))
-        c.addQuadCurve(to: CGPoint(x: -1, y: 6), control: CGPoint(x: -3, y: 5.5))
-        c.strokePath(); c.restoreGState()
-    }
-
-    private static func motionLines(_ c: CGContext, n: Int) {
-        c.setStrokeColor(CGColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 0.5))
-        c.setLineWidth(0.6)
-        for i in 0..<n {
-            let y = 4 + CGFloat(i) * 2
-            c.move(to: CGPoint(x: 0, y: y)); c.addLine(to: CGPoint(x: 2.5, y: y)); c.strokePath()
-        }
-    }
-
-    private static func qCurve(_ c: CGContext, f: CGPoint, cp: CGPoint, t: CGPoint) {
-        var p = CGMutablePath()
-        p.move(to: f)
-        p.addQuadCurve(to: t, control: cp)
-        c.addPath(p); c.strokePath()
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Dog Renderer
+// MARK: - Dog Renderer — 16 frames programmatic
 // ═══════════════════════════════════════════════════════════════
 
 private enum DogRenderer {
-    static let cgFrames: [CGImage] = (0..<16).compactMap { drawCGFrame($0) }
-    static let nsFrames: [NSImage] = cgFrames.map { NSImage(cgImage: $0, size: NSSize(width: 18, height: 18)) }
+    static let nsFrames: [NSImage] = {
+        let imgs = (0..<16).compactMap { drawFrame($0) }
+        return imgs.isEmpty ? [fallback()] : imgs
+    }()
+
     private static let f = CGColor(red: 0.85, green: 0.70, blue: 0.50, alpha: 1)
     private static let s = CGColor(red: 0.20, green: 0.20, blue: 0.20, alpha: 1)
     private static let n = CGColor(red: 0.20, green: 0.20, blue: 0.20, alpha: 1)
     private static let tongue = CGColor(red: 0.95, green: 0.55, blue: 0.55, alpha: 1)
 
-    private static func drawCGFrame(_ i: Int) -> CGImage? {
-        ImgFactory.drawCG { c in
+    private static func drawFrame(_ i: Int) -> NSImage? {
+        ImgFactory.draw { c in
             c.setFillColor(f); c.setStrokeColor(s); c.setLineWidth(1.2); c.setLineCap(.round)
             let phase = Double(i) / 16.0 * .pi * 2
             let bounce = abs(sin(phase * 2)) * 1.0
@@ -338,22 +238,31 @@ private enum DogRenderer {
             }
         }
     }
+
+    private static func fallback() -> NSImage {
+        ImgFactory.draw(size: 18) { c in
+            c.setFillColor(f); c.fillOval(CGRect(x: 4, y: 4, width: 10, height: 10))
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Frog Renderer
+// MARK: - Frog Renderer — 16 frames programmatic
 // ═══════════════════════════════════════════════════════════════
 
 private enum FrogRenderer {
-    static let cgFrames: [CGImage] = (0..<16).compactMap { drawCGFrame($0) }
-    static let nsFrames: [NSImage] = cgFrames.map { NSImage(cgImage: $0, size: NSSize(width: 18, height: 18)) }
+    static let nsFrames: [NSImage] = {
+        let imgs = (0..<16).compactMap { drawFrame($0) }
+        return imgs.isEmpty ? [fallback()] : imgs
+    }()
+
     private static let f = CGColor(red: 0.50, green: 0.80, blue: 0.45, alpha: 1)
     private static let b = CGColor(red: 0.85, green: 0.92, blue: 0.80, alpha: 1)
     private static let s = CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)
     private static let e = CGColor(red: 0.10, green: 0.10, blue: 0.10, alpha: 1)
 
-    private static func drawCGFrame(_ i: Int) -> CGImage? {
-        ImgFactory.drawCG { c in
+    private static func drawFrame(_ i: Int) -> NSImage? {
+        ImgFactory.draw { c in
             c.setFillColor(f); c.setStrokeColor(s); c.setLineWidth(1.2); c.setLineCap(.round)
             let phase = Double(i) / 16.0 * .pi * 2
             let hop = max(0, sin(phase * 2)) * CGFloat(i) * 0.3
@@ -376,29 +285,36 @@ private enum FrogRenderer {
     }
 
     private static func ball(_ c: CGContext, at p: CGPoint) { c.fillStrokeEllipse(CGRect(x: p.x, y: p.y, width: 3.5, height: 4)) }
-
     private static func fLeg(_ c: CGContext, x: CGFloat, y: CGFloat, a: CGFloat) {
         c.saveGState(); c.translateBy(x: x, y: y); c.rotate(by: a)
         c.setStrokeColor(s); c.setLineWidth(1.2)
         c.move(to: .zero); c.addLine(to: CGPoint(x: -2, y: 3)); c.addLine(to: CGPoint(x: -3.5, y: 2.5))
         c.strokePath(); c.restoreGState()
     }
+    private static func fallback() -> NSImage {
+        ImgFactory.draw(size: 18) { c in
+            c.setFillColor(f); c.fillOval(CGRect(x: 4, y: 4, width: 10, height: 10))
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Snail Renderer
+// MARK: - Snail Renderer — 16 frames programmatic
 // ═══════════════════════════════════════════════════════════════
 
 private enum SnailRenderer {
-    static let cgFrames: [CGImage] = (0..<16).compactMap { drawCGFrame($0) }
-    static let nsFrames: [NSImage] = cgFrames.map { NSImage(cgImage: $0, size: NSSize(width: 18, height: 18)) }
+    static let nsFrames: [NSImage] = {
+        let imgs = (0..<16).compactMap { drawFrame($0) }
+        return imgs.isEmpty ? [fallback()] : imgs
+    }()
+
     private static let shell = CGColor(red: 0.75, green: 0.50, blue: 0.80, alpha: 1)
-    private static let body = CGColor(red: 0.90, green: 0.82, blue: 0.75, alpha: 1)
+    private static let bodyC = CGColor(red: 0.90, green: 0.82, blue: 0.75, alpha: 1)
     private static let s = CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)
     private static let e = CGColor(red: 0.10, green: 0.10, blue: 0.10, alpha: 1)
 
-    private static func drawCGFrame(_ i: Int) -> CGImage? {
-        ImgFactory.drawCG { c in
+    private static func drawFrame(_ i: Int) -> NSImage? {
+        ImgFactory.draw { c in
             c.setLineWidth(1.2); c.setLineCap(.round); c.setLineJoin(.round)
             let phase = Double(i) / 16.0 * .pi * 2
             let creep = CGFloat(i) * 0.04
@@ -413,7 +329,7 @@ private enum SnailRenderer {
                 j -= 0.5
             }
 
-            c.setFillColor(body); c.setStrokeColor(s)
+            c.setFillColor(bodyC); c.setStrokeColor(s)
             var fp = [CGPoint(x: sx + 1, y: sy + 2), CGPoint(x: sx + 5, y: sy + 1),
                      CGPoint(x: sx + 6, y: sy - 1), CGPoint(x: sx + 4, y: sy - 2),
                      CGPoint(x: sx, y: sy - 1), CGPoint(x: sx - 1, y: sy + 1)]
@@ -444,23 +360,31 @@ private enum SnailRenderer {
         c.setFillColor(e); c.fillOval(CGRect(x: -0.6, y: 2.5, width: 1.2, height: 1.2))
         c.restoreGState()
     }
+    private static func fallback() -> NSImage {
+        ImgFactory.draw(size: 18) { c in
+            c.setFillColor(shell); c.fillOval(CGRect(x: 4, y: 4, width: 10, height: 10))
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Bird Renderer
+// MARK: - Bird Renderer — 16 frames programmatic
 // ═══════════════════════════════════════════════════════════════
 
 private enum BirdRenderer {
-    static let cgFrames: [CGImage] = (0..<16).compactMap { drawCGFrame($0) }
-    static let nsFrames: [NSImage] = cgFrames.map { NSImage(cgImage: $0, size: NSSize(width: 18, height: 18)) }
+    static let nsFrames: [NSImage] = {
+        let imgs = (0..<16).compactMap { drawFrame($0) }
+        return imgs.isEmpty ? [fallback()] : imgs
+    }()
+
     private static let bC = CGColor(red: 0.30, green: 0.60, blue: 0.95, alpha: 1)
     private static let bellyC = CGColor(red: 0.90, green: 0.92, blue: 0.95, alpha: 1)
     private static let beakC = CGColor(red: 1.00, green: 0.75, blue: 0.20, alpha: 1)
     private static let s = CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)
     private static let e = CGColor(red: 0.10, green: 0.10, blue: 0.10, alpha: 1)
 
-    private static func drawCGFrame(_ i: Int) -> CGImage? {
-        ImgFactory.drawCG { c in
+    private static func drawFrame(_ i: Int) -> NSImage? {
+        ImgFactory.draw { c in
             c.setLineWidth(1.2); c.setLineCap(.round); c.setLineJoin(.round)
             let phase = Double(i) / 16.0 * .pi * 2
             let flap = sin(phase * 2) * (2.0 + CGFloat(i) * 0.15)
@@ -505,5 +429,10 @@ private enum BirdRenderer {
         c.translateBy(x: 9 + CGFloat(side) * 2, y: yB); c.rotate(by: flapA * 0.3)
         c.fillStrokeEllipse(CGRect(x: -2, y: -1, width: 4, height: 3))
         c.restoreGState()
+    }
+    private static func fallback() -> NSImage {
+        ImgFactory.draw(size: 18) { c in
+            c.setFillColor(bC); c.fillOval(CGRect(x: 4, y: 4, width: 10, height: 10))
+        }
     }
 }
