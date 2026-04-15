@@ -16,11 +16,11 @@ final class SkinManager: @unchecked Sendable {
             case .bird:  return "🐦"
             }
         }
-        /// SF Symbol name for fallback when PNG frames aren't loaded yet.
+        /// SF Symbol name used as base for programmatic sprite generation.
         var iconName: String {
             switch self {
-            case .cat:   return "fish.fill"
-            case .dog:   return "bone.fill"
+            case .cat:   return "cat.fill"
+            case .dog:   return "doge.fill"
             case .frog:  return "leaf.fill"
             case .snail: return "shell.fill"
             case .bird:  return "bird.fill"
@@ -195,24 +195,32 @@ private extension CGContext {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Cat Renderer — PNG sprites (Kyome22 original artwork)
+// MARK: - Cat Renderer — SF Symbols cat.fill with bounce animation
 // ═══════════════════════════════════════════════════════════════
 
-/// Cat uses the original hand-drawn PNG sprites from Kyome22's menubar_runcat.
-/// 5 frames (126×77), artist-quality pixel art — looks far better than programmatic drawing.
+/// Cat uses Apple's SF Symbols `cat.fill` with per-frame vertical bounce.
+/// Crisp, Retina-quality vector icon — no external image dependencies.
 private enum CatRenderer {
     static let originalNSFrames: [NSImage] = {
-        (0..<5).compactMap { i -> NSImage? in
-            guard let url = Bundle.module.url(forResource: "\(i)", withExtension: "png",
-                                              subdirectory: "cat") else {
-                print("⚠️ RunCatX: missing cat sprite \(i).png")
-                return nil
-            }
-            let img = NSImage(contentsOf: url)
-            img?.size = NSSize(width: 18, height: 18) // status bar size
-            return img
+        let frames = SpriteGenerator.bouncingFrames(
+            symbolName: "cat.fill",
+            frameCount: 5,
+            size: NSSize(width: 18, height: 18),
+            symbolSize: NSSize(width: 17, height: 17)
+        )
+        guard !frames.isEmpty else {
+            print("⚠️ RunCatX: failed to generate cat frames from SF Symbols")
+            return fallbackFrames()
         }
+        return frames
     }()
+
+    private static func fallbackFrames() -> [NSImage] {
+        ImgFactory.draw(size: 18) { c in
+            c.setFillColor(NSColor.systemOrange.cgColor)
+            c.fillEllipse(in: CGRect(x: 1, y: 1, width: 16, height: 16))
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
