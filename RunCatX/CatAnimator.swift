@@ -67,6 +67,13 @@ final class CatAnimator {
         runnerTimer = nil
     }
 
+    func pause() { stop() }
+
+    func resume() {
+        guard runnerTimer == nil else { return }
+        forceRestartTimer()
+    }
+
     /// Current computed FPS (for display purposes).
     func computeFPS() -> Double {
         guard currentInterval > 0 else { return 0 }

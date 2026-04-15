@@ -10,6 +10,10 @@ final class ObservableMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var memoryUsage: Double = 0
     @Published private(set) var diskUsage: Double = 0
     @Published private(set) var gpuUsage: Double = 0
+    @Published private(set) var netSpeedIn: Double = 0
+    @Published private(set) var netSpeedOut: Double = 0
+    @Published private(set) var memoryUsedGB: Double = 0
+    @Published private(set) var memoryTotalGB: Double = 0
 
     /// Called by StatusBarController on each tick to keep this in sync.
     func sync(from monitor: SystemMonitor) {
@@ -17,6 +21,10 @@ final class ObservableMonitor: ObservableObject, @unchecked Sendable {
         memoryUsage = monitor.memoryUsage
         diskUsage = monitor.diskUsage
         gpuUsage = monitor.gpuUsage
+        netSpeedIn = monitor.netSpeedIn
+        netSpeedOut = monitor.netSpeedOut
+        memoryUsedGB = monitor.memoryUsedGB
+        memoryTotalGB = monitor.memoryTotalGB
     }
 
     /// Convenience for settings view — returns value for current source.
