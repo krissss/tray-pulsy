@@ -5,25 +5,25 @@ import CoreImage
 /// Supports Light/Dark theme-aware icon rendering with frame caching.
 final class SkinManager: @unchecked Sendable {
     enum Skin: String, CaseIterable, Sendable {
-        case cat; case dog; case frog; case snail; case bird
+        case cat; case horse; case parrot; case frog; case snail
         var label: String { rawValue }
         var emoji: String {
             switch self {
-            case .cat:   return "🐱"
-            case .dog:   return "🐶"
-            case .frog:  return "🐸"
-            case .snail: return "🐌"
-            case .bird:  return "🐦"
+            case .cat:    return "🐱"
+            case .horse:  return "🐴"
+            case .parrot: return "🦜"
+            case .frog:   return "🐸"
+            case .snail:  return "🐌"
             }
         }
-        /// SF Symbol name used as base for programmatic sprite generation.
+        /// SF Symbol name for settings preview thumbnails (non-PNG skins only).
         var iconName: String {
             switch self {
-            case .cat:   return "fish.fill"
-            case .dog:   return "doge.fill"
-            case .frog:  return "leaf.fill"
-            case .snail: return "shell.fill"
-            case .bird:  return "bird.fill"
+            case .cat:    return "fish.fill"       // not used — cat loads from PNG
+            case .horse:  return "hare.fill"       // not used — horse loads from PNG
+            case .parrot: return "bird.fill"       // not used — parrot loads from PNG
+            case .frog:   return "leaf.fill"
+            case .snail:  return "shell.fill"
             }
         }
     }
@@ -92,11 +92,11 @@ final class SkinManager: @unchecked Sendable {
     /// Loads unthemed base frames for a skin.
     private func loadBaseFrames(for skin: Skin) -> [NSImage] {
         switch skin {
-        case .cat:   return CatRenderer.originalNSFrames
-        case .dog:   return DogRenderer.nsFrames
-        case .frog:  return FrogRenderer.nsFrames
-        case .snail: return SnailRenderer.nsFrames
-        case .bird:  return BirdRenderer.nsFrames
+        case .cat:    return CatRenderer.originalNSFrames
+        case .horse:  return HorseRenderer.originalNSFrames
+        case .parrot: return ParrotRenderer.originalNSFrames
+        case .frog:   return FrogRenderer.nsFrames
+        case .snail:  return SnailRenderer.nsFrames
         }
     }
 
@@ -200,12 +200,14 @@ private extension CGContext {
 
 /// Cat uses the original hand-drawn PNG sprites from Kyome22's menubar_runcat.
 /// 5 frames, artist-quality pixel art.
+/// Resources live in RunCatX_RunCatX.bundle/cat/ (SPM resource bundle).
 private enum CatRenderer {
     static let originalNSFrames: [NSImage] = {
-        (0..<5).compactMap { i -> NSImage? in
-            guard let url = Bundle.main.url(forResource: "\(i)", withExtension: "png",
-                                            subdirectory: "cat") else {
-                print("⚠️ RunCatX: missing cat sprite \(i).png")
+        let bundle = resourceBundle()
+        return (0..<5).compactMap { i -> NSImage? in
+            guard let url = bundle.url(forResource: "\(i)", withExtension: "png",
+                                       subdirectory: "cat") else {
+                print("⚠️ RunCatX: missing cat sprite \(i).png in \(bundle.bundlePath)")
                 return nil
             }
             let img = NSImage(contentsOf: url)
@@ -213,63 +215,40 @@ private enum CatRenderer {
             return img
         }
     }()
+
+    /// Locate the SPM resource bundle (RunCatX_RunCatX.bundle next to executable).
+    private static func resourceBundle() -> Bundle {
+        // SPM puts resources in {targetName}_{targetName}.bundle alongside the executable
+        if let rb = Bundle(path: Bundle.main.bundlePath + "/RunCatX_RunCatX.bundle") { return rb }
+        // Fallback: try Bundle.main (works when running via `swift run`)
+        return .main
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Dog Renderer — 16 frames programmatic
+// MARK: - Horse Renderer — Official RunCat365 PNG sprites
 // ═══════════════════════════════════════════════════════════════
 
-private enum DogRenderer {
-    static let nsFrames: [NSImage] = {
-        let imgs = (0..<16).compactMap { drawFrame($0) }
-        return imgs.isEmpty ? [fallback()] : imgs
+/// Horse uses the PNG sprites from RunCat365 (Windows version).
+/// 5 frames, black silhouette style.
+private enum HorseRenderer {
+    static let originalNSFrames: [NSImage] = {
+        let bundle = resourceBundle()
+        return (0..<5).compactMap { i -> NSImage? in
+            guard let url = bundle.url(forResource: "\(i)", withExtension: "png",
+                                       subdirectory: "horse") else {
+                print("⚠️ RunCatX: missing horse sprite \(i).png")
+                return nil
+            }
+            let img = NSImage(contentsOf: url)
+            img?.size = NSSize(width: 18, height: 18)
+            return img
+        }
     }()
 
-    private static let f = CGColor(red: 0.85, green: 0.70, blue: 0.50, alpha: 1)
-    private static let s = CGColor(red: 0.20, green: 0.20, blue: 0.20, alpha: 1)
-    private static let n = CGColor(red: 0.20, green: 0.20, blue: 0.20, alpha: 1)
-    private static let tongue = CGColor(red: 0.95, green: 0.55, blue: 0.55, alpha: 1)
-
-    private static func drawFrame(_ i: Int) -> NSImage? {
-        ImgFactory.draw { c in
-            c.setFillColor(f); c.setStrokeColor(s); c.setLineWidth(1.2); c.setLineCap(.round)
-            let phase = Double(i) / 16.0 * .pi * 2
-            let bounce = abs(sin(phase * 2)) * 1.0
-            let wobble = sin(phase * 3) * 0.3
-            let hx = 10 + CGFloat(i) * 0.25, hy = 9 + bounce
-
-            c.fillStrokeEllipse(CGRect(x: 3, y: 5 + bounce, width: 11, height: 7))
-            c.fillStrokeEllipse(CGRect(x: hx, y: hy, width: 6.5, height: 6))
-            for (dx, da) in [(CGFloat(0.5), -0.5 + wobble), (CGFloat(4.5), 0.5 - wobble)] {
-                c.saveGState(); c.translateBy(x: hx + dx, y: hy + 5); c.rotate(by: da)
-                c.fillStrokeEllipse(CGRect(x: -1.5, y: 0, width: 3, height: 4))
-                c.restoreGState()
-            }
-            c.setFillColor(n)
-            c.fillOval(CGRect(x: hx + 2.5, y: hy + 1.5, width: 1.5, height: 1.2))
-            if i > 8 { c.setFillColor(tongue); c.fillOval(CGRect(x: hx + 2.7, y: hy - 0.3, width: 1.1, height: 1.8)) }
-            c.setFillColor(n)
-            c.fillOval(CGRect(x: hx + 1.2, y: hy + 3.5, width: 1.3, height: 1.5))
-            c.fillOval(CGRect(x: hx + 3.5, y: hy + 3.5, width: 1.3, height: 1.5))
-            c.setStrokeColor(s); c.setLineWidth(1.3)
-            c.saveGState(); c.translateBy(x: 3, y: 8 + bounce); c.rotate(by: sin(phase * 4) * 0.6)
-            c.move(to: .zero)
-            c.addCurve(to: CGPoint(x: -2, y: 4), control1: CGPoint(x: -1.5, y: 1), control2: CGPoint(x: -2.5, y: 3))
-            c.strokePath(); c.restoreGState()
-            if i > 5 {
-                c.setStrokeColor(CGColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 0.5)); c.setLineWidth(0.6)
-                for j in 0..<min(i - 3, 6) {
-                    let ly = 4 + CGFloat(j) * 2
-                    c.move(to: CGPoint(x: 0, y: ly)); c.addLine(to: CGPoint(x: 2, y: ly)); c.strokePath()
-                }
-            }
-        }
-    }
-
-    private static func fallback() -> NSImage {
-        ImgFactory.draw(size: 18) { c in
-            c.setFillColor(f); c.fillOval(CGRect(x: 4, y: 4, width: 10, height: 10))
-        }
+    private static func resourceBundle() -> Bundle {
+        if let rb = Bundle(path: Bundle.main.bundlePath + "/RunCatX_RunCatX.bundle") { return rb }
+        return .main
     }
 }
 
@@ -395,71 +374,28 @@ private enum SnailRenderer {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Bird Renderer — 16 frames programmatic
+// MARK: - Parrot Renderer — Official RunCat365 PNG sprites (10 frames!)
 // ═══════════════════════════════════════════════════════════════
 
-private enum BirdRenderer {
-    static let nsFrames: [NSImage] = {
-        let imgs = (0..<16).compactMap { drawFrame($0) }
-        return imgs.isEmpty ? [fallback()] : imgs
+/// Parrot uses the PNG sprites from RunCat365 (Windows version).
+/// 10 frames — smoothest animation of all skins!
+private enum ParrotRenderer {
+    static let originalNSFrames: [NSImage] = {
+        let bundle = resourceBundle()
+        return (0..<10).compactMap { i -> NSImage? in
+            guard let url = bundle.url(forResource: "\(i)", withExtension: "png",
+                                       subdirectory: "parrot") else {
+                print("⚠️ RunCatX: missing parrot sprite \(i).png")
+                return nil
+            }
+            let img = NSImage(contentsOf: url)
+            img?.size = NSSize(width: 18, height: 18)
+            return img
+        }
     }()
 
-    private static let bC = CGColor(red: 0.30, green: 0.60, blue: 0.95, alpha: 1)
-    private static let bellyC = CGColor(red: 0.90, green: 0.92, blue: 0.95, alpha: 1)
-    private static let beakC = CGColor(red: 1.00, green: 0.75, blue: 0.20, alpha: 1)
-    private static let s = CGColor(red: 0.15, green: 0.15, blue: 0.15, alpha: 1)
-    private static let e = CGColor(red: 0.10, green: 0.10, blue: 0.10, alpha: 1)
-
-    private static func drawFrame(_ i: Int) -> NSImage? {
-        ImgFactory.draw { c in
-            c.setLineWidth(1.2); c.setLineCap(.round); c.setLineJoin(.round)
-            let phase = Double(i) / 16.0 * .pi * 2
-            let flap = sin(phase * 2) * (2.0 + CGFloat(i) * 0.15)
-            let hover = abs(sin(phase)) * (1.5 + CGFloat(i) * 0.08)
-
-            c.setFillColor(bC); c.setStrokeColor(s)
-            c.fillStrokeEllipse(CGRect(x: 4, y: 5 + hover, width: 10, height: 7))
-            c.setFillColor(bellyC); c.fillOval(CGRect(x: 6, y: 7 + hover, width: 6, height: 4))
-            c.setFillColor(bC); c.fillStrokeEllipse(CGRect(x: 11, y: 9 + hover, width: 5.5, height: 5))
-
-            // beak
-            c.setFillColor(beakC)
-            var bkPts = [CGPoint(x: 16.5, y: 11 + hover), CGPoint(x: 18.5, y: 11.5 + hover), CGPoint(x: 16.5, y: 12.5 + hover)]
-            var bkP = CGMutablePath()
-            bkP.move(to: bkPts[0])
-            for k in 1..<bkPts.count { bkP.addLine(to: bkPts[k]) }
-            c.addPath(bkP); c.fillPath()
-
-            // eye
-            c.setFillColor(e); c.fillOval(CGRect(x: 13, y: 11.5 + hover, width: 1.5, height: 1.8))
-
-            // wings
-            c.setFillColor(bC); c.setStrokeColor(s)
-            wing(c, side: -1, yB: 7 + hover, flapA: flap)
-            wing(c, side: 1, yB: 7 + hover, flapA: -flap)
-
-            // tail
-            c.setStrokeColor(s); c.setLineWidth(1)
-            c.move(to: CGPoint(x: 4, y: 8 + hover))
-            c.addLine(to: CGPoint(x: 1.5, y: 7 + hover))
-            c.addLine(to: CGPoint(x: 2, y: 9 + hover)); c.strokePath()
-
-            // feet
-            c.setFillColor(beakC)
-            c.fillOval(CGRect(x: 7, y: 4 + hover, width: 1.5, height: 1))
-            c.fillOval(CGRect(x: 10, y: 4 + hover, width: 1.5, height: 1))
-        }
-    }
-
-    private static func wing(_ c: CGContext, side: Int, yB: CGFloat, flapA: CGFloat) {
-        c.saveGState()
-        c.translateBy(x: 9 + CGFloat(side) * 2, y: yB); c.rotate(by: flapA * 0.3)
-        c.fillStrokeEllipse(CGRect(x: -2, y: -1, width: 4, height: 3))
-        c.restoreGState()
-    }
-    private static func fallback() -> NSImage {
-        ImgFactory.draw(size: 18) { c in
-            c.setFillColor(bC); c.fillOval(CGRect(x: 4, y: 4, width: 10, height: 10))
-        }
+    private static func resourceBundle() -> Bundle {
+        if let rb = Bundle(path: Bundle.main.bundlePath + "/RunCatX_RunCatX.bundle") { return rb }
+        return .main
     }
 }

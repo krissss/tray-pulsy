@@ -13,6 +13,8 @@ let package = Package(
             path: "RunCatX",
             resources: [
                 .copy("Resources/cat"),
+                .copy("Resources/horse"),
+                .copy("Resources/parrot"),
             ],
             swiftSettings: [
                 .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release)),
