@@ -147,6 +147,13 @@ final class StatusBarController: NSObject {
                     self?.applyMetricTextMode()
                 }
                 .store(in: &cancellables)
+        case .gpu:
+            monitor.$gpuUsage.receive(on: DispatchQueue.main)
+                .sink { [weak self] v in
+                    self?.animator.updateValue(source.normalizeForAnimation(v))
+                    self?.applyMetricTextMode()
+                }
+                .store(in: &cancellables)
         case .memory:
             monitor.$memoryUsage.receive(on: DispatchQueue.main)
                 .sink { [weak self] v in
@@ -156,13 +163,6 @@ final class StatusBarController: NSObject {
                 .store(in: &cancellables)
         case .disk:
             monitor.$diskUsage.receive(on: DispatchQueue.main)
-                .sink { [weak self] v in
-                    self?.animator.updateValue(source.normalizeForAnimation(v))
-                    self?.applyMetricTextMode()
-                }
-                .store(in: &cancellables)
-        case .gpu:
-            monitor.$gpuUsage.receive(on: DispatchQueue.main)
                 .sink { [weak self] v in
                     self?.animator.updateValue(source.normalizeForAnimation(v))
                     self?.applyMetricTextMode()

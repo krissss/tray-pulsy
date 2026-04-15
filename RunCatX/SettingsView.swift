@@ -27,25 +27,6 @@ struct SettingsView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // ── 标题栏 ──
-            HStack {
-                Text("RunCatX")
-                    .font(.system(size: 18, weight: .bold, design: .rounded))
-                    .foregroundColor(.primary)
-                Spacer()
-                Button(action: { dismiss() }) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .foregroundColor(.secondary)
-                }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.escape, modifiers: [])
-            }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 12)
-
-            Divider()
-
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
 
@@ -66,8 +47,7 @@ struct SettingsView: View {
                             ForEach(SpeedSource.allCases, id: \.rawValue) { src in
                                 SourceChip(
                                     source: src,
-                                    isSelected: previewSourceRaw == src.rawValue,
-                                    currentValue: monitor.valueForSource(src)
+                                    isSelected: previewSourceRaw == src.rawValue
                                 )
                                 .onTapGesture { withAnimation(.easeInOut(duration: 0.15)) {
                                     previewSourceRaw = src.rawValue
@@ -265,9 +245,9 @@ struct SystemInfoCard: View {
             ], alignment: .leading, spacing: 10) {
 
                 MetricRow(label: "CPU", value: monitor.cpuUsage, unit: "%", emoji: "🧠", color: .blue)
+                MetricRow(label: "GPU", value: monitor.gpuUsage, unit: "%", emoji: "🎮", color: .pink)
                 MetricRow(label: "内存", value: monitor.memoryUsage, unit: "%", emoji: "💾", color: .purple)
                 MetricRow(label: "磁盘", value: monitor.diskUsage, unit: "%", emoji: "💿", color: .orange)
-                MetricRow(label: "GPU", value: monitor.gpuUsage, unit: "%", emoji: "🎮", color: .pink)
             }
 
             Divider().padding(.vertical, 4)
@@ -486,16 +466,12 @@ struct SkinThumbnail: View {
 struct SourceChip: View {
     let source: SpeedSource
     let isSelected: Bool
-    let currentValue: Double
 
     var body: some View {
         HStack(spacing: 4) {
             Text(source.emoji)
             Text(source.label)
                 .font(.callout.weight(isSelected ? .semibold : .regular))
-            Text(String(format: "%.0f", currentValue))
-                .font(.caption2.monospacedDigit())
-                .foregroundColor(isSelected ? .primary : .secondary)
         }
         .padding(.horizontal, 11)
         .padding(.vertical, 7)

@@ -31,9 +31,9 @@ final class ObservableMonitor: ObservableObject, @unchecked Sendable {
     func valueForSource(_ source: SpeedSource) -> Double {
         switch source {
         case .cpu:     return cpuUsage
-        case .memory:  return memoryUsage
-        case .disk:    return diskUsage
-        case .gpu:     return gpuUsage
+        case .gpu:      return gpuUsage
+        case .memory:   return memoryUsage
+        case .disk:     return diskUsage
         }
     }
 }
