@@ -109,13 +109,14 @@ enum FPSLimit: String, CaseIterable, Sendable {
 }
 
 enum SpeedSource: String, CaseIterable, Sendable {
-    case cpu = "cpu", memory = "memory", disk = "disk"
+    case cpu = "cpu", memory = "memory", disk = "disk", gpu = "gpu"
 
     var label: String {
         switch self {
         case .cpu: return "CPU"
-        case .memory: return "Memory"
-        case .disk: return "Disk"
+        case .memory: return "内存"
+        case .disk: return "磁盘"
+        case .gpu: return "GPU"
         }
     }
 
@@ -144,6 +145,18 @@ enum SpeedSource: String, CaseIterable, Sendable {
             let baseline: Double = 60.0
             let normalized = (rawValue - baseline) / (100.0 - baseline) * 100.0
             return max(0, min(100, normalized))
+        case .gpu:
+            // GPU like CPU: near 0% when idle → identity
+            return max(0, min(100, rawValue))
+        }
+    }
+
+    var emoji: String {
+        switch self {
+        case .cpu: return "🧠"
+        case .memory: return "💾"
+        case .disk: return "💿"
+        case .gpu: return "🎮"
         }
     }
 }

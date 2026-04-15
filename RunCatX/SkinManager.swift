@@ -16,6 +16,16 @@ final class SkinManager: @unchecked Sendable {
             case .bird:  return "🐦"
             }
         }
+        /// SF Symbol name for fallback when PNG frames aren't loaded yet.
+        var iconName: String {
+            switch self {
+            case .cat:   return "fish.fill"
+            case .dog:   return "bone.fill"
+            case .frog:  return "leaf.fill"
+            case .snail: return "shell.fill"
+            case .bird:  return "bird.fill"
+            }
+        }
     }
 
     static let shared = SkinManager()
@@ -48,6 +58,14 @@ final class SkinManager: @unchecked Sendable {
     }
 
     func frameCount() -> Int { frames().count }
+
+    /// Single frame by index (for settings preview thumbnails).
+    func frame(for skinName: String, frameIndex: Int) -> NSImage? {
+        guard let s = Skin(rawValue: skinName) else { return nil }
+        let all = frames(for: s)
+        guard frameIndex >= 0 && frameIndex < all.count else { return nil }
+        return all[frameIndex]
+    }
 
     // ═════════════════════════════════════════════════════════
     // MARK: - Caching

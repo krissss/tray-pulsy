@@ -1,6 +1,7 @@
 import AppKit
 import Combine
 import ServiceManagement
+import SwiftUI
 
 /// Owns NSStatusItem, wires SystemMonitor → Animator → icon.
 ///
@@ -22,11 +23,10 @@ final class StatusBarController: NSObject {
     // ── Stored menu item references (replaces objc_setAssociatedObject hack) ──
     private var miTitle: NSMenuItem?
     private var miSysInfo: NSMenuItem?
-    private var miSkin: NSMenuItem?
-    private var miSrc: NSMenuItem?
-    private var miFPS: NSMenuItem?
-    private var miTheme: NSMenuItem?
-    private var miShowText: NSMenuItem?   // "Show X% in Menu Bar"
+    private var settingsWindow: NSWindow?
+
+    // Notification tokens for settings window changes
+    private var settingsObservers: [NSObjectProtocol] = []
 
     // ── Menu state ──
     private var isMenuShowing = false
@@ -69,6 +69,9 @@ final class StatusBarController: NSObject {
         monitor.start()
         animator.start()
         startPeriodicUpdates()
+
+        // 9. Listen for settings window changes
+        setupSettingsObservers()
     }
 
     func stop() {
@@ -87,7 +90,7 @@ final class StatusBarController: NSObject {
 
     private func setupButton() {
         guard let button = statusItem.button else { return }
-        button.toolTip = "RunCatX — Left-click: Toggle \(currentMetricLabel()) | Right-click: Menu"
+        button.toolTip = "RunCatX — 左键：切换显示数值 | 右键：菜单"
         button.target = self
         button.action = #selector(handleButtonClick)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
@@ -116,7 +119,7 @@ final class StatusBarController: NSObject {
         applyMetricTextMode()
         let label = currentMetricLabel()
         showBriefFeedback(
-            SettingsStore.shared.showMetricText ? "\(label) shown" : "\(label) hidden"
+            SettingsStore.shared.showMetricText ? "已显示 \(label)%" : "已隐藏 \(label)%"
         )
     }
 
@@ -132,10 +135,9 @@ final class StatusBarController: NSObject {
     /// Shows a brief tooltip notification that auto-dismisses after 0.8s.
     private func showBriefFeedback(_ message: String) {
         statusItem.button?.toolTip = "✅ \(message)"
-        // Schedule restore on main queue
         Timer.scheduledTimer(withTimeInterval: 0.8, repeats: false) { [weak self] _ in
             self?.statusItem.button?.toolTip =
-                "RunCatX — Left-click: Toggle \(self?.currentMetricLabel() ?? "Metric") | Right-click: Menu"
+                "RunCatX — 左键：切换显示 | 右键：菜单"
         }
     }
 
@@ -152,6 +154,7 @@ final class StatusBarController: NSObject {
     private var snapshotDiskTotalGB: Double = 0
     private var snapshotNetIn: Double = 0   // bytes/sec
     private var snapshotNetOut: Double = 0  // bytes/sec
+    private var snapshotGPU: Double = 0
     private var snapshotFPS: Double = 0
 
     /// Capture current values so menu shows stable data.
@@ -165,6 +168,7 @@ final class StatusBarController: NSObject {
         snapshotDiskTotalGB = monitor.diskTotalGB
         snapshotNetIn = monitor.netSpeedIn
         snapshotNetOut = monitor.netSpeedOut
+        snapshotGPU = monitor.gpuUsage
         snapshotFPS = animator.computeFPS()
     }
 
@@ -176,7 +180,7 @@ final class StatusBarController: NSObject {
         let src = SettingsStore.shared.speedSource
         let metricVal = monitor.valueForSource(src)
         statusItem.button?.toolTip = String(
-            format: "RunCatX\n%@: %.1f%% | Mem: %.0f%% (%.1f/%.0f GB)\nLeft-click: Toggle %@%%",
+            format: "RunCatX\n%@: %.1f%% | 内存: %.0f%% (%.1f/%.0f GB)\n左键：切换 %@%%",
             src.label, metricVal,
             monitor.memoryUsage, monitor.memoryUsedGB, monitor.memoryTotalGB,
             src.label
@@ -237,6 +241,13 @@ final class StatusBarController: NSObject {
                     self?.applyMetricTextMode()  // 1Hz update — NOT per-frame
                 }
                 .store(in: &cancellables)
+        case .gpu:
+            monitor.$gpuUsage.receive(on: DispatchQueue.main)
+                .sink { [weak self] v in
+                    self?.animator.updateValue(source.normalizeForAnimation(v))
+                    self?.applyMetricTextMode()
+                }
+                .store(in: &cancellables)
         }
         // Feed normalized value to animator, keep raw for display
         animator.updateValue(source.normalizeForAnimation(monitor.valueForSource(source)))
@@ -280,158 +291,57 @@ final class StatusBarController: NSObject {
     }
 
     /// Updates the "Show X% in Menu Bar" menu item title to match current source.
+    // Note: Menu config moved to Settings window — this is kept for left-click toggle feedback.
     private func refreshShowTextMenuItemTitle() {
-        miShowText?.title = "Show \(currentMetricLabel()) % in Menu Bar"
+        // No-op: show text title is now managed by SettingsView
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Menu Setup (clean, compact, organized)
+    // MARK: - Menu Setup (精简：标题 / 信息 / 设置 / 关于 / 退出)
     // ═════════════════════════════════════════════════════════
 
     private func setupMenu() {
         let menu = NSMenu()
         menu.delegate = self
 
-        // ── Row 1: App title + live speed badge ──
+        // ── 标题 + 实时速度标识 ──
         miTitle = NSMenuItem(title: "🐱 RunCatX", action: nil, keyEquivalent: "")
         miTitle?.isEnabled = false
         menu.addItem(miTitle!)
 
-        // ── Row 2: System Info (compact, aligned) ──
-        miSysInfo = NSMenuItem(title: "Loading…", action: nil, keyEquivalent: "")
+        // ── 系统信息（实时刷新）──
+        miSysInfo = NSMenuItem(title: "加载中…", action: nil, keyEquivalent: "")
         miSysInfo?.isEnabled = false
         menu.addItem(miSysInfo!)
 
         menu.addItem(NSMenuItem.separator())
 
-        // ── Row 3: Runner (skin picker with emoji) ──
-        let skinMenu = NSMenu()
-        for skin in SkinManager.Skin.allCases {
-            let item = NSMenuItem(
-                title: "\(skin.emoji) \(skin.label.capitalized)",
-                action: #selector(selectSkin(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = skin.rawValue
-            if skin == skinManager.currentSkin { item.state = .on }
-            skinMenu.addItem(item)
-        }
-        miSkin = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        miSkin?.submenu = skinMenu
-        menu.addItem(miSkin!)
-
-        // ── Row 4: Speed Source ──
-        let srcMenu = NSMenu()
-        for src in SpeedSource.allCases {
-            let item = NSMenuItem(
-                title: src.label,
-                action: #selector(selectSpeedSource(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = src.rawValue
-            if src == SettingsStore.shared.speedSource { item.state = .on }
-            srcMenu.addItem(item)
-        }
-        miSrc = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        miSrc?.submenu = srcMenu
-        menu.addItem(miSrc!)
-
-        // ── Row 5: Performance (FPS limit + theme grouped together) ──
-        let perfMenu = NSMenu()
-
-        // FPS Limit section
-        let fpsHeader = NSMenuItem(title: "Max Frame Rate", action: nil, keyEquivalent: "")
-        fpsHeader.isEnabled = false
-        perfMenu.addItem(fpsHeader)
-
-        for fps in FPSLimit.allCases {
-            let item = NSMenuItem(
-                title: fps.label,
-                action: #selector(selectFPSLimit(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = fps.rawValue
-            if fps == SettingsStore.shared.fpsLimit { item.state = .on }
-            perfMenu.addItem(item)
-        }
-
-        perfMenu.addItem(NSMenuItem.separator())
-
-        // Sample Interval section
-        let siHeader = NSMenuItem(title: "Sample Interval", action: nil, keyEquivalent: "")
-        siHeader.isEnabled = false
-        perfMenu.addItem(siHeader)
-
-        for si in SampleInterval.allCases {
-            let item = NSMenuItem(
-                title: si.label,
-                action: #selector(selectSampleInterval(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = si.rawValue
-            if si == SettingsStore.shared.sampleInterval { item.state = .on }
-            perfMenu.addItem(item)
-        }
-
-        perfMenu.addItem(NSMenuItem.separator())
-
-        // Theme section
-        let themeHeader = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
-        themeHeader.isEnabled = false
-        perfMenu.addItem(themeHeader)
-
-        for theme in ThemeMode.allCases {
-            let item = NSMenuItem(
-                title: "\(theme.emoji) \(theme.label)",
-                action: #selector(selectTheme(_:)),
-                keyEquivalent: ""
-            )
-            item.target = self
-            item.representedObject = theme.rawValue
-            if theme == SettingsStore.shared.theme { item.state = .on }
-            perfMenu.addItem(item)
-        }
-
-        let perfItem = NSMenuItem(title: "Performance ▸", action: nil, keyEquivalent: "")
-        perfItem.submenu = perfMenu
-        menu.addItem(perfItem)
-
-        // ── Row 6: Toggles ──
-        let startupItem = NSMenuItem(
-            title: "Launch at Login",
-            action: #selector(toggleStartup(_:)),
-            keyEquivalent: ""
+        // ── 偏好设置 ──
+        let settingsItem = NSMenuItem(
+            title: "偏好设置…",
+            action: #selector(openSettings),
+            keyEquivalent: ","
         )
-        startupItem.state = SettingsStore.shared.launchAtStartup ? .on : .off
-        startupItem.target = self
-        menu.addItem(startupItem)
-
-        // Dynamic: "Show CPU %" or "Show Memory %" based on current speedSource
-        miShowText = NSMenuItem(
-            title: "Show \(currentMetricLabel()) % in Menu Bar",
-            action: #selector(toggleShowMetricText(_:)),
-            keyEquivalent: "t"
-        )  // ⌘T shortcut
-        miShowText?.keyEquivalentModifierMask = .command
-        miShowText?.state = SettingsStore.shared.showMetricText ? .on : .off
-        miShowText?.target = self
-        menu.addItem(miShowText!)
+        settingsItem.target = self
+        menu.addItem(settingsItem)
 
         menu.addItem(NSMenuItem.separator())
 
-        // ── Row 7: About ──
-        menu.addItem(withTitle: "About RunCatX", action: #selector(showAbout), keyEquivalent: ",")
+        // ── 关于 ──
+        let aboutItem = NSMenuItem(
+            title: "关于 RunCatX",
+            action: #selector(showAbout),
+            keyEquivalent: ""
+        )
+        aboutItem.target = self
+        menu.addItem(aboutItem)
 
-        // ── Row 8: Quit ──
-        menu.addItem(withTitle: "Quit RunCatX", action: #selector(quitApp), keyEquivalent: "q")
+        // ── 退出 ──
+        menu.addItem(withTitle: "退出 RunCatX", action: #selector(quitApp), keyEquivalent: "q")
 
         statusItem.menu = menu
 
-        // Initial display refresh
+        // 初始显示
         updateMenuDisplay()
     }
 
@@ -439,9 +349,12 @@ final class StatusBarController: NSObject {
     /// NOTE: Metric text (status bar title) is updated separately via
     ///       bindSpeedSource Combine pipeline at 1Hz — NOT here.
     private func updateMenuDisplay() {
+        // Sync observable monitor for SwiftUI settings window
+        ObservableMonitor.shared.sync(from: monitor)
+
         let fps = animator.computeFPS()
 
-        // Status badge
+        // 状态标识
         let label: String
         if fps < 1  { label = "💤" }
         else if fps < 5  { label = "🚶" }
@@ -450,12 +363,8 @@ final class StatusBarController: NSObject {
         else { label = "💨" }
         miTitle?.title = "🐱 RunCatX  \(label)"
 
-        // System info (compact format)
+        // 系统信息（紧凑格式）
         miSysInfo?.title = formattedSystemInfo(live: true)
-
-        // Submenu titles
-        miSkin?.title = "\(skinManager.currentSkin.emoji) \(skinManager.currentSkin.label.capitalized)"
-        miSrc?.title = "Speed: \(SettingsStore.shared.speedSource.label)"
     }
 
     /// Formats system info string. Primary metric (first position) follows speedSource.
@@ -469,6 +378,7 @@ final class StatusBarController: NSObject {
         let dU    = live ? monitor.diskUsage      : snapshotDiskUsage
         let dUb   = live ? monitor.diskUsedGB     : snapshotDiskUsedGB
         let dTb   = live ? monitor.diskTotalGB    : snapshotDiskTotalGB
+        let gpu   = live ? monitor.gpuUsage       : snapshotGPU
         let netIn  = live ? monitor.netSpeedIn    : snapshotNetIn
         let netOut = live ? monitor.netSpeedOut   : snapshotNetOut
 
@@ -479,9 +389,10 @@ final class StatusBarController: NSObject {
         case .cpu:     primaryValue = cpu
         case .memory:  primaryValue = mU
         case .disk:    primaryValue = dU
+        case .gpu:     primaryValue = gpu
         }
 
-        // Build string: primary first, then remaining two metrics + net speed
+        // Build string: primary first, then remaining metrics + net speed
         let secondary: String
         switch src {
         case .cpu:
@@ -491,6 +402,9 @@ final class StatusBarController: NSObject {
             secondary = String(format: "CPU %@  ·  Disk %@ (%.0f/%.0fG)",
                 percentString(cpu), percentString(dU), dUb, dTb)
         case .disk:
+            secondary = String(format: "CPU %@  ·  Mem %@ (%.1f/%.0fG)",
+                percentString(cpu), percentString(mU), mUb, mTb)
+        case .gpu:
             secondary = String(format: "CPU %@  ·  Mem %@ (%.1f/%.0fG)",
                 percentString(cpu), percentString(mU), mUb, mTb)
         }
@@ -525,96 +439,24 @@ final class StatusBarController: NSObject {
     // MARK: - Actions
     // ═════════════════════════════════════════════════════════
 
-    @objc private func selectSkin(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let skin = SkinManager.Skin(rawValue: raw) else { return }
-        skinManager.setSkin(skin)
-        animator.changeSkin(to: skinManager.frames(for: skin))
-        SettingsStore.shared.skin = raw
-        updateCheckmarks(sender.menu, selectedRaw: raw)
-        showBriefFeedback("Skin: \(skin.emoji) \(skin.label.capitalized)")
-    }
-
-    @objc private func selectSpeedSource(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let src = SpeedSource(rawValue: raw) else { return }
-        SettingsStore.shared.speedSource = src
-        bindSpeedSource(src)
-        updateCheckmarks(sender.menu, selectedRaw: raw)
-        showBriefFeedback("Speed: \(src.label)")
-    }
-
-    @objc private func selectFPSLimit(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let limit = FPSLimit(rawValue: raw) else { return }
-        SettingsStore.shared.fpsLimit = limit
-        animator.setFPSLimit(limit)
-        updateCheckmarks(sender.menu, selectedRaw: raw)
-        showBriefFeedback("FPS cap: \(limit.label)")
-    }
-
-    @objc private func selectSampleInterval(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let si = SampleInterval(rawValue: raw) else { return }
-        SettingsStore.shared.sampleInterval = si
-        monitor.reconfigure(sampleInterval: si.seconds)
-        updateCheckmarks(sender.menu, selectedRaw: raw)
-        showBriefFeedback("Sample: \(si.label)")
-    }
-
-    @objc private func selectTheme(_ sender: NSMenuItem) {
-        guard let raw = sender.representedObject as? String,
-              let mode = ThemeMode(rawValue: raw) else { return }
-        SettingsStore.shared.theme = mode
-        applyTheme(mode)
-        updateCheckmarks(sender.menu, selectedRaw: raw)
-        showBriefFeedback("\(mode.emoji) \(mode.label)")
-    }
-
-    @objc private func toggleStartup(_ sender: NSMenuItem) {
-        let newState = sender.state == .off
-        sender.state = newState ? .on : .off
-        SettingsStore.shared.launchAtStartup = newState
-        // Use SMAppService for login item management (macOS 13+)
-        if #available(macOS 13.0, *) {
-            do {
-                let service = SMAppService.mainApp
-                try newState ? service.register() : service.unregister()
-            } catch {
-                print("⚠️ Launch-at-login error: \(error)")
-            }
-        }
-        showBriefFeedback(newState ? "Login: ON" : "Login: OFF")
-    }
-
-    @objc private func toggleShowMetricText(_ sender: NSMenuItem) {
-        let newState = sender.state == .off
-        sender.state = newState ? .on : .off
-        SettingsStore.shared.showMetricText = newState
-        applyMetricTextMode()
-        let ml = currentMetricLabel()
-        showBriefFeedback(newState ? "\(ml)% ON" : "\(ml)% OFF")
-    }
-
     @objc private func showAbout(_ sender: Any?) {
         NSApp.activate(ignoringOtherApps: true)
         let alert = NSAlert()
-        alert.messageText = "RunCatX"
+        alert.messageText = "关于 RunCatX"
         alert.informativeText = """
-        🐱 A cute menu bar runner for macOS
+        🐱 一只可爱的 macOS 菜单栏小猫
 
-        Animation speed follows your system usage.
-        The harder you work, the faster it runs!
+        动画速度跟随系统使用率。
+        你越努力，它跑得越快！
 
-        Version: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1")
-        Build: Swift 6 • macOS 13+
+        版本：\(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1")
+        构建：Swift 6 • macOS 13+
 
-        Based on Kyome22's RunCat concept
+        灵感来自 Kyome22 的 RunCat
         """
         alert.alertStyle = .informational
         alert.addButton(withTitle: "⭐ GitHub")
-        alert.addButton(withTitle: "OK")
-        // Use first frame as static icon (not random animation frame)
+        alert.addButton(withTitle: "好的")
         let frames = skinManager.frames()
         alert.icon = frames.first
         let response = alert.runModal()
@@ -625,17 +467,70 @@ final class StatusBarController: NSObject {
         }
     }
 
+    @objc private func openSettings(_ sender: Any?) {
+        if let existing = settingsWindow {
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+            return
+        }
+
+        let settingsView = SettingsView()
+        let hostingView = NSHostingView(rootView: settingsView)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 580),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "RunCatX 偏好设置"
+        window.contentView = hostingView
+        window.isReleasedWhenClosed = false
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
+
+        settingsWindow = window
+
+        NotificationCenter.default.addObserver(
+            forName: NSWindow.willCloseNotification,
+            object: window,
+            queue: .main
+        ) { [weak self] _ in
+            self?.settingsWindow = nil
+        }
+    }
+
     @objc private func quitApp(_ sender: Any?) { NSApplication.shared.terminate(nil) }
 
-    // MARK: - Helpers
+    // MARK: - Settings Window Notification Handlers
 
-    private func updateCheckmarks(_ menu: NSMenu?, selectedRaw: String) {
-        guard let items = menu?.items else { return }
-        for item in items {
-            if let raw = item.representedObject as? String {
-                item.state = (raw == selectedRaw) ? .on : .off
-            }
-        }
+    private func setupSettingsObservers() {
+        let nc = NotificationCenter.default
+        settingsObservers.removeAll()
+
+        settingsObservers.append(nc.addObserver(forName: .init("SettingsSpeedSourceChanged"), object: nil, queue: .main) { [weak self] notification in
+            guard let src = notification.object as? SpeedSource else { return }
+            self?.bindSpeedSource(src)
+        })
+
+        settingsObservers.append(nc.addObserver(forName: .init("SettingsFPSLimitChanged"), object: nil, queue: .main) { [weak self] notification in
+            guard let fps = notification.object as? FPSLimit else { return }
+            self?.animator.setFPSLimit(fps)
+        })
+
+        settingsObservers.append(nc.addObserver(forName: .init("SettingsSampleIntervalChanged"), object: nil, queue: .main) { [weak self] notification in
+            guard let interval = notification.object as? TimeInterval else { return }
+            self?.monitor.reconfigure(sampleInterval: interval)
+        })
+
+        settingsObservers.append(nc.addObserver(forName: .init("SettingsThemeChanged"), object: nil, queue: .main) { [weak self] notification in
+            guard let mode = notification.object as? ThemeMode else { return }
+            self?.applyTheme(mode)
+        })
+
+        settingsObservers.append(nc.addObserver(forName: .init("SettingsShowTextChanged"), object: nil, queue: .main) { [weak self] _ in
+            self?.applyMetricTextMode()
+        })
     }
 }
 

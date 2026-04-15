@@ -1,12 +1,13 @@
 import Foundation
 import Darwin
+import IOKit
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - System Monitor (CPU + Memory + Disk)
+// MARK: - System Monitor (CPU + Memory + Disk + GPU)
 // ═══════════════════════════════════════════════════════════════
 
 /// Unified system metrics collector.
-/// Provides CPU%, memory usage, disk usage, and network speed via kernel APIs.
+/// Provides CPU%, memory usage, disk usage, network speed, and GPU utilization.
 final class SystemMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var cpuUsage: Double = 0.0
     @Published private(set) var memoryUsage: Double = 0.0
@@ -17,6 +18,7 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     @Published private(set) var diskTotalGB: Double = 0.0
     @Published private(set) var netSpeedIn: Double = 0.0   // bytes/sec download
     @Published private(set) var netSpeedOut: Double = 0.0  // bytes/sec upload
+    @Published private(set) var gpuUsage: Double = 0.0     // GPU device utilization %
 
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
@@ -75,15 +77,17 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
             self.diskTotalGB = disk.totalGB
             self.netSpeedIn = netIn
             self.netSpeedOut = netOut
+            self.gpuUsage = readGPUUtilization()
         }
     }
 
     /// Returns the current value for a given speed source
     func valueForSource(_ source: SpeedSource) -> Double {
         switch source {
-        case .cpu: return cpuUsage
+        case .cpu:  return cpuUsage
         case .memory: return memoryUsage
-        case .disk: return diskUsage
+        case .disk:  return diskUsage
+        case .gpu:   return gpuUsage
         }
     }
 
@@ -249,5 +253,39 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
 
         let sec = max(interval, 0.01)  // avoid div-by-zero
         return (Double(deltaIn) / sec, Double(deltaOut) / sec)
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - GPU (IORegistry AGXAccelerator PerformanceStatistics)
+    // ═════════════════════════════════════════════════════════
+
+    /// Reads GPU device utilization from IORegistry.
+    /// Looks up the AGXAccelerator service and extracts "Device Utilization %"
+    /// from its PerformanceStatistics dictionary. Returns 0 on failure.
+    private func readGPUUtilization() -> Double {
+        let matching = IOServiceMatching("AGXAccelerator")
+        guard let matching else { return 0 }
+
+        var iterator: io_iterator_t = 0
+        let kr = IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator)
+        guard kr == KERN_SUCCESS else { return 0 }
+        defer { IOObjectRelease(iterator) }
+
+        let service = IOIteratorNext(iterator)
+        guard service != 0 else { IOObjectRelease(service); return 0 }
+        defer { IOObjectRelease(service) }
+
+        var props: Unmanaged<CFMutableDictionary>?
+        let pr = IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0)
+        guard pr == KERN_SUCCESS, let dict = props?.takeRetainedValue() as? [String: Any] else {
+            return 0
+        }
+
+        guard let perfStats = dict["PerformanceStatistics"] as? [String: Any],
+              let util = perfStats["Device Utilization %"] as? Int else {
+            return 0
+        }
+
+        return min(100.0, max(0.0, Double(util)))
     }
 }
