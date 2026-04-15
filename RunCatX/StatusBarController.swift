@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ServiceManagement
 
 /// Owns NSStatusItem, wires SystemMonitor → Animator → icon.
 ///
@@ -75,8 +76,6 @@ final class StatusBarController: NSObject {
         animator.stop()
         tooltipTimer?.invalidate(); tooltipTimer = nil
         menuUpdateTimer?.invalidate(); menuUpdateTimer = nil
-        // Remove from menu bar so execv's new process gets a clean slate
-        NSStatusBar.system.removeStatusItem(statusItem)
     }
 
     func pause()  { animator.stop() }
@@ -548,7 +547,15 @@ final class StatusBarController: NSObject {
         let newState = sender.state == .off
         sender.state = newState ? .on : .off
         SettingsStore.shared.launchAtStartup = newState
-        LaunchAtStartup.apply(newState)
+        // Use SMAppService for login item management (macOS 13+)
+        if #available(macOS 13.0, *) {
+            do {
+                let service = SMAppService.mainApp
+                try newState ? service.register() : service.unregister()
+            } catch {
+                print("⚠️ Launch-at-login error: \(error)")
+            }
+        }
         showBriefFeedback(newState ? "Login: ON" : "Login: OFF")
     }
 
