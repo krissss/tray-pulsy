@@ -20,7 +20,7 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
 
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
-    private let interval: TimeInterval
+    private var interval: TimeInterval
 
     // CPU state
     private var prevUser: UInt64 = 0
@@ -47,6 +47,14 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     }
 
     func stop() { timer?.cancel(); timer = nil }
+
+    /// Restart the timer with a new sample interval (for runtime config changes).
+    func reconfigure(sampleInterval: TimeInterval) {
+        let wasRunning = timer != nil
+        stop()
+        interval = sampleInterval
+        if wasRunning { start() }
+    }
 
     // MARK: - Tick
 

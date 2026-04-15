@@ -12,7 +12,7 @@ import ServiceManagement
 /// `speedSource` setting — no manual switching needed.
 final class StatusBarController: NSObject {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    private let monitor = SystemMonitor(sampleInterval: 1.0)
+    private let monitor = SystemMonitor(sampleInterval: SettingsStore.shared.sampleInterval.seconds)
     private var animator: CatAnimator!
     private let skinManager = SkinManager.shared
     private var cancellables = Set<AnyCancellable>()
@@ -360,6 +360,25 @@ final class StatusBarController: NSObject {
 
         perfMenu.addItem(NSMenuItem.separator())
 
+        // Sample Interval section
+        let siHeader = NSMenuItem(title: "Sample Interval", action: nil, keyEquivalent: "")
+        siHeader.isEnabled = false
+        perfMenu.addItem(siHeader)
+
+        for si in SampleInterval.allCases {
+            let item = NSMenuItem(
+                title: si.label,
+                action: #selector(selectSampleInterval(_:)),
+                keyEquivalent: ""
+            )
+            item.target = self
+            item.representedObject = si.rawValue
+            if si == SettingsStore.shared.sampleInterval { item.state = .on }
+            perfMenu.addItem(item)
+        }
+
+        perfMenu.addItem(NSMenuItem.separator())
+
         // Theme section
         let themeHeader = NSMenuItem(title: "Appearance", action: nil, keyEquivalent: "")
         themeHeader.isEnabled = false
@@ -532,6 +551,15 @@ final class StatusBarController: NSObject {
         animator.setFPSLimit(limit)
         updateCheckmarks(sender.menu, selectedRaw: raw)
         showBriefFeedback("FPS cap: \(limit.label)")
+    }
+
+    @objc private func selectSampleInterval(_ sender: NSMenuItem) {
+        guard let raw = sender.representedObject as? String,
+              let si = SampleInterval(rawValue: raw) else { return }
+        SettingsStore.shared.sampleInterval = si
+        monitor.reconfigure(sampleInterval: si.seconds)
+        updateCheckmarks(sender.menu, selectedRaw: raw)
+        showBriefFeedback("Sample: \(si.label)")
     }
 
     @objc private func selectTheme(_ sender: NSMenuItem) {

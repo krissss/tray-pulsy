@@ -11,6 +11,7 @@ final class SettingsStore: @unchecked Sendable {
 
     private enum Key: String {
         case skin, fpsLimit, speedSource, launchAtStartup, theme, showInDock, showCPUText
+        case sampleInterval
     }
 
     // MARK: - Skin
@@ -68,11 +69,22 @@ final class SettingsStore: @unchecked Sendable {
     /// Legacy alias — same storage.
     var showCPUText: Bool { showMetricText }
 
+    // MARK: - Sample Interval
+
+    var sampleInterval: SampleInterval {
+        get {
+            let raw = defaults.string(forKey: prefix + Key.sampleInterval.rawValue) ?? "1s"
+            return SampleInterval(rawValue: raw) ?? .oneSec
+        }
+        set { defaults.set(newValue.rawValue, forKey: prefix + Key.sampleInterval.rawValue) }
+    }
+
     // MARK: - Restore
 
     func restore() {
         // Validate all settings have defaults — no-op if already set
-        _ = skin; _ = fpsLimit; _ = speedSource; _ = launchAtStartup; _ = theme; _ = showCPUText
+        _ = skin; _ = fpsLimit; _ = speedSource; _ = launchAtStartup
+        _ = theme; _ = showCPUText; _ = sampleInterval
     }
 }
 
@@ -163,4 +175,19 @@ enum ThemeMode: String, CaseIterable, Sendable {
         case .dark: return true
         }
     }
+}
+
+enum SampleInterval: String, CaseIterable, Sendable {
+    case halfSec = "0.5s", oneSec = "1s", twoSec = "2s", threeSec = "3s"
+
+    var seconds: TimeInterval {
+        switch self {
+        case .halfSec: return 0.5
+        case .oneSec:  return 1.0
+        case .twoSec:  return 2.0
+        case .threeSec: return 3.0
+        }
+    }
+
+    var label: String { rawValue }
 }
