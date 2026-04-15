@@ -195,15 +195,16 @@ private extension CGContext {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Cat Renderer — SF Symbols cat.fill with bounce animation
+// MARK: - Cat Renderer — SF Symbols cat.fill with bounce + warm orange
 // ═══════════════════════════════════════════════════════════════
 
 /// Cat uses Apple's SF Symbols `cat.fill` with per-frame vertical bounce.
-/// Crisp, Retina-quality vector icon — no external image dependencies.
+/// Rendered in warm orange — vibrant, modern, instantly recognizable in menu bar.
 private enum CatRenderer {
     static let originalNSFrames: [NSImage] = {
         let frames = SpriteGenerator.bouncingFrames(
             symbolName: "cat.fill",
+            color: .cat,
             frameCount: 5,
             size: NSSize(width: 18, height: 18),
             symbolSize: NSSize(width: 17, height: 17)
@@ -216,10 +217,11 @@ private enum CatRenderer {
     }()
 
     private static func fallbackFrames() -> [NSImage] {
-        ImgFactory.draw(size: 18) { c in
+        let img = ImgFactory.draw(size: 18) { c in
             c.setFillColor(NSColor.systemOrange.cgColor)
             c.fillEllipse(in: CGRect(x: 1, y: 1, width: 16, height: 16))
         }
+        return Array(repeating: img, count: 5)
     }
 }
 
