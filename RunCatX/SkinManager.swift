@@ -19,7 +19,7 @@ final class SkinManager: @unchecked Sendable {
         /// SF Symbol name used as base for programmatic sprite generation.
         var iconName: String {
             switch self {
-            case .cat:   return "cat.fill"
+            case .cat:   return "fish.fill"
             case .dog:   return "doge.fill"
             case .frog:  return "leaf.fill"
             case .snail: return "shell.fill"
@@ -195,34 +195,24 @@ private extension CGContext {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Cat Renderer — SF Symbols cat.fill with bounce + warm orange
+// MARK: - Cat Renderer — Official RunCat PNG sprites (Kyome22)
 // ═══════════════════════════════════════════════════════════════
 
-/// Cat uses Apple's SF Symbols `cat.fill` with per-frame vertical bounce.
-/// Rendered in warm orange — vibrant, modern, instantly recognizable in menu bar.
+/// Cat uses the original hand-drawn PNG sprites from Kyome22's menubar_runcat.
+/// 5 frames, artist-quality pixel art.
 private enum CatRenderer {
     static let originalNSFrames: [NSImage] = {
-        let frames = SpriteGenerator.bouncingFrames(
-            symbolName: "cat.fill",
-            color: .cat,
-            frameCount: 5,
-            size: NSSize(width: 18, height: 18),
-            symbolSize: NSSize(width: 17, height: 17)
-        )
-        guard !frames.isEmpty else {
-            print("⚠️ RunCatX: failed to generate cat frames from SF Symbols")
-            return fallbackFrames()
+        (0..<5).compactMap { i -> NSImage? in
+            guard let url = Bundle.main.url(forResource: "\(i)", withExtension: "png",
+                                            subdirectory: "cat") else {
+                print("⚠️ RunCatX: missing cat sprite \(i).png")
+                return nil
+            }
+            let img = NSImage(contentsOf: url)
+            img?.size = NSSize(width: 18, height: 18)
+            return img
         }
-        return frames
     }()
-
-    private static func fallbackFrames() -> [NSImage] {
-        let img = ImgFactory.draw(size: 18) { c in
-            c.setFillColor(NSColor.systemOrange.cgColor)
-            c.fillEllipse(in: CGRect(x: 1, y: 1, width: 16, height: 16))
-        }
-        return Array(repeating: img, count: 5)
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════
