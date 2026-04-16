@@ -34,9 +34,11 @@ private func releaseInstanceLock() {
 // ═══════════════════════════════════════════════════════════════
 
 @main
-struct RunCatX: App {
+struct RunCatXApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
+    // 窗口由 StatusBarController 手动创建（NavigationSplitView）
+    // 保留 Settings scene 占位以满足 App 协议要求
     var body: some Scene {
         Settings { EmptyView() }
     }
@@ -53,22 +55,18 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         // ── 2️⃣ Hide Dock icon & menu bar presence ──
-        NSApp.setActivationPolicy(.accessory)  // LSUIElement behavior without plist hack
+        NSApp.setActivationPolicy(.accessory)
 
-        // ── 3️⃣ Restore settings ──
-        SettingsStore.shared.restore()
-
-        // ── 4️⃣ Create status bar item + start animation ──
+        // ── 3️⃣ Create status bar item + start animation ──
         statusBarController = StatusBarController()
         statusBarController?.start()
 
-        // ── 5️⃣ Register for launch-at-login (user can toggle in settings) ──
-        // SMAppService is the modern replacement for Login Items framework (macOS 13+)
+        // ── 4️⃣ Register for launch-at-login ──
         if #available(macOS 13.0, *) {
             _ = SMAppService.mainApp
         }
 
-        // ── 6️⃣ Handle sleep/wake to pause/resume animation ──
+        // ── 5️⃣ Handle sleep/wake to pause/resume animation ──
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(handleSleep),
@@ -83,16 +81,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
+    func applicationWillTerminate(_ notification: Notification) {
+        releaseInstanceLock()
+    }
+
     @objc private func handleSleep() {
         statusBarController?.pause()
     }
 
     @objc private func handleWake() {
         statusBarController?.resume()
-    }
-
-    func applicationWillTerminate(_ notification: Notification) {
-        statusBarController?.stop()
-        releaseInstanceLock()
     }
 }

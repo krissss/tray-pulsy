@@ -15,12 +15,6 @@ final class CatAnimator {
     /// Called on main thread every time the frame advances.
     var onFrameUpdate: ((NSImage, Double) -> Void)?
 
-    /// MARK: - Config
-
-    private let valueDivisor: Double = 5.0
-    private let valueClampMin: Double = 1.0
-    private let valueClampMax: Double = 20.0
-
     // MARK: - State
 
     private var runnerTimer: Timer?
@@ -28,7 +22,7 @@ final class CatAnimator {
     private var frames: [NSImage] = []
     private var currentValue: Double = 0
     private var fpsLimit: FPSLimit = .fps40
-    private var currentInterval: TimeInterval = 0.2 // start at slowest (idle)
+    private var currentInterval: TimeInterval = 0.25 // start at slowest (idle)
 
     // MARK: - Init
 
@@ -49,6 +43,13 @@ final class CatAnimator {
     func setFPSLimit(_ limit: FPSLimit) {
         fpsLimit = limit
         forceRestartTimer()
+    }
+
+    /// Convenience: set FPS limit from rate multiplier value.
+    /// Maps multiplier → nearest FPSLimit enum case.
+    func setFPSLimit(fromMultiplier multiplier: Double) {
+        let closest = FPSLimit.allCases.min(by: { abs($0.rateMultiplier - multiplier) < abs($1.rateMultiplier - multiplier) })
+        setFPSLimit(closest ?? .fps40)
     }
 
     func changeSkin(to newFrames: [NSImage]) {
@@ -82,13 +83,13 @@ final class CatAnimator {
 
     // MARK: - Core: Original Formula
 
-    /// Original RunCat interval formula (exact match):
-    ///   interval = 0.2 / clamp(value / 5.0, 1.0, 20.0)
-    ///   → 0.2s (5fps) at 0% usage  →  0.01s (100fps) at 100% usage
+    /// Linear speed mapping: 0% → 0.25s (4fps) → 25% → 0.20s (5fps) → 100% → 0.04s (25fps)
+    ///
+    /// Replaces the original inverse formula which was too steep on Apple Silicon
+    /// (idle CPU ~25% → 25fps, cat always running). The linear curve gives
+    /// clear visual distinction across the entire 0-100 range.
     private func computeInterval() -> TimeInterval {
-        let clamped = max(valueClampMin, min(valueClampMax, currentValue / valueDivisor))
-        let raw = 0.2 / clamped          // ← ORIGINAL base value
-        return raw / fpsLimit.rateMultiplier
+        return max(0.03, 0.25 - 0.21 * (currentValue / 100.0))
     }
 
     /// Only recreate timer if interval changed more than 5%.

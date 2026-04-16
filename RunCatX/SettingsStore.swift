@@ -1,206 +1,168 @@
+import Defaults
 import Foundation
 
-/// Persistent settings via UserDefaults.
-/// All configurable options are saved here and restored on launch.
-final class SettingsStore: @unchecked Sendable {
-    static let shared = SettingsStore()
-    private nonisolated(unsafe) let defaults = UserDefaults.standard
-    private let prefix = "com.runcatx."
+// ═══════════════════════════════════════════════════════════════
+// MARK: - 类型安全设置 (Defaults)
+// ═══════════════════════════════════════════════════════════════
+//
+// 使用 sindresorhus/Defaults 替代手写 UserDefaults 封装。
+// 所有配置项在此定义，全局通过 Defaults[.key] 访问。
 
-    // MARK: - Keys
+extension Defaults.Keys {
+    // 皮肤
+    static let skin = Key<String>("com.runcatx.skin", default: "cat")
 
-    private enum Key: String {
-        case skin, fpsLimit, speedSource, launchAtStartup, theme, showInDock, showCPUText
-        case sampleInterval
-    }
+    // 帧率上限
+    static let fpsLimit = Key<FPSLimit>("com.runcatx.fpsLimit", default: .fps40)
 
-    // MARK: - Skin
+    // 速度来源
+    static let speedSource = Key<SpeedSource>("com.runcatx.speedSource", default: .cpu)
 
-    var skin: String {
-        get { defaults.string(forKey: prefix + Key.skin.rawValue) ?? "cat" }
-        set { defaults.set(newValue, forKey: prefix + Key.skin.rawValue) }
-    }
+    // 开机启动
+    static let launchAtStartup = Key<Bool>("com.runcatx.launchAtStartup", default: false)
 
-    // MARK: - FPS Limit
+    // 主题
+    static let theme = Key<ThemeMode>("com.runcatx.theme", default: .system)
 
-    var fpsLimit: FPSLimit {
-        get {
-            let raw = defaults.string(forKey: prefix + Key.fpsLimit.rawValue) ?? "fps40"
-            return FPSLimit(rawValue: raw) ?? .fps40
-        }
-        set { defaults.set(newValue.rawValue, forKey: prefix + Key.fpsLimit.rawValue) }
-    }
+    // 菜单栏显示数值文字
+    static let showMetricText = Key<Bool>("com.runcatx.showMetricText", default: false)
 
-    // MARK: - Speed Source
-
-    var speedSource: SpeedSource {
-        get {
-            let raw = defaults.string(forKey: prefix + Key.speedSource.rawValue) ?? "cpu"
-            return SpeedSource(rawValue: raw) ?? .cpu
-        }
-        set { defaults.set(newValue.rawValue, forKey: prefix + Key.speedSource.rawValue) }
-    }
-
-    // MARK: - Launch At Startup
-
-    var launchAtStartup: Bool {
-        get { defaults.bool(forKey: prefix + Key.launchAtStartup.rawValue) }
-        set { defaults.set(newValue, forKey: prefix + Key.launchAtStartup.rawValue) }
-    }
-
-    // MARK: - Theme
-
-    var theme: ThemeMode {
-        get {
-            let raw = defaults.string(forKey: prefix + Key.theme.rawValue) ?? "system"
-            return ThemeMode(rawValue: raw) ?? .system
-        }
-        set { defaults.set(newValue.rawValue, forKey: prefix + Key.theme.rawValue) }
-    }
-
-    // MARK: - Show Metric Text in Menu Bar
-    // Backing key remains "showCPUText" for backward compatibility with existing prefs.
-
-    var showMetricText: Bool {
-        get { defaults.bool(forKey: prefix + Key.showCPUText.rawValue) }
-        set { defaults.set(newValue, forKey: prefix + Key.showCPUText.rawValue) }
-    }
-
-    /// Legacy alias — same storage.
-    var showCPUText: Bool { showMetricText }
-
-    // MARK: - Sample Interval
-
-    var sampleInterval: SampleInterval {
-        get {
-            let raw = defaults.string(forKey: prefix + Key.sampleInterval.rawValue) ?? "1s"
-            return SampleInterval(rawValue: raw) ?? .oneSec
-        }
-        set { defaults.set(newValue.rawValue, forKey: prefix + Key.sampleInterval.rawValue) }
-    }
-
-    // MARK: - Restore
-
-    func restore() {
-        // Validate all settings have defaults — no-op if already set
-        _ = skin; _ = fpsLimit; _ = speedSource; _ = launchAtStartup
-        _ = theme; _ = showCPUText; _ = sampleInterval
-    }
+    // 采样间隔
+    static let sampleInterval = Key<SampleInterval>("com.runcatx.sampleInterval", default: .oneSec)
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Value Types
+// MARK: - FPS Limit
 // ═══════════════════════════════════════════════════════════════
 
-enum FPSLimit: String, CaseIterable, Sendable {
-    case fps40 = "40fps", fps30 = "30fps", fps20 = "20fps", fps10 = "10fps"
+enum FPSLimit: String, CaseIterable, Defaults.Serializable {
+    case fps10 = "10fps"
+    case fps20 = "20fps"
+    case fps30 = "30fps"
+    case fps40 = "40fps"
 
-    /// Rate multiplier relative to 40fps baseline (1.0)
+    var displayName: String {
+        switch self {
+        case .fps10: return "10 FPS"
+        case .fps20: return "20 FPS"
+        case .fps30: return "30 FPS"
+        case .fps40: return "40 FPS"
+        }
+    }
+
+    /// 倍率：用于 CatAnimator 调节 timer interval
     var rateMultiplier: Double {
         switch self {
+        case .fps10: return 4.0
+        case .fps20: return 2.0
+        case .fps30: return 1.33
         case .fps40: return 1.0
-        case .fps30: return 0.75
-        case .fps20: return 0.5
-        case .fps10: return 0.25
         }
     }
-
-    var label: String { rawValue }
 }
 
-enum SpeedSource: String, CaseIterable, Sendable {
-    case cpu = "cpu", gpu = "gpu", memory = "memory", disk = "disk"
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Speed Source
+// ═══════════════════════════════════════════════════════════════
+
+enum SpeedSource: String, CaseIterable, Defaults.Serializable {
+    case cpu = "cpu"
+    case gpu = "gpu"
+    case memory = "memory"
+    case disk = "disk"
 
     var label: String {
         switch self {
-        case .cpu: return "CPU"
-        case .gpu: return "GPU"
-        case .memory: return "内存"
-        case .disk: return "磁盘"
+        case .cpu:    return "CPU"
+        case .gpu:     return "GPU"
+        case .memory:  return "内存"
+        case .disk:    return "磁盘"
         }
     }
 
-    // ═════════════════════════════════════════════════════════
-    // MARK: - Animation Normalization
-    // ═════════════════════════════════════════════════════════
+    var emoji: String {
+        switch self {
+        case .cpu:    return "🧠"
+        case .gpu:     return "🎮"
+        case .memory:  return "💾"
+        case .disk:    return "💿"
+        }
+    }
 
-    /// Raw usage (0–100) → animation-friendly value (0–100).
-    ///
-    /// The animator's interval formula was designed for CPU where idle ≈ 0%.
-    /// Memory on macOS sits at 50–70% during normal use, and disks are often
-    /// 60–80% full — so we remap them so typical usage feels "idle/slow".
+    /// 动画归一化：不同指标的 idle 基线不同，统一到 0~100
     func normalizeForAnimation(_ rawValue: Double) -> Double {
         switch self {
-        case .cpu:
-            // Idle really is ~0%
-            return max(0, min(100, rawValue))
-        case .gpu:
-            // GPU like CPU: near 0% when idle → identity
-            return max(0, min(100, rawValue))
+        case .cpu, .gpu:
+            return rawValue  // CPU/GPU idle ≈ 0%，直接用
         case .memory:
-            // macOS memory: active+wire+compressed typically 40–60% at idle.
-            // Baseline ≈ 40% means normal usage keeps cat at walking pace.
-            let baseline: Double = 40.0
-            let normalized = (rawValue - baseline) / (100.0 - baseline) * 100.0
-            return max(0, min(100, normalized))
+            // 内存 idle ≈ 45%（系统常驻），减去基线
+            return max(0, rawValue - 45.0) / (100.0 - 45.0) * 100.0
         case .disk:
-            // Disks commonly 60% full; pressure starts at 85%+
-            let baseline: Double = 60.0
-            let normalized = (rawValue - baseline) / (100.0 - baseline) * 100.0
-            return max(0, min(100, normalized))
-        }
-    }
-
-    var emoji: String {
-        switch self {
-        case .cpu: return "🧠"
-        case .gpu: return "🎮"
-        case .memory: return "💾"
-        case .disk: return "💿"
+            // 磁盘 idle ≈ 60%
+            return max(0, rawValue - 60.0) / (100.0 - 60.0) * 100.0
         }
     }
 }
 
-enum ThemeMode: String, CaseIterable, Sendable {
-    case system = "system", light = "light", dark = "dark"
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Theme Mode
+// ═══════════════════════════════════════════════════════════════
 
-    var label: String {
+enum ThemeMode: String, CaseIterable, Defaults.Serializable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+
+    var displayName: String {
         switch self {
-        case .system: return "System"
-        case .light: return "Light"
-        case .dark: return "Dark"
+        case .system: return "跟随系统"
+        case .light:  return "浅色"
+        case .dark:   return "深色"
         }
     }
 
     var emoji: String {
         switch self {
-        case .system: return "🖥"
-        case .light: return "☀️"
-        case .dark: return "🌙"
+        case .system: return "🌓"
+        case .light:  return "☀️"
+        case .dark:   return "🌙"
         }
     }
 
-    /// Whether dark appearance should be forced
     var isDarkOverride: Bool? {
         switch self {
         case .system: return nil
-        case .light: return false
-        case .dark: return true
+        case .light:  return false
+        case .dark:   return true
         }
     }
 }
 
-enum SampleInterval: String, CaseIterable, Sendable {
-    case halfSec = "0.5s", oneSec = "1s", twoSec = "2s", threeSec = "3s"
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Sample Interval
+// ═══════════════════════════════════════════════════════════════
+
+enum SampleInterval: String, CaseIterable, Defaults.Serializable {
+    case halfSec = "0.5s"
+    case oneSec = "1s"
+    case twoSec = "2s"
+    case threeSec = "3s"
 
     var seconds: TimeInterval {
         switch self {
-        case .halfSec: return 0.5
-        case .oneSec:  return 1.0
-        case .twoSec:  return 2.0
+        case .halfSec:  return 0.5
+        case .oneSec:   return 1.0
+        case .twoSec:   return 2.0
         case .threeSec: return 3.0
         }
     }
 
-    var label: String { rawValue }
+    var displayName: String {
+        switch self {
+        case .halfSec:  return "0.5 秒"
+        case .oneSec:   return "1 秒"
+        case .twoSec:   return "2 秒"
+        case .threeSec: return "3 秒"
+        }
+    }
 }
