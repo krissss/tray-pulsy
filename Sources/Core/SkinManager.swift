@@ -157,11 +157,7 @@ final class SkinManager: @unchecked Sendable {
 
             let pngs = ((try? fm.contentsOfDirectory(atPath: dirPath)) ?? [])
                 .filter { $0.hasSuffix(".png") }
-                .sorted { a, b in
-                    let na = Int(a.replacing(".png", with: "")) ?? 0
-                    let nb = Int(b.replacing(".png", with: "")) ?? 0
-                    return na < nb
-                }
+                .sorted(using: KeyPathComparator(\.self))
 
             let frames = pngs.compactMap { name -> NSImage? in
                 let url = URL(fileURLWithPath: (dirPath as NSString).appendingPathComponent(name))
