@@ -129,6 +129,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
 
         targetWindow.makeKeyAndOrderFront(nil)
+        // Enable all metrics now that the window is visible
+        monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
         DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
     }
 

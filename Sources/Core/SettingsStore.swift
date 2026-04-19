@@ -117,8 +117,8 @@ enum SpeedSource: String, CaseIterable, Defaults.Serializable {
         case .cpu, .gpu:
             return rawValue  // CPU/GPU idle ≈ 0%，直接用
         case .memory:
-            // 内存 idle ≈ 45%（系统常驻），减去基线
-            return max(0, rawValue - 45.0) / (100.0 - 45.0) * 100.0
+            // 内存 idle ≈ 70%（系统常驻 + 文件缓存），减去基线
+            return max(0, rawValue - 70.0) / (100.0 - 70.0) * 100.0
         case .disk:
             // 磁盘 idle ≈ 60%
             return max(0, rawValue - 60.0) / (100.0 - 60.0) * 100.0

@@ -16,18 +16,18 @@ final class SettingsStoreTests: XCTestCase {
     }
 
     func testNormalize_memory_atBaseline_returnsZero() {
-        // Memory idle ≈ 45% baseline
-        XCTAssertEqual(SpeedSource.memory.normalizeForAnimation(45), 0, accuracy: 0.01)
+        // Memory idle ≈ 70% baseline (total - free - purgeable - external)
+        XCTAssertEqual(SpeedSource.memory.normalizeForAnimation(70), 0, accuracy: 0.01)
     }
 
     func testNormalize_memory_aboveBaseline() {
-        // (70 - 45) / (100 - 45) * 100 = 25/55 * 100 ≈ 45.45
-        let result = SpeedSource.memory.normalizeForAnimation(70)
-        XCTAssertEqual(result, 25.0 / 55.0 * 100.0, accuracy: 0.01)
+        // (85 - 70) / (100 - 70) * 100 = 15/30 * 100 = 50
+        let result = SpeedSource.memory.normalizeForAnimation(85)
+        XCTAssertEqual(result, 50.0, accuracy: 0.01)
     }
 
     func testNormalize_memory_belowBaseline_clampsToZero() {
-        XCTAssertEqual(SpeedSource.memory.normalizeForAnimation(20), 0, accuracy: 0.01)
+        XCTAssertEqual(SpeedSource.memory.normalizeForAnimation(50), 0, accuracy: 0.01)
     }
 
     func testNormalize_disk_atBaseline_returnsZero() {

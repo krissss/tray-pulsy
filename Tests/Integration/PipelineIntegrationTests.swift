@@ -33,9 +33,9 @@ final class PipelineIntegrationTests: XCTestCase {
     // MARK: - Memory pipeline
 
     func testMemory_normalizeProducesReasonableRange() {
-        let idle = SpeedSource.memory.normalizeForAnimation(45)
+        let idle = SpeedSource.memory.normalizeForAnimation(70)
         let full = SpeedSource.memory.normalizeForAnimation(100)
-        let mid = SpeedSource.memory.normalizeForAnimation(70)
+        let mid = SpeedSource.memory.normalizeForAnimation(85)
 
         XCTAssertEqual(idle, 0, accuracy: 0.01)
         XCTAssertEqual(full, 100, accuracy: 0.01)
@@ -47,7 +47,7 @@ final class PipelineIntegrationTests: XCTestCase {
         let animator = TrayAnimator(initialFrames: makeFrames(3))
         animator.start()
 
-        let idle = SpeedSource.memory.normalizeForAnimation(45)
+        let idle = SpeedSource.memory.normalizeForAnimation(70)
         animator.updateValue(idle)
         let fpsIdle = animator.currentFPS
 

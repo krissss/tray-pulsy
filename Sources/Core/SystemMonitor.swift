@@ -182,11 +182,11 @@ final class SystemMonitor: @unchecked Sendable {
         guard result == KERN_SUCCESS else { return StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0) }
 
         let total = Double(ProcessInfo.processInfo.physicalMemory)
-        let usedPages = UInt64(stats.active_count) +
-                        UInt64(stats.wire_count) +
-                        UInt64(stats.compressor_page_count)
-        let used = Double(usedPages) * pageSize
-        let usage = total > 0 ? used / total * 100 : 0
+        let free = Double(stats.free_count) * pageSize
+        let purgeable = Double(stats.purgeable_count) * pageSize
+        let external = Double(stats.external_page_count) * pageSize
+        let used = total - free - purgeable - external
+        let usage = total > 0 ? min(100, max(0, used / total * 100)) : 0
         return StorageInfo(usagePercent: min(100, usage), usedGB: used / Self.bytesPerGB, totalGB: total / Self.bytesPerGB)
     }
 

@@ -124,6 +124,7 @@ private struct MetricRowView: View {
 
 private struct MetricsGrid: View {
     private var monitor = SystemMonitor.shared
+    @State private var tick = 0
 
     var body: some View {
         GlassEffectContainer {
@@ -154,6 +155,9 @@ private struct MetricsGrid: View {
                 .accessibilityElement(children: .combine)
                 .accessibilityLabel("网络 下载\(formatSpeed(monitor.netSpeedIn)) 上传\(formatSpeed(monitor.netSpeedOut))")
             }
+        }
+        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
+            tick &+= 1
         }
     }
 
