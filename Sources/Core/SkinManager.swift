@@ -90,7 +90,7 @@ final class SkinManager: @unchecked Sendable {
     // MARK: - Auto-Discovery
     // ═════════════════════════════════════════════════════════
 
-    private static func discoverSkins(externalPath: String) -> [SkinInfo] {
+    static func discoverSkins(externalPath: String) -> [SkinInfo] {
         var seen = Set<String>()
         var skins: [SkinInfo] = []
 
@@ -124,7 +124,7 @@ final class SkinManager: @unchecked Sendable {
         ].compactMap { $0 }
     }
 
-    private static func scanDirectory(_ paths: [String]) -> [SkinInfo] {
+    static func scanDirectory(_ paths: [String]) -> [SkinInfo] {
         let fm = FileManager.default
         var skins: [SkinInfo] = []
 
@@ -195,7 +195,7 @@ final class SkinManager: @unchecked Sendable {
         switch currentTheme {
         case .system:
             isDark = MainActor.assumeIsolated {
-                NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             }
         case .dark:  isDark = true
         case .light: isDark = false

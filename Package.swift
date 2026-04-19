@@ -26,5 +26,13 @@ let package = Package(
                 .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release)),
             ]
         ),
+        .testTarget(
+            name: "TrayPulsyTests",
+            dependencies: [
+                "TrayPulsy",
+                .product(name: "Defaults", package: "Defaults"),
+            ],
+            path: "Tests"
+        ),
     ]
 )

@@ -1,7 +1,7 @@
 import AppKit
 
 /// Drives frame-by-frame animation where playback speed scales with system usage.
-final class TrayAnimator {
+final class TrayAnimator: @unchecked Sendable {
 
     var onFrameUpdate: ((NSImage) -> Void)?
 
@@ -80,7 +80,10 @@ final class TrayAnimator {
         runnerTimer?.invalidate()
         runnerTimer = nil
 
-        guard !frames.isEmpty else { return }
+        guard !frames.isEmpty else {
+            currentFPS = 0
+            return
+        }
         currentFPS = interval > 0 ? 1.0 / interval : 0
 
         runnerTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
