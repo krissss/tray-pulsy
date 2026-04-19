@@ -13,6 +13,7 @@ import Observation
 @Observable
 final class SystemMonitor: @unchecked Sendable {
     static let shared = SystemMonitor()
+    private static let bytesPerGB: Double = 1024 * 1024 * 1024
 
     private(set) var cpuUsage: Double = 0.0
     private(set) var memoryUsage: Double = 0.0
@@ -31,6 +32,10 @@ final class SystemMonitor: @unchecked Sendable {
     private let pageSize: Double  // cached at init, never changes at runtime
 
     var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
+
+    struct StorageInfo: Sendable {
+        let usagePercent: Double, usedGB: Double, totalGB: Double
+    }
 
     enum MetricKind: CaseIterable {
         case cpu, memory, disk, network, gpu
@@ -85,49 +90,38 @@ final class SystemMonitor: @unchecked Sendable {
     // MARK: - Tick (only read enabled metrics)
 
     private func tick() {
+        // Snapshot which metrics to read (set only mutates on main thread)
+        let metrics = enabledMetrics
         var cpu: Double = 0
-        var mem = MemInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
-        var disk = DiskInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
-        var netIn: Double = 0
-        var netOut: Double = 0
+        var mem = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+        var disk = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+        var netIn: Double = 0, netOut: Double = 0
         var gpu: Double = 0
 
-        if enabledMetrics.contains(.cpu) {
-            cpu = readCPUPercent()
-        }
-        if enabledMetrics.contains(.memory) {
-            mem = readMemoryStats()
-        }
-        if enabledMetrics.contains(.disk) {
-            disk = readDiskStats()
-        }
-        if enabledMetrics.contains(.network) {
-            (netIn, netOut) = readNetSpeed()
-        }
-        if enabledMetrics.contains(.gpu) {
-            gpu = readGPUUtilization()
-        }
+        if metrics.contains(.cpu)    { cpu = readCPUPercent() }
+        if metrics.contains(.memory) { mem = readMemoryStats() }
+        if metrics.contains(.disk)   { disk = readDiskStats() }
+        if metrics.contains(.network) { (netIn, netOut) = readNetSpeed() }
+        if metrics.contains(.gpu)    { gpu = readGPUUtilization() }
 
         DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            if self.enabledMetrics.contains(.cpu)    { self.cpuUsage = cpu }
-            if self.enabledMetrics.contains(.memory) {
+            guard let self else { return }
+            if metrics.contains(.cpu)    { self.cpuUsage = cpu }
+            if metrics.contains(.memory) {
                 self.memoryUsage = mem.usagePercent
                 self.memoryUsedGB = mem.usedGB
                 self.memoryTotalGB = mem.totalGB
             }
-            if self.enabledMetrics.contains(.disk) {
+            if metrics.contains(.disk) {
                 self.diskUsage = disk.usagePercent
                 self.diskUsedGB = disk.usedGB
                 self.diskTotalGB = disk.totalGB
             }
-            if self.enabledMetrics.contains(.network) {
+            if metrics.contains(.network) {
                 self.netSpeedIn = netIn
                 self.netSpeedOut = netOut
             }
-            if self.enabledMetrics.contains(.gpu) {
-                self.gpuUsage = gpu
-            }
+            if metrics.contains(.gpu) { self.gpuUsage = gpu }
         }
     }
 
@@ -175,11 +169,7 @@ final class SystemMonitor: @unchecked Sendable {
     // MARK: - Memory (host_statistics64)
     // ═════════════════════════════════════════════════════════
 
-    private struct MemInfo {
-        let usagePercent: Double, usedGB: Double, totalGB: Double
-    }
-
-    private func readMemoryStats() -> MemInfo {
+    private func readMemoryStats() -> StorageInfo {
         var stats = vm_statistics64()
         var count = mach_msg_type_number_t(
             MemoryLayout<vm_statistics64>.size / MemoryLayout<integer_t>.size
@@ -189,7 +179,7 @@ final class SystemMonitor: @unchecked Sendable {
                 host_statistics64(mach_host_self(), HOST_VM_INFO64, $0, &count)
             }
         }
-        guard result == KERN_SUCCESS else { return MemInfo(usagePercent: 0, usedGB: 0, totalGB: 0) }
+        guard result == KERN_SUCCESS else { return StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0) }
 
         let total = Double(ProcessInfo.processInfo.physicalMemory)
         let usedPages = UInt64(stats.active_count) +
@@ -197,34 +187,27 @@ final class SystemMonitor: @unchecked Sendable {
                         UInt64(stats.compressor_page_count)
         let used = Double(usedPages) * pageSize
         let usage = total > 0 ? used / total * 100 : 0
-        let gb: Double = 1024 * 1024 * 1024
-        return MemInfo(usagePercent: min(100, usage), usedGB: used / gb, totalGB: total / gb)
+        return StorageInfo(usagePercent: min(100, usage), usedGB: used / Self.bytesPerGB, totalGB: total / Self.bytesPerGB)
     }
 
     // ═════════════════════════════════════════════════════════
     // MARK: - Disk (FileManager)
     // ═════════════════════════════════════════════════════════
 
-    private struct DiskInfo {
-        let usagePercent: Double, usedGB: Double, totalGB: Double
-    }
-
-    private func readDiskStats() -> DiskInfo {
+    private func readDiskStats() -> StorageInfo {
         let home = URL(fileURLWithPath: NSHomeDirectory())
         do {
             let values = try home.resourceValues(forKeys: [.volumeTotalCapacityKey, .volumeAvailableCapacityForImportantUsageKey])
             guard let total = values.volumeTotalCapacity,
                   let avail = values.volumeAvailableCapacityForImportantUsage else {
-                return DiskInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+                return StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
             }
             let totalD = Double(total)
-            let availD = Double(avail)
-            let usedD = totalD - availD
-            let gb: Double = 1024.0 * 1024.0 * 1024.0
+            let usedD = totalD - Double(avail)
             let pct = totalD > 0 ? usedD / totalD * 100 : 0
-            return DiskInfo(usagePercent: min(100, pct), usedGB: usedD / gb, totalGB: totalD / gb)
+            return StorageInfo(usagePercent: min(100, pct), usedGB: usedD / Self.bytesPerGB, totalGB: totalD / Self.bytesPerGB)
         } catch {
-            return DiskInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+            return StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
         }
     }
 

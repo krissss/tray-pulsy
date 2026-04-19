@@ -24,6 +24,7 @@ struct SkinInfo: Identifiable, Hashable, Sendable {
 @Observable
 final class SkinManager: @unchecked Sendable {
     static let shared = SkinManager()
+    private static let defaultSkinID = "cat"
 
     /// All discovered skins (bundled + external), sorted by id.
     private(set) var allSkins: [SkinInfo]
@@ -36,19 +37,23 @@ final class SkinManager: @unchecked Sendable {
     private init() {
         let skins = Self.discoverSkins(externalPath: Defaults[.externalSkinPath])
         self.allSkins = skins
-        self.currentSkin = skins.first ?? SkinInfo(id: "cat", displayName: "cat")
+        self.currentSkin = skins.first ?? SkinInfo(id: Self.defaultSkinID, displayName: Self.defaultSkinID)
     }
 
     /// Re-scan skins after external path changes.
     func reload() {
         allSkins = Self.discoverSkins(externalPath: Defaults[.externalSkinPath])
-        // If current skin no longer exists, fall back to "cat"
         if !allSkins.contains(where: { $0.id == currentSkin.id }) {
-            let fallback = allSkins.first(where: { $0.id == "cat" }) ?? SkinInfo(id: "cat", displayName: "cat")
+            let fallback = skin(for: Self.defaultSkinID)
             currentSkin = fallback
             Defaults[.skin] = fallback.id
         }
         clearCache()
+    }
+
+    /// Look up a skin by ID, falling back to the default skin.
+    func skin(for id: String) -> SkinInfo {
+        allSkins.first(where: { $0.id == id }) ?? allSkins.first ?? SkinInfo(id: Self.defaultSkinID, displayName: Self.defaultSkinID)
     }
 
     func setSkin(_ s: SkinInfo) { currentSkin = s }
@@ -61,10 +66,10 @@ final class SkinManager: @unchecked Sendable {
         if let cached = frameCache[key] { return cached }
         let base = loadFrames(for: s.id)
         guard !base.isEmpty else {
-            // Skin frames not found — fall back to cat
-            let catKey = "cat:\(themeHash)"
+            // Skin frames not found — fall back to default
+            let catKey = "\(Self.defaultSkinID):\(themeHash)"
             if let cached = frameCache[catKey] { return cached }
-            let catFrames = loadFrames(for: "cat")
+            let catFrames = loadFrames(for: Self.defaultSkinID)
             let themed = applyCurrentTheme(to: catFrames)
             frameCache[catKey] = themed
             return themed
@@ -76,9 +81,8 @@ final class SkinManager: @unchecked Sendable {
 
     /// Single frame by skin id + index (for settings preview).
     func frame(for skinID: String, frameIndex: Int) -> NSImage? {
-        guard let s = allSkins.first(where: { $0.id == skinID }) else { return nil }
-        let all = frames(for: s)
-        guard frameIndex >= 0 && frameIndex < all.count else { return nil }
+        let all = frames(for: skin(for: skinID))
+        guard frameIndex >= 0, frameIndex < all.count else { return nil }
         return all[frameIndex]
     }
 

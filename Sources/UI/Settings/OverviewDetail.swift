@@ -23,23 +23,21 @@ private struct CatPreviewSection: View {
     @Default(.skin) private var skin
     @Default(.fpsLimit) private var fpsLimit
 
-    @State private var frameIndex = 0
-    @State private var previewTimer: Timer?
-    @State private var displayedFPS: Double = 0
-    @State private var previewFrames: [NSImage] = []
+    @State private var previewAnimator: CatAnimator?
+    @State private var currentFrame: NSImage?
 
     var body: some View {
         HStack(spacing: 24) {
             Group {
-                if previewFrames.isEmpty {
-                    Image(systemName: "questionmark")
-                        .font(.largeTitle)
-                        .foregroundStyle(.secondary)
-                } else {
-                    Image(nsImage: previewFrames[frameIndex])
+                if let currentFrame {
+                    Image(nsImage: currentFrame)
                         .resizable()
                         .interpolation(.none)
                         .aspectRatio(contentMode: .fit)
+                } else {
+                    Image(systemName: "questionmark")
+                        .font(.largeTitle)
+                        .foregroundStyle(.secondary)
                 }
             }
             .frame(width: 56, height: 56)
@@ -48,11 +46,11 @@ private struct CatPreviewSection: View {
             .accessibilityLabel("当前皮肤预览")
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(SkinManager.shared.allSkins.first(where: { $0.id == skin })?.displayName ?? skin)
+                Text(SkinManager.shared.skin(for: skin).displayName)
                     .font(.headline)
                 HStack(spacing: 20) {
                     Label("\(Int(monitor.valueForSource(speedSource)))%", systemImage: speedSource.systemImage)
-                    Label("\(Int(displayedFPS)) FPS", systemImage: "gauge.with.dots.needle.33percent")
+                    Label("\(Int(previewAnimator?.currentFPS ?? 0)) FPS", systemImage: "gauge.with.dots.needle.33percent")
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -62,41 +60,27 @@ private struct CatPreviewSection: View {
             Spacer()
         }
         .padding(.vertical, 4)
-        .onAppear { loadFramesAndStart() }
-        .onDisappear { stopPreview() }
-        .onChange(of: skin) { loadFramesAndStart() }
+        .onAppear { setupAnimator() }
+        .onDisappear { previewAnimator?.stop() }
+        .onChange(of: skin) { setupAnimator() }
+        .onChange(of: fpsLimit) { previewAnimator?.setFPSLimit(fpsLimit) }
     }
 
-    private func loadFramesAndStart() {
-        let skinInfo = SkinManager.shared.allSkins.first(where: { $0.id == skin })
-            ?? SkinManager.shared.allSkins[0]
-        previewFrames = SkinManager.shared.frames(for: skinInfo)
-        frameIndex = 0
-        restartPreview()
-    }
-
-    private func restartPreview() {
-        let source = speedSource
-        let rawValue = monitor.valueForSource(source)
-        let normalized = source.normalizeForAnimation(rawValue)
-        let interval = 0.2 / max(normalized / 5.0, 1.0)
-        let clampedInterval = min(interval, fpsLimit.rateMultiplier * 0.05)
-        displayedFPS = min(1.0 / clampedInterval, 100)
-
-        previewTimer?.invalidate()
-        let totalFrames = previewFrames.count
-        guard totalFrames > 0 else { return }
-        previewTimer = Timer.scheduledTimer(withTimeInterval: clampedInterval, repeats: true) { _ in
-            Task { @MainActor in
-                frameIndex = (frameIndex + 1) % totalFrames
-            }
+    private func setupAnimator() {
+        previewAnimator?.stop()
+        let skinInfo = SkinManager.shared.skin(for: skin)
+        let frames = SkinManager.shared.frames(for: skinInfo)
+        let animator = CatAnimator(initialFrames: frames)
+        animator.setFPSLimit(fpsLimit)
+        animator.onFrameUpdate = { [weak animator] image in
+            // Capture animator to keep it alive; self check prevents stale updates
+            _ = animator
+            MainActor.assumeIsolated { currentFrame = image }
         }
-    }
-
-    private func stopPreview() {
-        previewTimer?.invalidate()
-        previewTimer = nil
-        frameIndex = 0
+        let source = speedSource
+        animator.updateValue(source.normalizeForAnimation(monitor.valueForSource(source)))
+        animator.start()
+        previewAnimator = animator
     }
 }
 
@@ -174,14 +158,20 @@ private struct MetricsGrid: View {
     }
 
     private var memoryDetail: String {
-        String(format: "%.1f / %.1f GB", monitor.memoryUsedGB, monitor.memoryTotalGB)
+        let formatter = ByteCountFormatter()
+        formatter.countStyle = .memory
+        let used = formatter.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))
+        let total = formatter.string(fromByteCount: Int64(monitor.memoryTotalGB * 1_073_741_824))
+        return "\(used) / \(total)"
     }
 
+    private static let speedFormatter: ByteCountFormatter = {
+        let f = ByteCountFormatter()
+        f.countStyle = .file
+        return f
+    }()
+
     private func formatSpeed(_ bytesPerSec: Double) -> String {
-        if bytesPerSec >= 1024 * 1024 {
-            return String(format: "%.1fMB/s", bytesPerSec / (1024 * 1024))
-        } else {
-            return String(format: "%.0fKB/s", bytesPerSec / 1024)
-        }
+        Self.speedFormatter.string(fromByteCount: Int64(bytesPerSec)) + "/s"
     }
 }

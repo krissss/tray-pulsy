@@ -32,7 +32,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         animator = CatAnimator(initialFrames: initialFrames)
 
         // 2. Wire direct callback — ONLY update image per frame (cheap)
-        animator.onFrameUpdate = { [weak self] image, _ in
+        animator.onFrameUpdate = { [weak self] image in
             self?.statusItem.button?.image = image
         }
 
@@ -40,10 +40,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         applyTheme(Defaults[.theme])
 
         // 4. Apply saved skin (after theme so frames use correct appearance)
-        if let savedSkin = skinManager.allSkins.first(where: { $0.id == Defaults[.skin] }) {
-            skinManager.setSkin(savedSkin)
-            animator.changeSkin(to: skinManager.frames(for: savedSkin))
-        }
+        let savedSkin = skinManager.skin(for: Defaults[.skin])
+        skinManager.setSkin(savedSkin)
+        animator.changeSkin(to: skinManager.frames(for: savedSkin))
 
         // 5. Apply FPS limit
         animator.setFPSLimit(Defaults[.fpsLimit])
@@ -155,15 +154,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 // Drive animator with current metric value
                 let source = Defaults[.speedSource]
                 let rawValue = self.monitor.valueForSource(source)
-                self.animator.updateValue(source == .cpu || source == .gpu
-                    ? rawValue
-                    : source.normalizeForAnimation(rawValue))
+                self.animator.updateValue(source.normalizeForAnimation(rawValue))
 
                 // Update metric text & accessibility (only when integer value changes)
-                let newValue = self.currentMetricValue()
-                let clampedNew = min(newValue, 99.0)
-                if Int(clampedNew) != Int(self.lastDisplayedMetricValue) {
-                    self.lastDisplayedMetricValue = clampedNew
+                let displayValue = self.clampedMetricDisplay()
+                if Int(displayValue) != Int(self.lastDisplayedMetricValue) {
+                    self.lastDisplayedMetricValue = displayValue
                     self.applyMetricTextMode()
                     self.updateAccessibilityLabel()
                 }
@@ -190,14 +186,10 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
     private func applyMetricTextMode() {
         if Defaults[.showMetricText] {
-            let clamped = min(currentMetricValue(), 99.0)
+            let clamped = clampedMetricDisplay()
             let value = "\(clamped.formatted(.number.precision(.fractionLength(0))))%"
-            let fontSize = 12.0
-            let font = NSFont.monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            let attributes: [NSAttributedString.Key: Any] = [
-                .font: font,
-                .kern: -0.3
-            ]
+            let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+            let attributes: [NSAttributedString.Key: Any] = [.font: font, .kern: -0.3]
             statusItem.button?.attributedTitle = NSAttributedString(string: value, attributes: attributes)
             statusItem.length = NSStatusItem.variableLength
         } else {
@@ -206,8 +198,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func currentMetricValue() -> Double {
-        monitor.valueForSource(Defaults[.speedSource])
+    /// Clamp metric to 0-99 for display (fits 2-digit layout).
+    private func clampedMetricDisplay() -> Double {
+        min(monitor.valueForSource(Defaults[.speedSource]), 99.0)
     }
 
     // ═════════════════════════════════════════════════════════
@@ -219,10 +212,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
             Defaults.observe(.skin) { [weak self] change in
                 MainActor.assumeIsolated {
                     guard let self else { return }
-                    if let s = self.skinManager.allSkins.first(where: { $0.id == change.newValue }) {
-                        self.skinManager.setSkin(s)
-                        self.animator.changeSkin(to: self.skinManager.frames(for: s))
-                    }
+                    let s = self.skinManager.skin(for: change.newValue)
+                    self.skinManager.setSkin(s)
+                    self.animator.changeSkin(to: self.skinManager.frames(for: s))
                 }
             },
             Defaults.observe(.speedSource) { [weak self] _ in
@@ -271,8 +263,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
     private func updateAccessibilityLabel() {
         let source = Defaults[.speedSource]
-        let value = monitor.valueForSource(source)
-        let displayValue = min(value, 99.0)
+        let displayValue = clampedMetricDisplay()
         let text = Defaults[.showMetricText]
             ? "RunCatX \(source.label) \(displayValue.formatted(.number.precision(.fractionLength(0))))%，点击打开设置"
             : "RunCatX，点击打开设置"

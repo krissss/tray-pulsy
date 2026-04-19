@@ -3,7 +3,7 @@ import AppKit
 /// Drives frame-by-frame animation where playback speed scales with system usage.
 final class CatAnimator {
 
-    var onFrameUpdate: ((NSImage, Double) -> Void)?
+    var onFrameUpdate: ((NSImage) -> Void)?
 
     private var runnerTimer: Timer?
     private var frameIndex: Int = 0
@@ -11,6 +11,9 @@ final class CatAnimator {
     private var currentValue: Double = 0
     private var fpsLimit: FPSLimit = .fps40
     private var currentInterval: TimeInterval = 0.10
+
+    /// Current playback FPS (read-only, for UI display).
+    private(set) var currentFPS: Double = 0
 
     init(initialFrames: [NSImage]) {
         self.frames = initialFrames
@@ -32,8 +35,8 @@ final class CatAnimator {
         frames = newFrames
         frameIndex = 0
         forceRestartTimer()
-        if !frames.isEmpty {
-            onFrameUpdate?(frames[0], computeFPS())
+        if let first = frames.first {
+            onFrameUpdate?(first)
         }
     }
 
@@ -50,17 +53,12 @@ final class CatAnimator {
         forceRestartTimer()
     }
 
-    func computeFPS() -> Double {
-        guard currentInterval > 0 else { return 0 }
-        return 1.0 / currentInterval
-    }
-
     // MARK: - Core
 
     /// Linear mapping scaled by fpsLimit.rateMultiplier:
     ///   fps40 (1.0x): ~10fps idle → ~40fps at 75%+
     ///   fps10 (4.0x): ~2.5fps idle → ~10fps at 75%+
-    private func computeInterval() -> TimeInterval {
+    func computeInterval() -> TimeInterval {
         let base = max(0.025, 0.10 - 0.12 * (currentValue / 100.0))
         return base * fpsLimit.rateMultiplier
     }
@@ -83,22 +81,16 @@ final class CatAnimator {
         runnerTimer = nil
 
         guard !frames.isEmpty else { return }
+        currentFPS = interval > 0 ? 1.0 / interval : 0
 
-        runnerTimer = Timer.scheduledTimer(
-            timeInterval: interval,
-            target: self,
-            selector: #selector(advanceFrame),
-            userInfo: nil,
-            repeats: true
-        )
-        if let timer = runnerTimer {
-            RunLoop.current.add(timer, forMode: .common)
+        runnerTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+            self?.advanceFrame()
         }
     }
 
-    @objc private func advanceFrame() {
+    private func advanceFrame() {
         guard !frames.isEmpty else { return }
         frameIndex = (frameIndex + 1) % frames.count
-        onFrameUpdate?(frames[frameIndex], computeFPS())
+        onFrameUpdate?(frames[frameIndex])
     }
 }
