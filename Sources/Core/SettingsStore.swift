@@ -6,8 +6,8 @@ import Foundation
 // ═══════════════════════════════════════════════════════════════
 
 enum AppConstants {
-    /// User-visible app name — single source of truth.
-    static let appName = "TrayPulsy"
+    /// User-visible app name — read from bundle, single source of truth.
+    static let appName: String = Bundle.main.infoDictionary?["CFBundleDisplayName"] as? String ?? "TrayPulsy"
 }
 
 // ═══════════════════════════════════════════════════════════════
