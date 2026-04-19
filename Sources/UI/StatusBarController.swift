@@ -99,44 +99,42 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     // ═════════════════════════════════════════════════════════
 
     private func openSettings() {
+        NSApp.setActivationPolicy(.regular)
+
+        let targetWindow: NSWindow
         if let existing = settingsWindow, existing.isVisible {
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate()
-            return
-        }
-
-        let view = NSHostingView(rootView: SettingsView())
-
-        if let existing = settingsWindow {
-            // Reuse window shell, just refresh SwiftUI content
-            existing.contentView = view
-            existing.makeKeyAndOrderFront(nil)
-            NSApp.activate()
+            targetWindow = existing
+        } else {
+            let view = NSHostingView(rootView: SettingsView())
+            if let existing = settingsWindow {
+                existing.contentView = view
+                targetWindow = existing
+            } else {
+                let window = NSWindow(
+                    contentRect: NSRect(x: 0, y: 0, width: 820, height: 560),
+                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                    backing: .buffered,
+                    defer: false
+                )
+                window.contentView = view
+                window.isReleasedWhenClosed = false
+                window.center()
+                window.delegate = self
+                window.title = "RunCatX 设置"
+                window.titlebarAppearsTransparent = true
+                window.titleVisibility = .hidden
+                settingsWindow = window
+                targetWindow = window
+            }
             updateEnabledMetrics()
-            return
         }
 
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 820, height: 560),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-            backing: .buffered,
-            defer: false
-        )
-        window.contentView = view
-        window.isReleasedWhenClosed = false
-        window.center()
-        window.delegate = self
-        window.title = "RunCatX 设置"
-        window.titlebarAppearsTransparent = true
-        window.titleVisibility = .hidden
-
-        settingsWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate()
-        updateEnabledMetrics()
+        targetWindow.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
     }
 
     func windowWillClose(_ notification: Notification) {
+        NSApp.setActivationPolicy(.accessory)
         updateEnabledMetrics()
         // Defer SwiftUI teardown to next run loop to avoid layout recursion
         DispatchQueue.main.async { [weak self] in
