@@ -1,7 +1,7 @@
 import AppKit
 
 /// Drives frame-by-frame animation where playback speed scales with system usage.
-final class CatAnimator {
+final class TrayAnimator {
 
     var onFrameUpdate: ((NSImage) -> Void)?
 

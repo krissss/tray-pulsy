@@ -5,7 +5,7 @@ struct OverviewDetail: View {
     var body: some View {
         Form {
             Section {
-                CatPreviewSection()
+                SkinPreviewSection()
             }
             Section("系统监控") {
                 MetricsGrid()
@@ -15,15 +15,15 @@ struct OverviewDetail: View {
     }
 }
 
-// MARK: - Cat Preview
+// MARK: - Skin Preview
 
-private struct CatPreviewSection: View {
+private struct SkinPreviewSection: View {
     private var monitor = SystemMonitor.shared
     @Default(.speedSource) private var speedSource
     @Default(.skin) private var skin
     @Default(.fpsLimit) private var fpsLimit
 
-    @State private var previewAnimator: CatAnimator?
+    @State private var previewAnimator: TrayAnimator?
     @State private var currentFrame: NSImage?
 
     var body: some View {
@@ -70,7 +70,7 @@ private struct CatPreviewSection: View {
         previewAnimator?.stop()
         let skinInfo = SkinManager.shared.skin(for: skin)
         let frames = SkinManager.shared.frames(for: skinInfo)
-        let animator = CatAnimator(initialFrames: frames)
+        let animator = TrayAnimator(initialFrames: frames)
         animator.setFPSLimit(fpsLimit)
         animator.onFrameUpdate = { [weak animator] image in
             // Capture animator to keep it alive; self check prevents stale updates

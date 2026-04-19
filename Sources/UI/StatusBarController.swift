@@ -9,7 +9,7 @@ import SwiftUI
 final class StatusBarController: NSObject, NSWindowDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let monitor = SystemMonitor.shared
-    private var animator: CatAnimator!
+    private var animator: TrayAnimator!
     private let skinManager = SkinManager.shared
     private var updateTimer: Timer?
     private var defaultsObservers: [Defaults.Observation] = []
@@ -29,7 +29,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     func start() {
         // 1. Create animator with initial frames
         let initialFrames = skinManager.frames()
-        animator = CatAnimator(initialFrames: initialFrames)
+        animator = TrayAnimator(initialFrames: initialFrames)
 
         // 2. Wire direct callback — ONLY update image per frame (cheap)
         animator.onFrameUpdate = { [weak self] image in

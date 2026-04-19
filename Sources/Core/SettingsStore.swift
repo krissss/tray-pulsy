@@ -62,7 +62,7 @@ enum FPSLimit: String, CaseIterable, Defaults.Serializable {
         }
     }
 
-    /// 倍率：用于 CatAnimator 调节 timer interval
+    /// 倍率：用于 TrayAnimator 调节 timer interval
     var rateMultiplier: Double {
         switch self {
         case .fps10: return 4.0
