@@ -1,6 +1,7 @@
 import AppKit
 import CoreImage
 import Defaults
+import Observation
 
 // ═══════════════════════════════════════════════════════════════
 // MARK: - SkinInfo (auto-discovered from Resources/ or external path)
@@ -20,6 +21,7 @@ struct SkinInfo: Identifiable, Hashable, Sendable {
 // MARK: - SkinManager
 // ═══════════════════════════════════════════════════════════════
 
+@Observable
 final class SkinManager: @unchecked Sendable {
     static let shared = SkinManager()
 
@@ -29,7 +31,7 @@ final class SkinManager: @unchecked Sendable {
     private(set) var currentSkin: SkinInfo
     private var currentTheme: ThemeMode = .system
     private var frameCache: [String: [NSImage]] = [:]
-    private lazy var ciContext = CIContext(options: [.useSoftwareRenderer: false])
+    @ObservationIgnored private lazy var ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
     private init() {
         let skins = Self.discoverSkins(externalPath: Defaults[.externalSkinPath])

@@ -1,27 +1,33 @@
-import Combine
-import SwiftUI
 import Defaults
+import SwiftUI
 
 /// Owns NSStatusItem, wires SystemMonitor → Animator → icon.
 ///
 /// Interaction model:
-///   CLICK → Open Settings window (TabView sidebarAdaptable UI)
+///   CLICK → Open native Settings window (Cmd+,)
 @MainActor
 final class StatusBarController: NSObject, NSWindowDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    private var monitor: SystemMonitor!
+    private let monitor = SystemMonitor.shared
     private var animator: CatAnimator!
     private let skinManager = SkinManager.shared
-    private var cancellables = Set<AnyCancellable>()
+    private var updateTimer: Timer?
+    private var defaultsObservers: [Defaults.Observation] = []
     private var settingsWindow: NSWindow?
-    private var syncTimer: Timer?
-
-    private var settingsObservers: [NSObjectProtocol] = []
     private var lastDisplayedMetricValue: Double = -1
 
+    /// Only read the metrics we actually need.
+    private func updateEnabledMetrics() {
+        let settingsOpen = settingsWindow?.isVisible == true
+        if settingsOpen {
+            monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
+        } else {
+            monitor.enabledMetrics = [Defaults[.speedSource].requiredMetric]
+        }
+    }
+
     func start() {
-        // 1. Create monitor & animator
-        monitor = SystemMonitor(sampleInterval: Defaults[.sampleInterval].seconds)
+        // 1. Create animator with initial frames
         let initialFrames = skinManager.frames()
         animator = CatAnimator(initialFrames: initialFrames)
 
@@ -42,32 +48,27 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         // 5. Apply FPS limit
         animator.setFPSLimit(Defaults[.fpsLimit])
 
-        // 6. Wire speed source (Combine — 1Hz)
-        bindSpeedSource(Defaults[.speedSource])
-
-        // 7. Configure button: any click → open settings
+        // 6. Configure button: any click → open settings
         setupButton()
 
-        // 8. Configure which metrics to read (minimize per-tick work)
-        updateEnabledMetrics()
-
-        // 9. Start everything LAST
+        // 7. Start everything
         monitor.start()
         animator.start()
-        startSyncTimer()
+        startUpdateTimer()
+        updateEnabledMetrics()
 
-        // 10. Listen for settings changes
-        setupSettingsObservers()
+        // 8. Listen for settings changes via Defaults
+        setupDefaultsObservers()
     }
 
     func stop() {
         monitor.stop()
         animator.stop()
-        syncTimer?.invalidate(); syncTimer = nil
+        updateTimer?.invalidate(); updateTimer = nil
         settingsWindow?.close()
         settingsWindow = nil
-        settingsObservers.forEach { NotificationCenter.default.removeObserver($0) }
-        settingsObservers.removeAll()
+        defaultsObservers.forEach { $0.invalidate() }
+        defaultsObservers.removeAll()
     }
 
     nonisolated func pause() {
@@ -97,14 +98,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     // MARK: - Settings Window
     // ═════════════════════════════════════════════════════════
 
-    func openSettings() {
+    private func openSettings() {
         if let existing = settingsWindow, existing.isVisible {
             existing.makeKeyAndOrderFront(nil)
-            activateApp()
+            NSApp.activate()
             return
         }
-
-        monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
 
         let view = NSHostingView(rootView: SettingsView())
         let window = NSWindow(
@@ -123,79 +122,41 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
         settingsWindow = window
         window.makeKeyAndOrderFront(nil)
-        activateApp()
-    }
-
-    func windowWillClose(_ notification: Notification) { updateEnabledMetrics() }
-
-    // ═════════════════════════════════════════════════════════
-    // MARK: - App Activation
-    // ═════════════════════════════════════════════════════════
-
-    private func activateApp() {
         NSApp.activate()
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // MARK: - Enabled Metrics
-    // ═════════════════════════════════════════════════════════
-
-    private func updateEnabledMetrics() {
-        guard settingsWindow == nil || !(settingsWindow?.isVisible ?? false) else {
-            monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
-            return
-        }
-
-        var metrics: Set<SystemMonitor.MetricKind> = []
-        switch Defaults[.speedSource] {
-        case .cpu:    metrics.insert(.cpu)
-        case .gpu:    metrics.insert(.gpu)
-        case .memory: metrics.insert(.memory)
-        case .disk:   metrics.insert(.disk)
-        }
-        monitor.enabledMetrics = metrics
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // MARK: - Speed Source Binding
-    // ═════════════════════════════════════════════════════════
-
-    private func bindSpeedSource(_ source: SpeedSource) {
-        switch source {
-        case .cpu:
-            monitor.$cpuUsage
-                .throttle(for: .seconds(1), scheduler: RunLoop.main, latest: true)
-                .sink { [weak self] value in
-                    self?.animator.updateValue(value)
-                }.store(in: &cancellables)
-
-        case .gpu:
-            monitor.$gpuUsage
-                .throttle(for: .seconds(1), scheduler: RunLoop.main, latest: true)
-                .sink { [weak self] value in
-                    self?.animator.updateValue(value)
-                }.store(in: &cancellables)
-
-        case .memory:
-            monitor.$memoryUsage
-                .throttle(for: .seconds(1), scheduler: RunLoop.main, latest: true)
-                .sink { [weak self] value in
-                    self?.animator.updateValue(SpeedSource.memory.normalizeForAnimation(value))
-                }.store(in: &cancellables)
-
-        case .disk:
-            monitor.$diskUsage
-                .throttle(for: .seconds(1), scheduler: RunLoop.main, latest: true)
-                .sink { [weak self] value in
-                    self?.animator.updateValue(SpeedSource.disk.normalizeForAnimation(value))
-                }.store(in: &cancellables)
-        }
-    }
-
-    private func rebindSpeedSource(_ newSource: SpeedSource) {
-        cancellables.removeAll()
-        bindSpeedSource(newSource)
         updateEnabledMetrics()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        updateEnabledMetrics()
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - Update Timer
+    // ═════════════════════════════════════════════════════════
+
+    /// Single timer drives: animator speed + metric text + accessibility.
+    private func startUpdateTimer() {
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+
+                // Drive animator with current metric value
+                let source = Defaults[.speedSource]
+                let rawValue = self.monitor.valueForSource(source)
+                self.animator.updateValue(source == .cpu || source == .gpu
+                    ? rawValue
+                    : source.normalizeForAnimation(rawValue))
+
+                // Update metric text & accessibility (only when integer value changes)
+                let newValue = self.currentMetricValue()
+                let clampedNew = min(newValue, 99.0)
+                if Int(clampedNew) != Int(self.lastDisplayedMetricValue) {
+                    self.lastDisplayedMetricValue = clampedNew
+                    self.applyMetricTextMode()
+                    self.updateAccessibilityLabel()
+                }
+            }
+        }
     }
 
     // ═════════════════════════════════════════════════════════
@@ -234,97 +195,62 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     private func currentMetricValue() -> Double {
-        let source = Defaults[.speedSource]
-        switch source {
-        case .cpu:    return ObservableMonitor.shared.cpuUsage
-        case .gpu:    return ObservableMonitor.shared.gpuUsage
-        case .memory: return ObservableMonitor.shared.memoryUsage
-        case .disk:   return ObservableMonitor.shared.diskUsage
-        }
+        monitor.valueForSource(Defaults[.speedSource])
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Sync Timer
+    // MARK: - Defaults Observers
     // ═════════════════════════════════════════════════════════
 
-    private func startSyncTimer() {
-        syncTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self = self else { return }
-                ObservableMonitor.shared.sync(from: self.monitor)
-
-                let newValue = self.currentMetricValue()
-                let clampedNew = min(newValue, 99.0)
-                if Int(clampedNew) != Int(self.lastDisplayedMetricValue) {
-                    self.lastDisplayedMetricValue = clampedNew
-                    self.applyMetricTextMode()
-                    self.updateAccessibilityLabel()
-                }
-            }
-        }
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // MARK: - Settings Change Observers
-    // ═════════════════════════════════════════════════════════
-
-    private func setupSettingsObservers() {
-        let names: [(Notification.Name, @Sendable (Any?) -> Void)] = [
-            (.speedSourceChanged, { obj in
-                let src = (obj as? String).flatMap(SpeedSource.init(rawValue:))
+    private func setupDefaultsObservers() {
+        defaultsObservers = [
+            Defaults.observe(.skin) { [weak self] change in
                 MainActor.assumeIsolated {
-                    if let src { self.rebindSpeedSource(src) }
-                }
-            }),
-            (.fpsLimitChanged, { obj in
-                let m = obj as? Double
-                MainActor.assumeIsolated {
-                    if let m { self.animator.setFPSLimit(fromMultiplier: m) }
-                }
-            }),
-            (.sampleIntervalChanged, { obj in
-                let s = obj as? TimeInterval
-                MainActor.assumeIsolated {
-                    if let s { self.monitor.reconfigure(sampleInterval: s) }
-                }
-            }),
-            (.skinChanged, { obj in
-                let id = obj as? String
-                MainActor.assumeIsolated {
-                    if let id, let s = self.skinManager.allSkins.first(where: { $0.id == id }) {
+                    guard let self else { return }
+                    if let s = self.skinManager.allSkins.first(where: { $0.id == change.newValue }) {
                         self.skinManager.setSkin(s)
                         self.animator.changeSkin(to: self.skinManager.frames(for: s))
                     }
                 }
-            }),
-            (.themeChanged, { obj in
-                let t = (obj as? String).flatMap(ThemeMode.init(rawValue:))
+            },
+            Defaults.observe(.speedSource) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    if let t {
-                        self.applyTheme(t)
-                        self.animator.changeSkin(to: self.skinManager.frames())
-                    }
-                }
-            }),
-            (.metricTextChanged, { _ in
-                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.updateEnabledMetrics()
                     self.applyMetricTextMode()
+                    self.updateAccessibilityLabel()
                 }
-            }),
-            (.externalSkinPathChanged, { _ in
+            },
+            Defaults.observe(.fpsLimit) { [weak self] change in
                 MainActor.assumeIsolated {
+                    self?.animator.setFPSLimit(change.newValue)
+                }
+            },
+            Defaults.observe(.sampleInterval) { [weak self] change in
+                MainActor.assumeIsolated {
+                    self?.monitor.reconfigure(sampleInterval: change.newValue.seconds)
+                }
+            },
+            Defaults.observe(.theme) { [weak self] change in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.applyTheme(change.newValue)
+                    self.animator.changeSkin(to: self.skinManager.frames())
+                }
+            },
+            Defaults.observe(.showMetricText) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.applyMetricTextMode()
+                }
+            },
+            Defaults.observe(.externalSkinPath) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
                     self.skinManager.reload()
                     self.animator.changeSkin(to: self.skinManager.frames())
                 }
-            }),
+            },
         ]
-
-        for (name, handler) in names {
-            let obs = NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { note in
-                handler(note.object)
-            }
-            settingsObservers.append(obs)
-        }
     }
 
     // ═════════════════════════════════════════════════════════
@@ -333,7 +259,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
     private func updateAccessibilityLabel() {
         let source = Defaults[.speedSource]
-        let value = ObservableMonitor.shared.valueForSource(source)
+        let value = monitor.valueForSource(source)
         let displayValue = min(value, 99.0)
         let text = Defaults[.showMetricText]
             ? "RunCatX \(source.label) \(displayValue.formatted(.number.precision(.fractionLength(0))))%，点击打开设置"

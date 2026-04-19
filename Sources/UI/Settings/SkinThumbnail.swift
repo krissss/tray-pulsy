@@ -1,15 +1,15 @@
 import SwiftUI
-import Defaults
 
 struct SkinThumbnail: View {
     let skin: SkinInfo
     let isSelected: Bool
+    @State private var thumbnailImage: NSImage?
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: 6) {
             Group {
-                if let frame = SkinManager.shared.frame(for: skin.id, frameIndex: 0) {
-                    Image(nsImage: frame)
+                if let image = thumbnailImage {
+                    Image(nsImage: image)
                         .resizable()
                         .interpolation(.none)
                         .aspectRatio(contentMode: .fit)
@@ -19,20 +19,27 @@ struct SkinThumbnail: View {
                         .foregroundStyle(.tertiary)
                 }
             }
-            .frame(width: 36, height: 36)
-            .padding(8)
+            .frame(width: 32, height: 32)
+            .padding(6)
             .glassEffect(.regular, in: .rect(cornerRadius: 8, style: .continuous))
+            .accessibilityHidden(true)
 
             Text(skin.displayName)
-                .font(.caption)
+                .font(.caption2)
                 .foregroundStyle(isSelected ? .primary : .secondary)
         }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 6)
+        .padding(.vertical, 6)
+        .padding(.horizontal, 4)
         .glassEffect(
             isSelected ? .regular.tint(.accentColor.opacity(0.3)) : .regular,
             in: .rect(cornerRadius: 10, style: .continuous)
         )
         .animation(.easeInOut(duration: 0.15), value: isSelected)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(skin.displayName)\(isSelected ? "，已选中" : "")")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .onAppear {
+            thumbnailImage = SkinManager.shared.frame(for: skin.id, frameIndex: 0)
+        }
     }
 }

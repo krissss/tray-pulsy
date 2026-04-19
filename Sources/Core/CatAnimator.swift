@@ -28,13 +28,6 @@ final class CatAnimator {
         forceRestartTimer()
     }
 
-    func setFPSLimit(fromMultiplier multiplier: Double) {
-        let closest = FPSLimit.allCases.min(by: {
-            abs($0.rateMultiplier - multiplier) < abs($1.rateMultiplier - multiplier)
-        })
-        setFPSLimit(closest ?? .fps40)
-    }
-
     func changeSkin(to newFrames: [NSImage]) {
         frames = newFrames
         frameIndex = 0

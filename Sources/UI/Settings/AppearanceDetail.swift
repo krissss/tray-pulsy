@@ -1,26 +1,21 @@
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct AppearanceDetail: View {
     @Default(.skin) private var skin
     @Default(.theme) private var theme
     @Default(.showMetricText) private var showMetricText
     @Default(.externalSkinPath) private var externalSkinPath
-    @State private var skins: [SkinInfo] = SkinManager.shared.allSkins
+    private let skinManager = SkinManager.shared
 
     var body: some View {
         Form {
             Section {
                 GlassEffectContainer {
-                    LazyVGrid(columns: [
-                    GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
-                ], spacing: 10) {
-                    ForEach(skins) { s in
+                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 10)], spacing: 10) {
+                    ForEach(skinManager.allSkins) { s in
                         Button {
-                            withAnimation(.easeInOut(duration: 0.2)) {
-                                skin = s.id
-                            }
-                            postNotification(.skinChanged, object: s.id)
+                            skin = s.id
                         } label: {
                             SkinThumbnail(skin: s, isSelected: skin == s.id)
                         }
@@ -39,19 +34,13 @@ struct AppearanceDetail: View {
                         Text("\(mode.emoji) \(mode.displayName)").tag(mode)
                     }
                 }
-                .onChange(of: theme) {
-                    postNotification(.themeChanged, object: theme.rawValue)
-                }
             } header: {
                 Text("主题")
             }
 
             Section {
                 Toggle(isOn: $showMetricText) {
-                    Label("显示数值文字", systemImage: "text.badge.percent")
-                }
-                .onChange(of: showMetricText) {
-                    postNotification(.metricTextChanged, object: showMetricText)
+                    Label("显示数值文字", systemImage: "text.percent")
                 }
             } header: {
                 Text("菜单栏")
@@ -92,8 +81,6 @@ struct AppearanceDetail: View {
         .formStyle(.grouped)
         .onChange(of: externalSkinPath) {
             SkinManager.shared.reload()
-            skins = SkinManager.shared.allSkins
-            postNotification(.externalSkinPathChanged)
         }
     }
 }

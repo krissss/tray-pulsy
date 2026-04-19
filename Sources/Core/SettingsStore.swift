@@ -83,12 +83,22 @@ enum SpeedSource: String, CaseIterable, Defaults.Serializable {
         }
     }
 
-    var emoji: String {
+    var systemImage: String {
         switch self {
         case .cpu:    return "cpu"
         case .gpu:     return "square.on.square"
         case .memory:  return "memorychip"
         case .disk:    return "internaldrive"
+        }
+    }
+
+    /// The SystemMonitor metric kind that drives animation for this source.
+    var requiredMetric: SystemMonitor.MetricKind {
+        switch self {
+        case .cpu:    return .cpu
+        case .gpu:     return .gpu
+        case .memory:  return .memory
+        case .disk:    return .disk
         }
     }
 

@@ -13,7 +13,7 @@ struct AboutDetail: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("RunCatX")
                             .font(.title2.bold())
-                        Text("版本 0.3.0")
+                        Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -55,6 +55,7 @@ private struct AboutRow: View {
             Image(systemName: icon)
                 .foregroundStyle(.secondary)
                 .frame(width: 20)
+                .accessibilityHidden(true)
             Text(label)
                 .foregroundStyle(.secondary)
             Spacer()

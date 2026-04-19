@@ -1,5 +1,5 @@
-import SwiftUI
 import ServiceManagement
+import SwiftUI
 
 // ═══════════════════════════════════════════════════════════════
 // MARK: - Single Instance Guard (flock-based)

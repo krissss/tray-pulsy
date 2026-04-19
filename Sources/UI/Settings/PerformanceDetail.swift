@@ -1,5 +1,5 @@
-import SwiftUI
 import Defaults
+import SwiftUI
 
 struct PerformanceDetail: View {
     @Default(.speedSource) private var speedSource
@@ -11,11 +11,8 @@ struct PerformanceDetail: View {
             Section {
                 Picker(selection: $speedSource, label: Label("动画驱动", systemImage: "speedometer")) {
                     ForEach(SpeedSource.allCases, id: \.rawValue) { src in
-                        Label(src.label, systemImage: src.emoji).tag(src)
+                        Label(src.label, systemImage: src.systemImage).tag(src)
                     }
-                }
-                .onChange(of: speedSource) {
-                    postNotification(.speedSourceChanged, object: speedSource.rawValue)
                 }
             } header: {
                 Text("速度来源")
@@ -29,9 +26,6 @@ struct PerformanceDetail: View {
                         Text(limit.displayName).tag(limit)
                     }
                 }
-                .onChange(of: fpsLimit) {
-                    postNotification(.fpsLimitChanged, object: fpsLimit.rateMultiplier)
-                }
             } header: {
                 Text("帧率控制")
             } footer: {
@@ -43,9 +37,6 @@ struct PerformanceDetail: View {
                     ForEach(SampleInterval.allCases, id: \.rawValue) { si in
                         Text(si.displayName).tag(si)
                     }
-                }
-                .onChange(of: sampleInterval) {
-                    postNotification(.sampleIntervalChanged, object: sampleInterval.seconds)
                 }
             } header: {
                 Text("数据采样")

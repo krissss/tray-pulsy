@@ -1,6 +1,8 @@
-import Foundation
+import Defaults
 import Darwin
+import Foundation
 import IOKit
+import Observation
 
 // ═══════════════════════════════════════════════════════════════
 // MARK: - System Monitor (CPU + Memory + Disk + GPU)
@@ -8,24 +10,25 @@ import IOKit
 
 /// Unified system metrics collector.
 /// Provides CPU%, memory usage, disk usage, network speed, and GPU utilization.
-final class SystemMonitor: ObservableObject, @unchecked Sendable {
-    @Published private(set) var cpuUsage: Double = 0.0
-    @Published private(set) var memoryUsage: Double = 0.0
-    @Published private(set) var memoryUsedGB: Double = 0.0
-    @Published private(set) var memoryTotalGB: Double = 0.0
-    @Published private(set) var diskUsage: Double = 0.0
-    @Published private(set) var diskUsedGB: Double = 0.0
-    @Published private(set) var diskTotalGB: Double = 0.0
-    @Published private(set) var netSpeedIn: Double = 0.0   // bytes/sec download
-    @Published private(set) var netSpeedOut: Double = 0.0  // bytes/sec upload
-    @Published private(set) var gpuUsage: Double = 0.0     // GPU device utilization %
+@Observable
+final class SystemMonitor: @unchecked Sendable {
+    static let shared = SystemMonitor()
+
+    private(set) var cpuUsage: Double = 0.0
+    private(set) var memoryUsage: Double = 0.0
+    private(set) var memoryUsedGB: Double = 0.0
+    private(set) var memoryTotalGB: Double = 0.0
+    private(set) var diskUsage: Double = 0.0
+    private(set) var diskUsedGB: Double = 0.0
+    private(set) var diskTotalGB: Double = 0.0
+    private(set) var netSpeedIn: Double = 0.0   // bytes/sec download
+    private(set) var netSpeedOut: Double = 0.0  // bytes/sec upload
+    private(set) var gpuUsage: Double = 0.0     // GPU device utilization %
 
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
     private var interval: TimeInterval
 
-    /// Which expensive metrics to read each tick.
-    /// Only the active speed source + all (when settings open) are read.
     var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
 
     enum MetricKind: CaseIterable {
@@ -47,7 +50,7 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     private var cachedGPUService: io_service_t = 0
     private var gpuServiceCached: Bool = false
 
-    init(sampleInterval: TimeInterval = 1.0) { self.interval = sampleInterval }
+    private init() { self.interval = Defaults[.sampleInterval].seconds }
 
     func start() {
         _ = readCPUStats()

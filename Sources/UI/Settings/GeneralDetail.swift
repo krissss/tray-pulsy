@@ -4,7 +4,6 @@ import ServiceManagement
 
 struct GeneralDetail: View {
     @Default(.launchAtStartup) private var launchAtStartup
-    @Default(.sampleInterval) private var sampleInterval
 
     var body: some View {
         Form {
