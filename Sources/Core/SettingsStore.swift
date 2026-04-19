@@ -10,25 +10,28 @@ import Foundation
 
 extension Defaults.Keys {
     // 皮肤
-    static let skin = Key<String>("com.runcatx.skin", default: "cat")
+    static let skin = Key<String>("runcatx_skin", default: "cat")
 
     // 帧率上限
-    static let fpsLimit = Key<FPSLimit>("com.runcatx.fpsLimit", default: .fps40)
+    static let fpsLimit = Key<FPSLimit>("runcatx_fpsLimit", default: .fps40)
 
     // 速度来源
-    static let speedSource = Key<SpeedSource>("com.runcatx.speedSource", default: .cpu)
+    static let speedSource = Key<SpeedSource>("runcatx_speedSource", default: .cpu)
 
     // 开机启动
-    static let launchAtStartup = Key<Bool>("com.runcatx.launchAtStartup", default: false)
+    static let launchAtStartup = Key<Bool>("runcatx_launchAtStartup", default: false)
 
     // 主题
-    static let theme = Key<ThemeMode>("com.runcatx.theme", default: .system)
+    static let theme = Key<ThemeMode>("runcatx_theme", default: .system)
 
     // 菜单栏显示数值文字
-    static let showMetricText = Key<Bool>("com.runcatx.showMetricText", default: false)
+    static let showMetricText = Key<Bool>("runcatx_showMetricText", default: false)
 
     // 采样间隔
-    static let sampleInterval = Key<SampleInterval>("com.runcatx.sampleInterval", default: .oneSec)
+    static let sampleInterval = Key<SampleInterval>("runcatx_sampleInterval", default: .oneSec)
+
+    // 外部皮肤目录
+    static let externalSkinPath = Key<String>("runcatx_externalSkinPath", default: "")
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -82,10 +85,10 @@ enum SpeedSource: String, CaseIterable, Defaults.Serializable {
 
     var emoji: String {
         switch self {
-        case .cpu:    return "🧠"
-        case .gpu:     return "🎮"
-        case .memory:  return "💾"
-        case .disk:    return "💿"
+        case .cpu:    return "cpu"
+        case .gpu:     return "square.on.square"
+        case .memory:  return "memorychip"
+        case .disk:    return "internaldrive"
         }
     }
 

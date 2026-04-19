@@ -24,6 +24,14 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
     private var interval: TimeInterval
 
+    /// Which expensive metrics to read each tick.
+    /// Only the active speed source + all (when settings open) are read.
+    var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
+
+    enum MetricKind: CaseIterable {
+        case cpu, memory, disk, network, gpu
+    }
+
     // CPU state
     private var prevUser: UInt64 = 0
     private var prevSystem: UInt64 = 0
@@ -34,6 +42,10 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     private var prevNetInBytes: UInt64 = 0
     private var prevNetOutBytes: UInt64 = 0
     private var netInitialized: Bool = false
+
+    // Cached GPU IORegistry service (avoids per-tick lookup)
+    private var cachedGPUService: io_service_t = 0
+    private var gpuServiceCached: Bool = false
 
     init(sampleInterval: TimeInterval = 1.0) { self.interval = sampleInterval }
 
@@ -48,7 +60,10 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         timer?.resume()
     }
 
-    func stop() { timer?.cancel(); timer = nil }
+    func stop() {
+        timer?.cancel(); timer = nil
+        releaseGPUService()
+    }
 
     /// Restart the timer with a new sample interval (for runtime config changes).
     func reconfigure(sampleInterval: TimeInterval) {
@@ -58,26 +73,52 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         if wasRunning { start() }
     }
 
-    // MARK: - Tick
+    // MARK: - Tick (only read enabled metrics)
 
     private func tick() {
-        let cpu = readCPUPercent()
-        let mem = readMemoryStats()
-        let disk = readDiskStats()
-        let (netIn, netOut) = readNetSpeed()
+        var cpu: Double = 0
+        var mem = MemInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+        var disk = DiskInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+        var netIn: Double = 0
+        var netOut: Double = 0
+        var gpu: Double = 0
+
+        if enabledMetrics.contains(.cpu) {
+            cpu = readCPUPercent()
+        }
+        if enabledMetrics.contains(.memory) {
+            mem = readMemoryStats()
+        }
+        if enabledMetrics.contains(.disk) {
+            disk = readDiskStats()
+        }
+        if enabledMetrics.contains(.network) {
+            (netIn, netOut) = readNetSpeed()
+        }
+        if enabledMetrics.contains(.gpu) {
+            gpu = readGPUUtilization()
+        }
 
         DispatchQueue.main.async { [weak self] in
             guard let self = self else { return }
-            self.cpuUsage = cpu
-            self.memoryUsage = mem.usagePercent
-            self.memoryUsedGB = mem.usedGB
-            self.memoryTotalGB = mem.totalGB
-            self.diskUsage = disk.usagePercent
-            self.diskUsedGB = disk.usedGB
-            self.diskTotalGB = disk.totalGB
-            self.netSpeedIn = netIn
-            self.netSpeedOut = netOut
-            self.gpuUsage = readGPUUtilization()
+            if self.enabledMetrics.contains(.cpu)    { self.cpuUsage = cpu }
+            if self.enabledMetrics.contains(.memory) {
+                self.memoryUsage = mem.usagePercent
+                self.memoryUsedGB = mem.usedGB
+                self.memoryTotalGB = mem.totalGB
+            }
+            if self.enabledMetrics.contains(.disk) {
+                self.diskUsage = disk.usagePercent
+                self.diskUsedGB = disk.usedGB
+                self.diskTotalGB = disk.totalGB
+            }
+            if self.enabledMetrics.contains(.network) {
+                self.netSpeedIn = netIn
+                self.netSpeedOut = netOut
+            }
+            if self.enabledMetrics.contains(.gpu) {
+                self.gpuUsage = gpu
+            }
         }
     }
 
@@ -152,9 +193,6 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         let pageSize = Double(pageSizeValue > 0 ? pageSizeValue : 4096)
         let total = Double(ProcessInfo.processInfo.physicalMemory)
 
-        // Standard macOS memory accounting (matches Activity Monitor):
-        //   Used = Active + Wired (resident) + Compressed
-        //   This is memory that's actually in use, not just cached.
         let usedPages = UInt64(stats.active_count) +
                         UInt64(stats.wire_count) +
                         UInt64(stats.compressor_page_count)
@@ -195,8 +233,6 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
     // MARK: - Network (getifaddrs)
     // ═════════════════════════════════════════════════════════
 
-    /// Reads total bytes in/out across all physical interfaces (en*, bridge*).
-    /// Returns (inBytes, outBytes) — raw cumulative counters.
     private func readNetBytes() -> (inBytes: UInt64, outBytes: UInt64) {
         var totalIn: UInt64 = 0
         var totalOut: UInt64 = 0
@@ -214,13 +250,11 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
                 continue
             }
             let name = String(cString: namePtr)
-            // Only physical interfaces (en0=en1=..., bridge), skip loopback/tun/utun/pdp/ipsec
             guard name.hasPrefix("en") || name.hasPrefix("bridge") else {
                 iface = current.pointee.ifa_next
                 continue
             }
 
-            // AF_LINK → data is struct if_data with ibytes/obytes
             if let addr = current.pointee.ifa_addr,
                Int32(addr.pointee.sa_family) == AF_LINK,
                let data = current.pointee.ifa_data {
@@ -233,8 +267,6 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         return (totalIn, totalOut)
     }
 
-    /// Computes current network speed in bytes/sec.
-    /// First call seeds the baseline, subsequent calls return delta / interval.
     func readNetSpeed() -> (inBytesPerSec: Double, outBytesPerSec: Double) {
         let (curIn, curOut) = readNetBytes()
 
@@ -251,29 +283,48 @@ final class SystemMonitor: ObservableObject, @unchecked Sendable {
         prevNetInBytes = curIn
         prevNetOutBytes = curOut
 
-        let sec = max(interval, 0.01)  // avoid div-by-zero
+        let sec = max(interval, 0.01)
         return (Double(deltaIn) / sec, Double(deltaOut) / sec)
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - GPU (IORegistry AGXAccelerator PerformanceStatistics)
+    // MARK: - GPU (IORegistry AGXAccelerator — cached service)
     // ═════════════════════════════════════════════════════════
 
-    /// Reads GPU device utilization from IORegistry.
-    /// Looks up the AGXAccelerator service and extracts "Device Utilization %"
-    /// from its PerformanceStatistics dictionary. Returns 0 on failure.
-    private func readGPUUtilization() -> Double {
+    /// Lazily look up and cache the GPU IORegistry service.
+    private func getGPUService() -> io_service_t {
+        if gpuServiceCached { return cachedGPUService }
         let matching = IOServiceMatching("AGXAccelerator")
-        guard let matching else { return 0 }
-
+        guard let matching else {
+            gpuServiceCached = true
+            cachedGPUService = 0
+            return 0
+        }
         var iterator: io_iterator_t = 0
         let kr = IOServiceGetMatchingServices(kIOMainPortDefault, matching, &iterator)
-        guard kr == KERN_SUCCESS else { return 0 }
-        defer { IOObjectRelease(iterator) }
-
+        guard kr == KERN_SUCCESS else {
+            gpuServiceCached = true
+            cachedGPUService = 0
+            return 0
+        }
         let service = IOIteratorNext(iterator)
-        guard service != 0 else { IOObjectRelease(service); return 0 }
-        defer { IOObjectRelease(service) }
+        IOObjectRelease(iterator)
+        cachedGPUService = service
+        gpuServiceCached = true
+        return service
+    }
+
+    private func releaseGPUService() {
+        if gpuServiceCached && cachedGPUService != 0 {
+            IOObjectRelease(cachedGPUService)
+        }
+        cachedGPUService = 0
+        gpuServiceCached = false
+    }
+
+    private func readGPUUtilization() -> Double {
+        let service = getGPUService()
+        guard service != 0 else { return 0 }
 
         var props: Unmanaged<CFMutableDictionary>?
         let pr = IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0)

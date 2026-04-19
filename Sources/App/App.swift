@@ -1,4 +1,3 @@
-import AppKit
 import SwiftUI
 import ServiceManagement
 
@@ -37,10 +36,10 @@ private func releaseInstanceLock() {
 struct RunCatXApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
-    // 窗口由 StatusBarController 手动创建（NavigationSplitView）
-    // 保留 Settings scene 占位以满足 App 协议要求
     var body: some Scene {
-        Settings { EmptyView() }
+        Settings {
+            EmptyView()
+        }
     }
 }
 
@@ -62,9 +61,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         statusBarController?.start()
 
         // ── 4️⃣ Register for launch-at-login ──
-        if #available(macOS 13.0, *) {
-            _ = SMAppService.mainApp
-        }
+        _ = SMAppService.mainApp
 
         // ── 5️⃣ Handle sleep/wake to pause/resume animation ──
         NSWorkspace.shared.notificationCenter.addObserver(

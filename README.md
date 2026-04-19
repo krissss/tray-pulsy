@@ -12,7 +12,7 @@ Inspired by [Kyome22's RunCat](https://github.com/Kyome22/RunCat) and feature-co
 
 | Feature | Description |
 |---------|-------------|
-| 🐱 **5 Skins** | Cat, Dog, Frog, Snail, Bird — each with unique animations |
+| 🐱 **5 Skins** | Cat, Horse, Parrot, Frog, Snail — each with unique animations |
 | ⚡ **Speed Sources** | Animation driven by **CPU** or **Memory** usage |
 | 🎯 **FPS Limits** | Cap at 40 / 30 / 20 / 10 fps to save battery |
 | 🌓 **Theme Support** | System / Light / Dark mode with automatic icon recoloring |
@@ -34,7 +34,7 @@ RunCatX/
 ├── SkinManager.swift      # Skin loading, theme recoloring (CIFilter)
 ├── SystemMonitor.swift    # CPU/Memory/Disk via kernel APIs
 ├── SettingsStore.swift    # UserDefaults persistence
-└── Resources/cat/         # PNG sprite frames
+└── Resources/             # PNG sprite frames (cat, horse, parrot)
 ```
 
 ### Design Philosophy
@@ -56,29 +56,12 @@ interval = 0.2 / clamp(usage / 5.0, 1.0, 20.0)
 
 ## 🛠 Building
 
-**Prerequisites:** Xcode 15+ or Swift 6.0+, macOS 13+
+**Prerequisites:** Xcode 16+ or Swift 6.0+, macOS 13+
 
 ```bash
-# Clone & build
 git clone https://github.com/krissss/RunCatX.git
 cd RunCatX
-swift build
-
-# Run debug binary
-.build/debug/RunCatX
-
-# Build release
 swift build -c release
-
-# Package as .app bundle
-./build-app.sh
-```
-
-### Hot-Reload Development
-
-```bash
-# Requires fswatch (brew install fswatch)
-./dev.sh   # Watches *.swift → auto-builds & restarts
 ```
 
 ## 🎨 Skins
@@ -86,10 +69,10 @@ swift build -c release
 | Skin | Source | Frames | Style |
 |------|--------|--------|-------|
 | 🐱 Cat | Kyome22's original PNG sprites | 5 | Hand-drawn pixel art |
-| 🐶 Dog | Programmatic Core Graphics | 16 | Geometric shapes |
+| 🐴 Horse | RunCat365 official PNG sprites | 5 | Hand-drawn pixel art |
+| 🦜 Parrot | RunCat365 official PNG sprites | 10 | Hand-drawn pixel art |
 | 🐸 Frog | Programmatic Core Graphics | 16 | Geometric shapes |
 | 🐌 Snail | Programmatic Core Graphics | 16 | Geometric shapes |
-| 🐦 Bird | Programmatic Core Graphics | 16 | Geometric shapes |
 
 ## 📸 Screenshots
 

@@ -1,9 +1,9 @@
-// swift-tools-version: 6.0
+// swift-tools-version: 6.3
 import PackageDescription
 
 let package = Package(
     name: "RunCatX",
-    platforms: [.macOS(.v13)],
+    platforms: [.macOS(.v26)],
     products: [
         .executable(name: "RunCatX", targets: ["RunCatX"]),
     ],
@@ -18,11 +18,9 @@ let package = Package(
             dependencies: [
                 .product(name: "Defaults", package: "Defaults"),
             ],
-            path: "RunCatX",
+            path: "Sources",
             resources: [
-                .copy("Resources/cat"),
-                .copy("Resources/horse"),
-                .copy("Resources/parrot"),
+                .copy("Resources"),
             ],
             swiftSettings: [
                 .unsafeFlags(["-cross-module-optimization"], .when(configuration: .release)),

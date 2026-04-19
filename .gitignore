@@ -2,7 +2,7 @@
 .build/
 *.xcodeproj/
 *.xcworkspace/
-swiftpm/
+.swiftpm/
 
 # macOS
 .DS_Store
@@ -11,7 +11,7 @@ swiftpm/
 
 # Swift
 *.swift-sourceinfo
-*.resolved
+Package.resolved
 
 # IDE
 .vscode/
