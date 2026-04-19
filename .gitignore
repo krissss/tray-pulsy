@@ -9,6 +9,9 @@
 *.dSYM.zip
 *.app/
 
+# Icon build artifacts
+*.iconset/
+
 # Swift
 *.swift-sourceinfo
 Package.resolved
