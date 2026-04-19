@@ -27,7 +27,7 @@ final class SystemMonitor: @unchecked Sendable {
     private(set) var gpuUsage: Double = 0.0     // GPU device utilization %
 
     private var timer: DispatchSourceTimer?
-    private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
+    private let queue = DispatchQueue(label: "com.traypulsy.system", qos: .utility)
     private var interval: TimeInterval
     private let pageSize: Double  // cached at init, never changes at runtime
 

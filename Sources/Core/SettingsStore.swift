@@ -2,6 +2,15 @@ import Defaults
 import Foundation
 
 // ═══════════════════════════════════════════════════════════════
+// MARK: - App Constants
+// ═══════════════════════════════════════════════════════════════
+
+enum AppConstants {
+    /// User-visible app name — single source of truth.
+    static let appName = "TrayPulsy"
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MARK: - 类型安全设置 (Defaults)
 // ═══════════════════════════════════════════════════════════════
 //
@@ -10,28 +19,28 @@ import Foundation
 
 extension Defaults.Keys {
     // 皮肤
-    static let skin = Key<String>("runcatx_skin", default: "cat")
+    static let skin = Key<String>("traypulsy_skin", default: "cat")
 
     // 帧率上限
-    static let fpsLimit = Key<FPSLimit>("runcatx_fpsLimit", default: .fps40)
+    static let fpsLimit = Key<FPSLimit>("traypulsy_fpsLimit", default: .fps40)
 
     // 速度来源
-    static let speedSource = Key<SpeedSource>("runcatx_speedSource", default: .cpu)
+    static let speedSource = Key<SpeedSource>("traypulsy_speedSource", default: .cpu)
 
     // 开机启动
-    static let launchAtStartup = Key<Bool>("runcatx_launchAtStartup", default: false)
+    static let launchAtStartup = Key<Bool>("traypulsy_launchAtStartup", default: false)
 
     // 主题
-    static let theme = Key<ThemeMode>("runcatx_theme", default: .system)
+    static let theme = Key<ThemeMode>("traypulsy_theme", default: .system)
 
     // 菜单栏显示数值文字
-    static let showMetricText = Key<Bool>("runcatx_showMetricText", default: false)
+    static let showMetricText = Key<Bool>("traypulsy_showMetricText", default: false)
 
     // 采样间隔
-    static let sampleInterval = Key<SampleInterval>("runcatx_sampleInterval", default: .oneSec)
+    static let sampleInterval = Key<SampleInterval>("traypulsy_sampleInterval", default: .oneSec)
 
     // 外部皮肤目录
-    static let externalSkinPath = Key<String>("runcatx_externalSkinPath", default: "")
+    static let externalSkinPath = Key<String>("traypulsy_externalSkinPath", default: "")
 }
 
 // ═══════════════════════════════════════════════════════════════

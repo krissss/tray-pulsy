@@ -2,10 +2,10 @@
 import PackageDescription
 
 let package = Package(
-    name: "RunCatX",
+    name: "TrayPulsy",
     platforms: [.macOS(.v26)],
     products: [
-        .executable(name: "RunCatX", targets: ["RunCatX"]),
+        .executable(name: "TrayPulsy", targets: ["TrayPulsy"]),
     ],
     dependencies: [
         .package(url: "https://github.com/sindresorhus/Defaults", from: "9.0.0"),
@@ -14,7 +14,7 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "RunCatX",
+            name: "TrayPulsy",
             dependencies: [
                 .product(name: "Defaults", package: "Defaults"),
             ],

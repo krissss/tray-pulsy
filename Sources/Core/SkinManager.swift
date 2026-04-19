@@ -230,6 +230,6 @@ final class SkinManager: @unchecked Sendable {
 // ═══════════════════════════════════════════════════════════════
 
 private func sharedResourceBundle() -> Bundle {
-    if let rb = Bundle(path: Bundle.main.bundlePath + "/RunCatX_RunCatX.bundle") { return rb }
+    if let rb = Bundle(path: Bundle.main.bundlePath + "/TrayPulsy_TrayPulsy.bundle") { return rb }
     return .main
 }

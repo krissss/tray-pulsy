@@ -7,7 +7,7 @@ import SwiftUI
 
 private let instanceLockFile = URL(
     fileURLWithPath: NSTemporaryDirectory()
-).appendingPathComponent("com.runcatx.lock")
+).appendingPathComponent("com.traypulsy.lock")
 
 nonisolated(unsafe) private var instanceLockFD: Int32 = -1
 
@@ -33,7 +33,7 @@ private func releaseInstanceLock() {
 // ═══════════════════════════════════════════════════════════════
 
 @main
-struct RunCatXApp: App {
+struct TrayPulsyApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     var body: some Scene {
@@ -49,7 +49,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // ── 1️⃣ Single instance guard ──
         if !acquireInstanceLock() {
-            print("⚠️ RunCatX is already running")
+            print("⚠️ \(AppConstants.appName) is already running")
             exit(0)
         }
 

@@ -11,7 +11,7 @@ struct AboutDetail: View {
                         .padding(8)
                         .glassEffect(.regular, in: .rect(cornerRadius: 16, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("RunCatX")
+                        Text(AppConstants.appName)
                             .font(.title2.bold())
                         Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")")
                             .font(.subheadline)
@@ -34,7 +34,7 @@ struct AboutDetail: View {
                 Button(role: .destructive) {
                     NSApplication.shared.terminate(nil)
                 } label: {
-                    Label("退出 RunCatX", systemImage: "power")
+                    Label("退出 \(AppConstants.appName)", systemImage: "power")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glass)

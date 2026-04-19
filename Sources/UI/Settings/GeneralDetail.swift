@@ -17,7 +17,7 @@ struct GeneralDetail: View {
             } header: {
                 Text("启动")
             } footer: {
-                Text("登录时自动在菜单栏启动 RunCatX。")
+                Text("登录时自动在菜单栏启动 \(AppConstants.appName)。")
             }
         }
         .formStyle(.grouped)

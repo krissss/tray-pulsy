@@ -119,7 +119,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 window.isReleasedWhenClosed = false
                 window.center()
                 window.delegate = self
-                window.title = "RunCatX 设置"
+                window.title = "\(AppConstants.appName) 设置"
                 window.titlebarAppearsTransparent = true
                 window.titleVisibility = .hidden
                 settingsWindow = window
@@ -265,8 +265,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         let source = Defaults[.speedSource]
         let displayValue = clampedMetricDisplay()
         let text = Defaults[.showMetricText]
-            ? "RunCatX \(source.label) \(displayValue.formatted(.number.precision(.fractionLength(0))))%，点击打开设置"
-            : "RunCatX，点击打开设置"
+            ? "\(AppConstants.appName) \(source.label) \(displayValue.formatted(.number.precision(.fractionLength(0))))%，点击打开设置"
+            : "\(AppConstants.appName)，点击打开设置"
         statusItem.button?.setAccessibilityLabel(text)
     }
 }
