@@ -28,6 +28,7 @@ final class SystemMonitor: @unchecked Sendable {
     private var timer: DispatchSourceTimer?
     private let queue = DispatchQueue(label: "com.runcatx.system", qos: .utility)
     private var interval: TimeInterval
+    private let pageSize: Double  // cached at init, never changes at runtime
 
     var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
 
@@ -35,7 +36,7 @@ final class SystemMonitor: @unchecked Sendable {
         case cpu, memory, disk, network, gpu
     }
 
-    // CPU state
+    // CPU state (host_cpu_load_info tick counters)
     private var prevUser: UInt64 = 0
     private var prevSystem: UInt64 = 0
     private var prevIdle: UInt64 = 0
@@ -50,13 +51,18 @@ final class SystemMonitor: @unchecked Sendable {
     private var cachedGPUService: io_service_t = 0
     private var gpuServiceCached: Bool = false
 
-    private init() { self.interval = Defaults[.sampleInterval].seconds }
+    private init() {
+        self.interval = Defaults[.sampleInterval].seconds
+        var ps: vm_size_t = 0
+        host_page_size(mach_host_self(), &ps)
+        self.pageSize = Double(ps > 0 ? ps : 4096)
+    }
 
     func start() {
-        _ = readCPUStats()
+        _ = readCPUPercent()   // seed initial tick counters
         _ = readMemoryStats()
         _ = readDiskStats()
-        _ = readNetBytes()  // seed initial counters
+        _ = readNetBytes()     // seed initial counters
         timer = DispatchSource.makeTimerSource(queue: queue)
         timer?.schedule(deadline: .now() + interval, repeating: interval)
         timer?.setEventHandler { [weak self] in self?.tick() }
@@ -136,39 +142,33 @@ final class SystemMonitor: @unchecked Sendable {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - CPU (host_processor_info)
+    // MARK: - CPU (host_statistics — zero-allocation aggregate)
     // ═════════════════════════════════════════════════════════
 
     private func readCPUPercent() -> Double {
-        let s = readCPUStats()
-        let dU = s.user - prevUser, dS = s.system - prevSystem
-        let dI = s.idle - prevIdle, dN = s.nice - prevNice
-        prevUser = s.user; prevSystem = s.system
-        prevIdle = s.idle; prevNice = s.nice
+        var load = host_cpu_load_info()
+        var count = mach_msg_type_number_t(
+            MemoryLayout<host_cpu_load_info>.size / MemoryLayout<integer_t>.size
+        )
+        let result = withUnsafeMutablePointer(to: &load) {
+            $0.withMemoryRebound(to: integer_t.self, capacity: Int(count)) {
+                host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, $0, &count)
+            }
+        }
+        guard result == KERN_SUCCESS else { return 0 }
+
+        let user   = UInt64(load.cpu_ticks.0)  // CPU_STATE_USER
+        let system = UInt64(load.cpu_ticks.1)  // CPU_STATE_SYSTEM
+        let idle   = UInt64(load.cpu_ticks.2)  // CPU_STATE_IDLE
+        let nice   = UInt64(load.cpu_ticks.3)  // CPU_STATE_NICE
+
+        let dU = user - prevUser, dS = system - prevSystem
+        let dI = idle - prevIdle, dN = nice - prevNice
+        prevUser = user; prevSystem = system
+        prevIdle = idle; prevNice = nice
         let total = dU + dS + dI + dN
         guard total > 0 else { return 0 }
         return min(100.0, Double(dU + dS + dN) / Double(total) * 100.0)
-    }
-
-    private func readCPUStats() -> (user: UInt64, system: UInt64, idle: UInt64, nice: UInt64) {
-        var infoPtr: processor_info_array_t?
-        var numCPUs: natural_t = 0
-        var infoSize: mach_msg_type_number_t = 0
-        let kerr = host_processor_info(mach_host_self(), PROCESSOR_CPU_LOAD_INFO,
-                                       &numCPUs, &infoPtr, &infoSize)
-        guard kerr == KERN_SUCCESS, let raw = infoPtr else { return (0, 0, 0, 0) }
-        let count = Int(numCPUs)
-        var user: UInt64 = 0, sys: UInt64 = 0, idle: UInt64 = 0, nice: UInt64 = 0
-        for i in 0..<count {
-            let b = i * 4
-            user += UInt64(raw[b + Int(CPU_STATE_USER)])
-            sys   += UInt64(raw[b + Int(CPU_STATE_SYSTEM)])
-            idle  += UInt64(raw[b + Int(CPU_STATE_IDLE)])
-            nice  += UInt64(raw[b + Int(CPU_STATE_NICE)])
-        }
-        let size = vm_size_t(infoSize) * vm_size_t(MemoryLayout<integer_t>.stride)
-        vm_deallocate(mach_task_self_, vm_address_t(bitPattern: raw), size)
-        return (user, sys, idle, nice)
     }
 
     // ═════════════════════════════════════════════════════════
@@ -191,11 +191,7 @@ final class SystemMonitor: @unchecked Sendable {
         }
         guard result == KERN_SUCCESS else { return MemInfo(usagePercent: 0, usedGB: 0, totalGB: 0) }
 
-        var pageSizeValue: vm_size_t = 0
-        let _ = host_page_size(mach_host_self(), &pageSizeValue)
-        let pageSize = Double(pageSizeValue > 0 ? pageSizeValue : 4096)
         let total = Double(ProcessInfo.processInfo.physicalMemory)
-
         let usedPages = UInt64(stats.active_count) +
                         UInt64(stats.wire_count) +
                         UInt64(stats.compressor_page_count)

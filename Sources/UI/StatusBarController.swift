@@ -106,6 +106,16 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
 
         let view = NSHostingView(rootView: SettingsView())
+
+        if let existing = settingsWindow {
+            // Reuse window shell, just refresh SwiftUI content
+            existing.contentView = view
+            existing.makeKeyAndOrderFront(nil)
+            NSApp.activate()
+            updateEnabledMetrics()
+            return
+        }
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 820, height: 560),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -128,6 +138,10 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
     func windowWillClose(_ notification: Notification) {
         updateEnabledMetrics()
+        // Defer SwiftUI teardown to next run loop to avoid layout recursion
+        DispatchQueue.main.async { [weak self] in
+            self?.settingsWindow?.contentView = nil
+        }
     }
 
     // ═════════════════════════════════════════════════════════

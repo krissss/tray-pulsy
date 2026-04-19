@@ -40,7 +40,7 @@ struct AppearanceDetail: View {
 
             Section {
                 Toggle(isOn: $showMetricText) {
-                    Label("显示数值文字", systemImage: "text.percent")
+                    Label("显示数值文字", systemImage: "percent")
                 }
             } header: {
                 Text("菜单栏")
