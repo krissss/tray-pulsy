@@ -7,8 +7,23 @@ struct OverviewDetail: View {
             Section {
                 SkinPreviewSection()
             }
-            Section("系统监控") {
+            Section {
                 MetricsGrid()
+            } header: {
+                HStack {
+                    Text("系统监控")
+                    Spacer()
+                    Button {
+                        guard let url = NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.apple.ActivityMonitor") else { return }
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label("活动监视器", systemImage: "arrow.up.right.square")
+                            .font(.subheadline)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                }
             }
         }
         .formStyle(.grouped)
@@ -140,16 +155,20 @@ private struct MetricsGrid: View {
 
                 HStack(spacing: 8) {
                     Image(systemName: "antenna.radiowaves.left.and.right")
+                        .font(.title3)
                         .foregroundStyle(.secondary)
                         .frame(width: 24)
+                        .accessibilityHidden(true)
                     Text("网络")
+                        .foregroundStyle(.secondary)
                     Spacer()
                     HStack(spacing: 16) {
                         Label(formatSpeed(monitor.netSpeedIn), systemImage: "arrow.down")
+                            .foregroundStyle(.blue)
                         Label(formatSpeed(monitor.netSpeedOut), systemImage: "arrow.up")
+                            .foregroundStyle(.red)
                     }
-                    .font(.system(.subheadline, design: .monospaced))
-                    .foregroundStyle(.secondary)
+                    .font(.system(.body, design: .rounded).monospacedDigit().bold())
                 }
                 .padding(.vertical, 8)
                 .accessibilityElement(children: .combine)
