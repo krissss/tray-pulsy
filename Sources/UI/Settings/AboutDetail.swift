@@ -8,6 +8,8 @@ struct AboutDetail: View {
                     Image(nsImage: NSApp.applicationIconImage)
                         .resizable()
                         .frame(width: 64, height: 64)
+                        .padding(8)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 16, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text("RunCatX")
                             .font(.title2.bold())
@@ -35,6 +37,7 @@ struct AboutDetail: View {
                     Label("退出 RunCatX", systemImage: "power")
                         .frame(maxWidth: .infinity)
                 }
+                .buttonStyle(.glass)
                 .controlSize(.large)
             }
         }

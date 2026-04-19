@@ -44,6 +44,6 @@ struct MetricRow: View {
             .frame(width: 36, height: 36)
         }
         .padding(10)
-        .background(.regularMaterial, in: .rect(cornerRadius: 10, style: .continuous))
+        .glassEffect(.regular, in: .rect(cornerRadius: 10, style: .continuous))
     }
 }

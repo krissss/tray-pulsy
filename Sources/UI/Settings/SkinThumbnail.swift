@@ -21,7 +21,7 @@ struct SkinThumbnail: View {
             }
             .frame(width: 36, height: 36)
             .padding(8)
-            .background(.regularMaterial, in: .rect(cornerRadius: 8, style: .continuous))
+            .glassEffect(.regular, in: .rect(cornerRadius: 8, style: .continuous))
 
             Text(skin.displayName)
                 .font(.caption)
@@ -29,14 +29,10 @@ struct SkinThumbnail: View {
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.12) : .clear)
+        .glassEffect(
+            isSelected ? .regular.tint(.accentColor.opacity(0.3)) : .regular,
+            in: .rect(cornerRadius: 10, style: .continuous)
         )
-        .overlay {
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(isSelected ? Color.accentColor.opacity(0.5) : .clear, lineWidth: 1.5)
-        }
         .animation(.easeInOut(duration: 0.15), value: isSelected)
     }
 }

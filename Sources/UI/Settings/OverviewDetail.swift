@@ -43,7 +43,7 @@ private struct CatPreviewSection: View {
             }
             .frame(width: 56, height: 56)
             .padding(12)
-            .background(.regularMaterial, in: .circle)
+            .glassEffect(.regular, in: .circle)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(SkinManager.shared.allSkins.first(where: { $0.id == skin })?.displayName ?? skin)
@@ -97,7 +97,8 @@ private struct MetricsGrid: View {
     private var monitor = ObservableMonitor.shared
 
     var body: some View {
-        VStack(spacing: 0) {
+        GlassEffectContainer {
+            VStack(spacing: 0) {
             metricRow(icon: SpeedSource.cpu.emoji, name: "CPU", value: monitor.cpuUsage)
             Divider().padding(.leading, 34)
             metricRow(icon: SpeedSource.gpu.emoji, name: "GPU", value: monitor.gpuUsage)
@@ -121,6 +122,7 @@ private struct MetricsGrid: View {
                 .foregroundStyle(.secondary)
             }
             .padding(.vertical, 8)
+            }
         }
     }
 

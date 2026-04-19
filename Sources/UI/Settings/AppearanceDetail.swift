@@ -11,7 +11,8 @@ struct AppearanceDetail: View {
     var body: some View {
         Form {
             Section {
-                LazyVGrid(columns: [
+                GlassEffectContainer {
+                    LazyVGrid(columns: [
                     GridItem(.flexible()), GridItem(.flexible()), GridItem(.flexible())
                 ], spacing: 10) {
                     ForEach(skins) { s in
@@ -27,6 +28,7 @@ struct AppearanceDetail: View {
                     }
                 }
                 .padding(.vertical, 4)
+                }
             } header: {
                 Text("皮肤")
             }

@@ -150,6 +150,8 @@ enum SampleInterval: String, CaseIterable, Defaults.Serializable {
     case oneSec = "1s"
     case twoSec = "2s"
     case threeSec = "3s"
+    case fiveSec = "5s"
+    case tenSec = "10s"
 
     var seconds: TimeInterval {
         switch self {
@@ -157,6 +159,8 @@ enum SampleInterval: String, CaseIterable, Defaults.Serializable {
         case .oneSec:   return 1.0
         case .twoSec:   return 2.0
         case .threeSec: return 3.0
+        case .fiveSec:  return 5.0
+        case .tenSec:   return 10.0
         }
     }
 
@@ -166,6 +170,8 @@ enum SampleInterval: String, CaseIterable, Defaults.Serializable {
         case .oneSec:   return "1 秒"
         case .twoSec:   return "2 秒"
         case .threeSec: return "3 秒"
+        case .fiveSec:  return "5 秒"
+        case .tenSec:   return "10 秒"
         }
     }
 }

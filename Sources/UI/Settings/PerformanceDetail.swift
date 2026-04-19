@@ -11,7 +11,7 @@ struct PerformanceDetail: View {
             Section {
                 Picker(selection: $speedSource, label: Label("动画驱动", systemImage: "speedometer")) {
                     ForEach(SpeedSource.allCases, id: \.rawValue) { src in
-                        Text("\(src.emoji) \(src.label)").tag(src)
+                        Label(src.label, systemImage: src.emoji).tag(src)
                     }
                 }
                 .onChange(of: speedSource) {
