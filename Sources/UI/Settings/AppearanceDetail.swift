@@ -4,7 +4,7 @@ import SwiftUI
 struct AppearanceDetail: View {
     @Default(.skin) private var skin
     @Default(.theme) private var theme
-    @Default(.showMetricText) private var showMetricText
+    @Default(.metricDisplayItems) private var metricDisplayItems
     @Default(.externalSkinPath) private var externalSkinPath
     private let skinManager = SkinManager.shared
 
@@ -39,13 +39,24 @@ struct AppearanceDetail: View {
             }
 
             Section {
-                Toggle(isOn: $showMetricText) {
-                    Label("显示数值文字", systemImage: "percent")
+                ForEach(MetricDisplayItem.allCases) { item in
+                    Toggle(isOn: Binding(
+                        get: { metricDisplayItems.contains(item) },
+                        set: { on in
+                            if on {
+                                metricDisplayItems.insert(item)
+                            } else {
+                                metricDisplayItems.remove(item)
+                            }
+                        }
+                    )) {
+                        Text(item.displayName)
+                    }
                 }
             } header: {
-                Text("菜单栏")
+                Text("菜单栏指标")
             } footer: {
-                Text("在菜单栏图标旁显示当前指标百分比。")
+                Text("勾选要在菜单栏图标旁显示的指标，全部取消即关闭。")
             }
 
             Section {

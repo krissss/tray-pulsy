@@ -33,8 +33,8 @@ extension Defaults.Keys {
     // 主题
     static let theme = Key<ThemeMode>("traypulsy_theme", default: .system)
 
-    // 菜单栏显示数值文字
-    static let showMetricText = Key<Bool>("traypulsy_showMetricText", default: false)
+    // 菜单栏显示哪些指标（空 = 关闭）
+    static let metricDisplayItems = Key<Set<MetricDisplayItem>>("traypulsy_metricDisplayItems", default: [])
 
     // 采样间隔
     static let sampleInterval = Key<SampleInterval>("traypulsy_sampleInterval", default: .oneSec)
@@ -192,5 +192,73 @@ enum SampleInterval: String, CaseIterable, Defaults.Serializable {
         case .fiveSec:  return "5 秒"
         case .tenSec:   return "10 秒"
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Metric Display Items (菜单栏多指标显示)
+// ═══════════════════════════════════════════════════════════════
+
+enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiable {
+    case cpu, gpu, memory, disk, networkDown, networkUp
+
+    var id: String { rawValue }
+
+    var shortLabel: String {
+        switch self {
+        case .cpu:         "cpu"
+        case .gpu:         "gpu"
+        case .memory:      "mem"
+        case .disk:        "disk"
+        case .networkDown: "net↓"
+        case .networkUp:   "net↑"
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .cpu:         "CPU 使用率"
+        case .gpu:         "GPU 使用率"
+        case .memory:      "内存"
+        case .disk:        "磁盘"
+        case .networkDown: "下行网速"
+        case .networkUp:   "上行网速"
+        }
+    }
+
+    var requiredMetric: SystemMonitor.MetricKind {
+        switch self {
+        case .cpu:         return .cpu
+        case .gpu:         return .gpu
+        case .memory:      return .memory
+        case .disk:        return .disk
+        case .networkDown: return .network
+        case .networkUp:   return .network
+        }
+    }
+
+    func formatValue(from monitor: SystemMonitor) -> String {
+        switch self {
+        case .cpu:    String(format: "%2.0f%%", monitor.cpuUsage)
+        case .gpu:    String(format: "%2.0f%%", monitor.gpuUsage)
+        case .memory: String(format: "%2.0f%%", monitor.memoryUsage)
+        case .disk:   String(format: "%2.0f%%", monitor.diskUsage)
+        case .networkDown: Self.formatSpeed(monitor.netSpeedIn)
+        case .networkUp:   Self.formatSpeed(monitor.netSpeedOut)
+        }
+    }
+
+    private static func formatSpeed(_ bytesPerSec: Double) -> String {
+        let raw: String
+        if bytesPerSec >= 1_000_000 {
+            raw = String(format: "%.1fM", bytesPerSec / 1_000_000)
+        } else if bytesPerSec >= 1_000 {
+            raw = String(format: "%.0fK", bytesPerSec / 1_000)
+        } else {
+            raw = String(format: "%.0fB", bytesPerSec)
+        }
+        // Left-pad to 5 chars for stable width (right-aligned)
+        let pad = max(0, 5 - raw.count)
+        return String(repeating: " ", count: pad) + raw
     }
 }

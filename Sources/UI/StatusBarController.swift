@@ -14,7 +14,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private var updateTimer: Timer?
     private var defaultsObservers: [Defaults.Observation] = []
     private var settingsWindow: NSWindow?
-    private var lastDisplayedMetricValue: Double = -1
+    private var lastDisplayedMetricText: String = ""
 
     /// Only read the metrics we actually need.
     private func updateEnabledMetrics() {
@@ -22,7 +22,11 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         if settingsOpen {
             monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
         } else {
-            monitor.enabledMetrics = [Defaults[.speedSource].requiredMetric]
+            var needed = Set([Defaults[.speedSource].requiredMetric])
+            if !Defaults[.metricDisplayItems].isEmpty {
+                needed.formUnion(Defaults[.metricDisplayItems].map(\.requiredMetric))
+            }
+            monitor.enabledMetrics = needed
         }
     }
 
@@ -158,12 +162,18 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 let rawValue = self.monitor.valueForSource(source)
                 self.animator.updateValue(source.normalizeForAnimation(rawValue))
 
-                // Update metric text & accessibility (only when integer value changes)
-                let displayValue = self.clampedMetricDisplay()
-                if Int(displayValue) != Int(self.lastDisplayedMetricValue) {
-                    self.lastDisplayedMetricValue = displayValue
-                    self.applyMetricTextMode()
-                    self.updateAccessibilityLabel()
+                // Update metric text & accessibility (only when values change)
+                if !Defaults[.metricDisplayItems].isEmpty {
+                    let selected = Defaults[.metricDisplayItems]
+                    let values = MetricDisplayItem.allCases
+                        .filter { selected.contains($0) }
+                        .map { $0.formatValue(from: self.monitor) }
+                        .joined(separator: " ")
+                    if values != self.lastDisplayedMetricText {
+                        self.lastDisplayedMetricText = values
+                        self.applyMetricTextMode()
+                        self.updateAccessibilityLabel()
+                    }
                 }
             }
         }
@@ -187,22 +197,51 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     // ═════════════════════════════════════════════════════════
 
     private func applyMetricTextMode() {
-        if Defaults[.showMetricText] {
-            let clamped = clampedMetricDisplay()
-            let value = "\(clamped.formatted(.number.precision(.fractionLength(0))))%"
-            let font = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
-            let attributes: [NSAttributedString.Key: Any] = [.font: font, .kern: -0.3]
-            statusItem.button?.attributedTitle = NSAttributedString(string: value, attributes: attributes)
-            statusItem.length = NSStatusItem.variableLength
-        } else {
+        let selected = Defaults[.metricDisplayItems]
+        if selected.isEmpty {
             statusItem.button?.attributedTitle = NSAttributedString(string: "")
             statusItem.length = NSStatusItem.squareLength
+            return
         }
-    }
 
-    /// Clamp metric to 0-99 for display (fits 2-digit layout).
-    private func clampedMetricDisplay() -> Double {
-        min(monitor.valueForSource(Defaults[.speedSource]), 99.0)
+        let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
+
+        let labelFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .light)
+        let valueFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
+        let gap: CGFloat = 6.0
+
+        // Calculate per-column widths (points) and center positions
+        var centerPositions: [CGFloat] = []
+        var pos: CGFloat = 0
+        for item in items {
+            let labelW = (item.shortLabel as NSString).size(withAttributes: [.font: labelFont]).width
+            let valueW = (item.formatValue(from: monitor) as NSString).size(withAttributes: [.font: valueFont]).width
+            let colW = max(labelW, valueW) + gap
+            pos += colW
+            centerPositions.append(pos - colW / 2)
+        }
+
+        // Tab stops at each column's center point — .center alignment centers text on that point
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.tabStops = centerPositions.map { NSTextTab(textAlignment: .center, location: $0) }
+        paragraphStyle.lineHeightMultiple = 0.7
+
+        // Use \t between columns; leading \t centers first column too
+        let labelLine = "\t" + items.map(\.shortLabel).joined(separator: "\t")
+        let valueLine = "\t" + items.map { $0.formatValue(from: monitor) }.joined(separator: "\t")
+        let fullText = labelLine + "\n" + valueLine
+
+        let attrString = NSMutableAttributedString(string: fullText)
+        let fullRange = NSRange(location: 0, length: (fullText as NSString).length)
+        let newlineRange = (fullText as NSString).range(of: "\n")
+
+        attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: fullRange)
+        attrString.addAttribute(.baselineOffset, value: -5, range: fullRange)
+        attrString.addAttribute(.font, value: labelFont, range: NSRange(location: 0, length: newlineRange.location))
+        attrString.addAttribute(.font, value: valueFont, range: NSRange(location: newlineRange.location + 1, length: (fullText as NSString).length - newlineRange.location - 1))
+
+        statusItem.button?.attributedTitle = attrString
+        statusItem.length = NSStatusItem.variableLength
     }
 
     // ═════════════════════════════════════════════════════════
@@ -244,9 +283,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                     self.animator.changeSkin(to: self.skinManager.frames())
                 }
             },
-            Defaults.observe(.showMetricText) { [weak self] _ in
+            Defaults.observe(.metricDisplayItems) { [weak self] _ in
                 MainActor.assumeIsolated {
-                    self?.applyMetricTextMode()
+                    guard let self else { return }
+                    self.updateEnabledMetrics()
+                    self.applyMetricTextMode()
+                    self.updateAccessibilityLabel()
                 }
             },
             Defaults.observe(.externalSkinPath) { [weak self] _ in
@@ -264,11 +306,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     // ═════════════════════════════════════════════════════════
 
     private func updateAccessibilityLabel() {
-        let source = Defaults[.speedSource]
-        let displayValue = clampedMetricDisplay()
-        let text = Defaults[.showMetricText]
-            ? "\(AppConstants.appName) \(source.label) \(displayValue.formatted(.number.precision(.fractionLength(0))))%，点击打开设置"
-            : "\(AppConstants.appName)，点击打开设置"
+        let text: String
+        if !Defaults[.metricDisplayItems].isEmpty, !lastDisplayedMetricText.isEmpty {
+            text = "\(AppConstants.appName) \(lastDisplayedMetricText)，点击打开设置"
+        } else {
+            text = "\(AppConstants.appName)，点击打开设置"
+        }
         statusItem.button?.setAccessibilityLabel(text)
     }
 }
