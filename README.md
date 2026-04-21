@@ -30,7 +30,7 @@
 
 ## 🎨 皮肤
 
-> 想添加新皮肤？只需将 PNG 帧放入 `Sources/Resources/` 下的文件夹，零代码改动。
+> 想添加新皮肤？只需将 PNG 帧放入 `Sources/Resources/skins/` 下的文件夹，零代码改动。
 
 ## 🙏 致谢
 

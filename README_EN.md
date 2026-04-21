@@ -30,7 +30,7 @@
 
 ## 🎨 Skins
 
-> Want to add a new skin? Just drop PNG frames into a folder under `Sources/Resources/` — zero code changes needed.
+> Want to add a new skin? Just drop PNG frames into a folder under `Sources/Resources/skins/` — zero code changes needed.
 
 ## 🙏 Acknowledgements
 

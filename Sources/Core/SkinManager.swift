@@ -119,6 +119,7 @@ final class SkinManager: @unchecked Sendable {
     private static func bundledSkinPaths() -> [String] {
         let bundle = sharedResourceBundle()
         return [
+            bundle.resourcePath.map { ($0 as NSString).appendingPathComponent("Resources/skins") },
             bundle.resourcePath,
             bundle.resourcePath.map { ($0 as NSString).appendingPathComponent("Resources") }
         ].compactMap { $0 }
