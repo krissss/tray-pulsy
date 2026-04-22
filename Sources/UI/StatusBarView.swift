@@ -12,6 +12,7 @@ final class StatusBarView: NSView {
     private(set) var currentFrame: NSImage?
     private var items: [MetricDisplayItem] = []
     private var values: [String] = []
+    private var colors: [NSColor] = []
     private var columnXPositions: [CGFloat] = []  // cached per-column X start positions
     private var columnWidths: [CGFloat] = []       // cached per-column widths
 
@@ -37,10 +38,11 @@ final class StatusBarView: NSView {
     }
 
     /// Call when selected metric items change. Recalculates column layout.
-    func setItems(_ newItems: [MetricDisplayItem], sampleValues: [String]) {
+    func setItems(_ newItems: [MetricDisplayItem], sampleValues: [String], colors: [NSColor]) {
         guard newItems.map(\.rawValue) != items.map(\.rawValue) else { return }
         items = newItems
         values = sampleValues
+        self.colors = colors
         recalculateLayout()
         rebuildAttributedStringCache()
         updateStatusItemLength()
@@ -48,9 +50,10 @@ final class StatusBarView: NSView {
     }
 
     /// Call every tick with new values. Triggers redraw only if values changed.
-    func updateValues(_ newValues: [String]) {
-        guard newValues != values else { return }
+    func updateValues(_ newValues: [String], colors: [NSColor]) {
+        guard newValues != values || colors != self.colors else { return }
         values = newValues
+        self.colors = colors
         rebuildAttributedStringCache()
         needsDisplay = true
     }
@@ -59,6 +62,7 @@ final class StatusBarView: NSView {
     func clear() {
         items = []
         values = []
+        colors = []
         columnXPositions = []
         columnWidths = []
         cachedLabels = []
@@ -113,7 +117,7 @@ final class StatusBarView: NSView {
 
             let valueStr = NSAttributedString(
                 string: values.indices.contains(i) ? values[i] : "",
-                attributes: [.font: valueFont, .foregroundColor: NSColor.textColor]
+                attributes: [.font: valueFont, .foregroundColor: colors.indices.contains(i) ? colors[i] : .textColor]
             )
             let valueW = valueStr.size().width
             vals.append(valueStr)

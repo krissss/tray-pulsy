@@ -2,7 +2,8 @@ import SwiftUI
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case overview    = "overview"
-    case appearance  = "appearance"
+    case skin        = "skin"
+    case metrics     = "metrics"
     case performance = "performance"
     case general     = "general"
     case about       = "about"

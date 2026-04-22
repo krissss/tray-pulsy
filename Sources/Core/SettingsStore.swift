@@ -1,3 +1,4 @@
+import AppKit
 import Defaults
 import Foundation
 
@@ -41,6 +42,9 @@ extension Defaults.Keys {
 
     // 外部皮肤目录
     static let externalSkinPath = Key<String>("traypulsy_externalSkinPath", default: "")
+
+    // 颜色阈值
+    static let thresholds = Key<ThresholdConfig>("traypulsy_thresholds", default: .defaults)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -226,6 +230,28 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         }
     }
 
+    var overviewName: String {
+        switch self {
+        case .cpu:         "CPU"
+        case .gpu:         "GPU"
+        case .memory:      "内存"
+        case .disk:        "磁盘"
+        case .networkDown: "下行"
+        case .networkUp:   "上行"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .cpu:         "cpu"
+        case .gpu:         "square.on.square"
+        case .memory:      "memorychip"
+        case .disk:        "internaldrive"
+        case .networkDown: "arrow.down"
+        case .networkUp:   "arrow.up"
+        }
+    }
+
     var requiredMetric: SystemMonitor.MetricKind {
         switch self {
         case .cpu:         return .cpu
@@ -261,4 +287,79 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         let pad = max(0, 5 - raw.count)
         return String(repeating: " ", count: pad) + raw
     }
+
+    /// Raw numeric value from monitor (for color threshold computation).
+    func rawValue(from monitor: SystemMonitor) -> Double {
+        switch self {
+        case .cpu:         return monitor.cpuUsage
+        case .gpu:         return monitor.gpuUsage
+        case .memory:      return monitor.memoryUsage
+        case .disk:        return monitor.diskUsage
+        case .networkDown: return monitor.netSpeedIn
+        case .networkUp:   return monitor.netSpeedOut
+        }
+    }
+
+    /// Resolve color based on raw value and threshold config.
+    func color(forRawValue value: Double, thresholds: ThresholdConfig) -> NSColor {
+        let t: MetricThresholds
+        switch self {
+        case .cpu:         t = thresholds.cpu
+        case .gpu:         t = thresholds.gpu
+        case .memory:      t = thresholds.memory
+        case .disk:        t = thresholds.disk
+        case .networkDown: t = thresholds.networkDown
+        case .networkUp:   t = thresholds.networkUp
+        }
+        if value >= t.critical { return .systemRed }
+        if value >= t.warning  { return .systemYellow }
+        return .textColor
+    }
+
+    /// Key path for accessing this metric's thresholds in ThresholdConfig.
+    var thresholdKeyPath: WritableKeyPath<ThresholdConfig, MetricThresholds> {
+        switch self {
+        case .cpu:         \.cpu
+        case .gpu:         \.gpu
+        case .memory:      \.memory
+        case .disk:        \.disk
+        case .networkDown: \.networkDown
+        case .networkUp:   \.networkUp
+        }
+    }
+
+    /// Unit label for the settings UI.
+    var unitLabel: String {
+        switch self {
+        case .cpu, .gpu, .memory, .disk: return "%"
+        case .networkDown, .networkUp:   return "B/s"
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Color Thresholds
+// ═══════════════════════════════════════════════════════════════
+
+struct MetricThresholds: Codable, Defaults.Serializable, Sendable {
+    var warning: Double
+    var critical: Double
+}
+
+struct ThresholdConfig: Codable, Defaults.Serializable, Sendable {
+    var cpu: MetricThresholds
+    var gpu: MetricThresholds
+    var memory: MetricThresholds
+    var disk: MetricThresholds
+    var networkDown: MetricThresholds
+    var networkUp: MetricThresholds
+
+    static let defaults = ThresholdConfig(
+        cpu: .init(warning: 70, critical: 90),
+        gpu: .init(warning: 70, critical: 90),
+        memory: .init(warning: 80, critical: 95),
+        disk: .init(warning: 80, critical: 95),
+        networkDown: .init(warning: 1_000_000, critical: 10_000_000),
+        networkUp: .init(warning: 500_000, critical: 5_000_000)
+    )
 }

@@ -101,21 +101,21 @@ private struct SkinPreviewSection: View {
 
 // MARK: - Metric Row View
 
-private struct MetricRowView: View {
-    let icon: String
-    let name: String
-    let value: Double
+private struct OverviewMetricRow: View {
+    let item: MetricDisplayItem
+    let value: String
+    let color: NSColor
     var detail: String? = nil
 
     var body: some View {
         HStack(spacing: 8) {
-            Image(systemName: icon)
+            Image(systemName: item.icon)
                 .font(.title3)
                 .foregroundStyle(.secondary)
                 .frame(width: 24)
                 .accessibilityHidden(true)
 
-            Text(name)
+            Text(item.overviewName)
                 .foregroundStyle(.secondary)
             Spacer()
 
@@ -125,13 +125,13 @@ private struct MetricRowView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            Text("\(value, specifier: "%.1f")%")
+            Text(value)
                 .font(.system(.body, design: .rounded).monospacedDigit().bold())
-                .foregroundStyle(value > 80 ? .red : value > 50 ? .orange : .primary)
+                .foregroundStyle(Color(color))
         }
         .padding(.vertical, 8)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(name)
+        .accessibilityLabel("\(item.overviewName) \(value)")
     }
 }
 
@@ -139,18 +139,21 @@ private struct MetricRowView: View {
 
 private struct MetricsGrid: View {
     private var monitor = SystemMonitor.shared
+    @Default(.thresholds) private var thresholds
     @State private var tick = 0
 
     var body: some View {
         GlassEffectContainer {
             VStack(spacing: 0) {
-                MetricRowView(icon: SpeedSource.cpu.systemImage, name: "CPU", value: monitor.cpuUsage)
-                Divider().padding(.leading, 34)
-                MetricRowView(icon: SpeedSource.gpu.systemImage, name: "GPU", value: monitor.gpuUsage)
-                Divider().padding(.leading, 34)
-                MetricRowView(icon: SpeedSource.memory.systemImage, name: "内存", value: monitor.memoryUsage, detail: memoryDetail)
-                Divider().padding(.leading, 34)
-                MetricRowView(icon: SpeedSource.disk.systemImage, name: "磁盘", value: monitor.diskUsage)
+                ForEach(Array(percentItems.enumerated()), id: \.element) { index, item in
+                    if index > 0 { Divider().padding(.leading, 34) }
+                    OverviewMetricRow(
+                        item: item,
+                        value: item.formatValue(from: monitor).trimmingCharacters(in: .whitespaces),
+                        color: item.color(forRawValue: item.rawValue(from: monitor), thresholds: thresholds),
+                        detail: item == .memory ? memoryDetail : nil
+                    )
+                }
                 Divider().padding(.leading, 34)
 
                 HStack(spacing: 8) {
@@ -163,21 +166,26 @@ private struct MetricsGrid: View {
                         .foregroundStyle(.secondary)
                     Spacer()
                     HStack(spacing: 16) {
-                        Label(formatSpeed(monitor.netSpeedIn), systemImage: "arrow.down")
-                            .foregroundStyle(.blue)
-                        Label(formatSpeed(monitor.netSpeedOut), systemImage: "arrow.up")
-                            .foregroundStyle(.red)
+                        let downItem = MetricDisplayItem.networkDown
+                        let upItem = MetricDisplayItem.networkUp
+                        Label(downItem.formatValue(from: monitor).trimmingCharacters(in: .whitespaces) + "/s", systemImage: "arrow.down")
+                            .foregroundStyle(Color(downItem.color(forRawValue: downItem.rawValue(from: monitor), thresholds: thresholds)))
+                        Label(upItem.formatValue(from: monitor).trimmingCharacters(in: .whitespaces) + "/s", systemImage: "arrow.up")
+                            .foregroundStyle(Color(upItem.color(forRawValue: upItem.rawValue(from: monitor), thresholds: thresholds)))
                     }
                     .font(.system(.body, design: .rounded).monospacedDigit().bold())
                 }
                 .padding(.vertical, 8)
                 .accessibilityElement(children: .combine)
-                .accessibilityLabel("网络 下载\(formatSpeed(monitor.netSpeedIn)) 上传\(formatSpeed(monitor.netSpeedOut))")
             }
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             tick &+= 1
         }
+    }
+
+    private var percentItems: [MetricDisplayItem] {
+        [.cpu, .gpu, .memory, .disk]
     }
 
     private var memoryDetail: String {
@@ -186,15 +194,5 @@ private struct MetricsGrid: View {
         let used = formatter.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))
         let total = formatter.string(fromByteCount: Int64(monitor.memoryTotalGB * 1_073_741_824))
         return "\(used) / \(total)"
-    }
-
-    private static let speedFormatter: ByteCountFormatter = {
-        let f = ByteCountFormatter()
-        f.countStyle = .file
-        return f
-    }()
-
-    private func formatSpeed(_ bytesPerSec: Double) -> String {
-        Self.speedFormatter.string(fromByteCount: Int64(bytesPerSec)) + "/s"
     }
 }

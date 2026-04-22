@@ -41,10 +41,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
             self?.statusBarView.setFrameImage(image)
         }
 
-        // 3. Apply theme FIRST (invalidates skin cache before loading frames)
-        applyTheme(Defaults[.theme])
-
-        // 4. Apply saved skin (after theme so frames use correct appearance)
+        // 3. Apply saved skin
         let savedSkin = skinManager.skin(for: Defaults[.skin])
         skinManager.setSkin(savedSkin)
         animator.changeSkin(to: skinManager.frames(for: savedSkin))
@@ -181,34 +178,21 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 } else {
                     let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
                     let values = items.map { $0.formatValue(from: self.monitor) }
+                    let thresholds = Defaults[.thresholds]
+                    let colors = items.map { $0.color(forRawValue: $0.rawValue(from: self.monitor), thresholds: thresholds) }
                     let joined = values.joined(separator: " ")
                     if joined != self.lastDisplayedMetricText {
                         self.lastDisplayedMetricText = joined
-                        self.statusBarView.setItems(items, sampleValues: values)
-                        self.statusBarView.updateValues(values)
+                        self.statusBarView.setItems(items, sampleValues: values, colors: colors)
+                        self.statusBarView.updateValues(values, colors: colors)
                         self.syncStatusItemLength()
                         self.updateAccessibilityLabel()
                     } else {
-                        // Even if joined text is same, update values for display
-                        // (setItems only recalculates layout when items change)
-                        self.statusBarView.updateValues(values)
+                        self.statusBarView.updateValues(values, colors: colors)
                     }
                 }
             }
         }
-    }
-
-    // ═════════════════════════════════════════════════════════
-    // MARK: - Theme
-    // ═════════════════════════════════════════════════════════
-
-    private func applyTheme(_ mode: ThemeMode) {
-        skinManager.setTheme(mode)
-
-        guard let dark = mode.isDarkOverride else {
-            NSApp.appearance = nil; return
-        }
-        NSApp.appearance = NSAppearance(named: dark ? .darkAqua : .aqua)
     }
 
     // ═════════════════════════════════════════════════════════
@@ -241,14 +225,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                     self?.monitor.reconfigure(sampleInterval: change.newValue.seconds)
                 }
             },
-            Defaults.observe(.theme) { [weak self] change in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.applyTheme(change.newValue)
-                    self.animator.changeSkin(to: self.skinManager.frames())
-                    self.statusBarView.needsDisplay = true  // redraw for dark/light text colors
-                }
-            },
             Defaults.observe(.metricDisplayItems) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
@@ -261,6 +237,11 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                     guard let self else { return }
                     self.skinManager.reload()
                     self.animator.changeSkin(to: self.skinManager.frames())
+                }
+            },
+            Defaults.observe(.thresholds) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.refreshMetricDisplay()
                 }
             },
         ]
@@ -282,9 +263,11 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
         let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
         let values = items.map { $0.formatValue(from: monitor) }
+        let thresholds = Defaults[.thresholds]
+        let colors = items.map { $0.color(forRawValue: $0.rawValue(from: monitor), thresholds: thresholds) }
         lastDisplayedMetricText = values.joined(separator: " ")
-        statusBarView.setItems(items, sampleValues: values)
-        statusBarView.updateValues(values)
+        statusBarView.setItems(items, sampleValues: values, colors: colors)
+        statusBarView.updateValues(values, colors: colors)
         syncStatusItemLength()
         updateAccessibilityLabel()
     }
