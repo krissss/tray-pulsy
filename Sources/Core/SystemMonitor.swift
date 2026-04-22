@@ -30,6 +30,7 @@ final class SystemMonitor: @unchecked Sendable {
     private let queue = DispatchQueue(label: "com.traypulsy.system", qos: .utility)
     private var interval: TimeInterval
     private let pageSize: Double  // cached at init, never changes at runtime
+    private let totalMemory: Double  // cached at init — physicalMemory never changes
 
     var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
 
@@ -52,6 +53,11 @@ final class SystemMonitor: @unchecked Sendable {
     private var prevNetOutBytes: UInt64 = 0
     private var netInitialized: Bool = false
 
+    // Disk throttling — capacity changes slowly, re-read every ~30s
+    private var lastDiskResult = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+    private var lastDiskTick: Int = 0
+    private static let diskThrottleTicks: Int = 30  // at 1s interval ≈ 30 seconds
+
     // Cached GPU IORegistry service (avoids per-tick lookup)
     private var cachedGPUService: io_service_t = 0
     private var gpuServiceCached: Bool = false
@@ -61,12 +67,13 @@ final class SystemMonitor: @unchecked Sendable {
         var ps: vm_size_t = 0
         host_page_size(mach_host_self(), &ps)
         self.pageSize = Double(ps > 0 ? ps : 4096)
+        self.totalMemory = Double(ProcessInfo.processInfo.physicalMemory)
     }
 
     func start() {
         _ = readCPUPercent()   // seed initial tick counters
         _ = readMemoryStats()
-        _ = readDiskStats()
+        lastDiskResult = readDiskStats()
         _ = readNetBytes()     // seed initial counters
         timer = DispatchSource.makeTimerSource(queue: queue)
         timer?.schedule(deadline: .now() + interval, repeating: interval)
@@ -100,7 +107,14 @@ final class SystemMonitor: @unchecked Sendable {
 
         if metrics.contains(.cpu)    { cpu = readCPUPercent() }
         if metrics.contains(.memory) { mem = readMemoryStats() }
-        if metrics.contains(.disk)   { disk = readDiskStats() }
+        if metrics.contains(.disk) {
+            lastDiskTick += 1
+            if lastDiskTick >= Self.diskThrottleTicks {
+                lastDiskResult = readDiskStats()
+                lastDiskTick = 0
+            }
+            disk = lastDiskResult
+        }
         if metrics.contains(.network) { (netIn, netOut) = readNetSpeed() }
         if metrics.contains(.gpu)    { gpu = readGPUUtilization() }
 
@@ -181,7 +195,7 @@ final class SystemMonitor: @unchecked Sendable {
         }
         guard result == KERN_SUCCESS else { return StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0) }
 
-        let total = Double(ProcessInfo.processInfo.physicalMemory)
+        let total = totalMemory
         let free = Double(stats.free_count) * pageSize
         let purgeable = Double(stats.purgeable_count) * pageSize
         let external = Double(stats.external_page_count) * pageSize
@@ -231,8 +245,11 @@ final class SystemMonitor: @unchecked Sendable {
                 iface = current.pointee.ifa_next
                 continue
             }
-            let name = String(cString: namePtr)
-            guard name.hasPrefix("en") || name.hasPrefix("bridge") else {
+            // Compare raw C bytes — avoid Swift String allocation per interface
+            let b0 = namePtr.pointee, b1 = (namePtr + 1).pointee
+            let isEN = b0 == UInt8(ascii: "e") && b1 == UInt8(ascii: "n")
+            let isBridge = b0 == UInt8(ascii: "b") && b1 == UInt8(ascii: "r")
+            guard isEN || isBridge else {
                 iface = current.pointee.ifa_next
                 continue
             }
@@ -308,13 +325,10 @@ final class SystemMonitor: @unchecked Sendable {
         let service = getGPUService()
         guard service != 0 else { return 0 }
 
-        var props: Unmanaged<CFMutableDictionary>?
-        let pr = IORegistryEntryCreateCFProperties(service, &props, kCFAllocatorDefault, 0)
-        guard pr == KERN_SUCCESS, let dict = props?.takeRetainedValue() as? [String: Any] else {
-            return 0
-        }
-
-        guard let perfStats = dict["PerformanceStatistics"] as? [String: Any],
+        // Read only the "PerformanceStatistics" key instead of the full property dictionary
+        let key = "PerformanceStatistics" as CFString
+        guard let perfObj = IORegistryEntryCreateCFProperty(service, key, kCFAllocatorDefault, 0),
+              let perfStats = perfObj.takeRetainedValue() as? [String: Any],
               let util = perfStats["Device Utilization %"] as? Int else {
             return 0
         }

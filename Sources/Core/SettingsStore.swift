@@ -248,7 +248,7 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         }
     }
 
-    private static func formatSpeed(_ bytesPerSec: Double) -> String {
+    static func formatSpeed(_ bytesPerSec: Double) -> String {
         let raw: String
         if bytesPerSec >= 1_000_000 {
             raw = String(format: "%.1fM", bytesPerSec / 1_000_000)

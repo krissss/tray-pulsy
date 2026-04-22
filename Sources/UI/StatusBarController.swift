@@ -14,6 +14,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private var updateTimer: Timer?
     private var defaultsObservers: [Defaults.Observation] = []
     private var settingsWindow: NSWindow?
+    private let statusBarView = StatusBarView()
     private var lastDisplayedMetricText: String = ""
 
     /// Only read the metrics we actually need.
@@ -35,9 +36,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         let initialFrames = skinManager.frames()
         animator = TrayAnimator(initialFrames: initialFrames)
 
-        // 2. Wire direct callback — ONLY update image per frame (cheap)
+        // 2. Wire direct callback — update StatusBarView's frame image
         animator.onFrameUpdate = { [weak self] image in
-            self?.statusItem.button?.image = image
+            self?.statusBarView.setFrameImage(image)
         }
 
         // 3. Apply theme FIRST (invalidates skin cache before loading frames)
@@ -91,11 +92,17 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         button.target = self
         button.action = #selector(statusItemClicked)
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
-        button.imageHugsTitle = true
-        button.imagePosition = .imageLeft
+        button.image = NSImage()  // clear native image — StatusBarView handles all drawing
+        button.addSubview(statusBarView)
+        syncStatusItemLength()
     }
 
     @objc private func statusItemClicked() { openSettings() }
+
+    /// Keep NSStatusItem.length in sync with StatusBarView's required width.
+    private func syncStatusItemLength() {
+        statusItem.length = statusBarView.requiredWidth
+    }
 
     // ═════════════════════════════════════════════════════════
     // MARK: - Settings Window
@@ -163,16 +170,28 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 self.animator.updateValue(source.normalizeForAnimation(rawValue))
 
                 // Update metric text & accessibility (only when values change)
-                if !Defaults[.metricDisplayItems].isEmpty {
-                    let selected = Defaults[.metricDisplayItems]
-                    let values = MetricDisplayItem.allCases
-                        .filter { selected.contains($0) }
-                        .map { $0.formatValue(from: self.monitor) }
-                        .joined(separator: " ")
-                    if values != self.lastDisplayedMetricText {
-                        self.lastDisplayedMetricText = values
-                        self.applyMetricTextMode()
+                let selected = Defaults[.metricDisplayItems]
+                if selected.isEmpty {
+                    if !self.lastDisplayedMetricText.isEmpty {
+                        self.lastDisplayedMetricText = ""
+                        self.statusBarView.clear()
+                        self.syncStatusItemLength()
                         self.updateAccessibilityLabel()
+                    }
+                } else {
+                    let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
+                    let values = items.map { $0.formatValue(from: self.monitor) }
+                    let joined = values.joined(separator: " ")
+                    if joined != self.lastDisplayedMetricText {
+                        self.lastDisplayedMetricText = joined
+                        self.statusBarView.setItems(items, sampleValues: values)
+                        self.statusBarView.updateValues(values)
+                        self.syncStatusItemLength()
+                        self.updateAccessibilityLabel()
+                    } else {
+                        // Even if joined text is same, update values for display
+                        // (setItems only recalculates layout when items change)
+                        self.statusBarView.updateValues(values)
                     }
                 }
             }
@@ -193,58 +212,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Metric Text
-    // ═════════════════════════════════════════════════════════
-
-    private func applyMetricTextMode() {
-        let selected = Defaults[.metricDisplayItems]
-        if selected.isEmpty {
-            statusItem.button?.attributedTitle = NSAttributedString(string: "")
-            statusItem.length = NSStatusItem.squareLength
-            return
-        }
-
-        let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
-
-        let labelFont = NSFont.monospacedSystemFont(ofSize: 9, weight: .light)
-        let valueFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .medium)
-        let gap: CGFloat = 6.0
-
-        // Calculate per-column widths (points) and center positions
-        var centerPositions: [CGFloat] = []
-        var pos: CGFloat = 0
-        for item in items {
-            let labelW = (item.shortLabel as NSString).size(withAttributes: [.font: labelFont]).width
-            let valueW = (item.formatValue(from: monitor) as NSString).size(withAttributes: [.font: valueFont]).width
-            let colW = max(labelW, valueW) + gap
-            pos += colW
-            centerPositions.append(pos - colW / 2)
-        }
-
-        // Tab stops at each column's center point — .center alignment centers text on that point
-        let paragraphStyle = NSMutableParagraphStyle()
-        paragraphStyle.tabStops = centerPositions.map { NSTextTab(textAlignment: .center, location: $0) }
-        paragraphStyle.lineHeightMultiple = 0.7
-
-        // Use \t between columns; leading \t centers first column too
-        let labelLine = "\t" + items.map(\.shortLabel).joined(separator: "\t")
-        let valueLine = "\t" + items.map { $0.formatValue(from: monitor) }.joined(separator: "\t")
-        let fullText = labelLine + "\n" + valueLine
-
-        let attrString = NSMutableAttributedString(string: fullText)
-        let fullRange = NSRange(location: 0, length: (fullText as NSString).length)
-        let newlineRange = (fullText as NSString).range(of: "\n")
-
-        attrString.addAttribute(.paragraphStyle, value: paragraphStyle, range: fullRange)
-        attrString.addAttribute(.baselineOffset, value: -5, range: fullRange)
-        attrString.addAttribute(.font, value: labelFont, range: NSRange(location: 0, length: newlineRange.location))
-        attrString.addAttribute(.font, value: valueFont, range: NSRange(location: newlineRange.location + 1, length: (fullText as NSString).length - newlineRange.location - 1))
-
-        statusItem.button?.attributedTitle = attrString
-        statusItem.length = NSStatusItem.variableLength
-    }
-
-    // ═════════════════════════════════════════════════════════
     // MARK: - Defaults Observers
     // ═════════════════════════════════════════════════════════
 
@@ -262,8 +229,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     self.updateEnabledMetrics()
-                    self.applyMetricTextMode()
-                    self.updateAccessibilityLabel()
                 }
             },
             Defaults.observe(.fpsLimit) { [weak self] change in
@@ -281,14 +246,14 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                     guard let self else { return }
                     self.applyTheme(change.newValue)
                     self.animator.changeSkin(to: self.skinManager.frames())
+                    self.statusBarView.needsDisplay = true  // redraw for dark/light text colors
                 }
             },
             Defaults.observe(.metricDisplayItems) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
                     self.updateEnabledMetrics()
-                    self.applyMetricTextMode()
-                    self.updateAccessibilityLabel()
+                    self.refreshMetricDisplay()
                 }
             },
             Defaults.observe(.externalSkinPath) { [weak self] _ in
@@ -302,8 +267,27 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Accessibility
+    // MARK: - Helpers
     // ═════════════════════════════════════════════════════════
+
+    /// Force-refresh metric display (called by observers when settings change).
+    private func refreshMetricDisplay() {
+        let selected = Defaults[.metricDisplayItems]
+        guard !selected.isEmpty else {
+            lastDisplayedMetricText = ""
+            statusBarView.clear()
+            syncStatusItemLength()
+            updateAccessibilityLabel()
+            return
+        }
+        let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
+        let values = items.map { $0.formatValue(from: monitor) }
+        lastDisplayedMetricText = values.joined(separator: " ")
+        statusBarView.setItems(items, sampleValues: values)
+        statusBarView.updateValues(values)
+        syncStatusItemLength()
+        updateAccessibilityLabel()
+    }
 
     private func updateAccessibilityLabel() {
         let text: String
