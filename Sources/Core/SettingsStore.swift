@@ -43,6 +43,9 @@ extension Defaults.Keys {
     // 外部皮肤目录
     static let externalSkinPath = Key<String>("traypulsy_externalSkinPath", default: "")
 
+    // 语言
+    static let language = Key<AppLanguage>("traypulsy_language", default: .system)
+
     // 颜色阈值
     static let thresholds = Key<ThresholdConfig>("traypulsy_thresholds", default: .defaults)
 }
@@ -59,10 +62,10 @@ enum FPSLimit: String, CaseIterable, Defaults.Serializable {
 
     var displayName: String {
         switch self {
-        case .fps10: return "10 FPS"
-        case .fps20: return "20 FPS"
-        case .fps30: return "30 FPS"
-        case .fps40: return "40 FPS"
+        case .fps10: return L10n.fps10
+        case .fps20: return L10n.fps20
+        case .fps30: return L10n.fps30
+        case .fps40: return L10n.fps40
         }
     }
 
@@ -89,10 +92,10 @@ enum SpeedSource: String, CaseIterable, Defaults.Serializable {
 
     var label: String {
         switch self {
-        case .cpu:    return "CPU"
-        case .gpu:     return "GPU"
-        case .memory:  return "内存"
-        case .disk:    return "磁盘"
+        case .cpu:    return L10n.speedCpu
+        case .gpu:     return L10n.speedGpu
+        case .memory:  return L10n.speedMemory
+        case .disk:    return L10n.speedDisk
         }
     }
 
@@ -141,9 +144,9 @@ enum ThemeMode: String, CaseIterable, Defaults.Serializable {
 
     var displayName: String {
         switch self {
-        case .system: return "跟随系统"
-        case .light:  return "浅色"
-        case .dark:   return "深色"
+        case .system: return L10n.themeSystem
+        case .light:  return L10n.themeLight
+        case .dark:   return L10n.themeDark
         }
     }
 
@@ -161,6 +164,29 @@ enum ThemeMode: String, CaseIterable, Defaults.Serializable {
         case .light:  return false
         case .dark:   return true
         }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - App Language
+// ═══════════════════════════════════════════════════════════════
+
+enum AppLanguage: String, CaseIterable, Defaults.Serializable {
+    case system = "system"
+    case en     = "en"
+    case zhHans = "zh-Hans"
+
+    var displayName: String {
+        switch self {
+        case .system: return L10n.generalLanguageSystem
+        case .en:     return "English"
+        case .zhHans: return "中文"
+        }
+    }
+
+    /// Reload L10n strings. L10n reads Defaults[.language] directly.
+    func apply() {
+        L10n.reload()
     }
 }
 
@@ -189,12 +215,12 @@ enum SampleInterval: String, CaseIterable, Defaults.Serializable {
 
     var displayName: String {
         switch self {
-        case .halfSec:  return "0.5 秒"
-        case .oneSec:   return "1 秒"
-        case .twoSec:   return "2 秒"
-        case .threeSec: return "3 秒"
-        case .fiveSec:  return "5 秒"
-        case .tenSec:   return "10 秒"
+        case .halfSec:  return L10n.interval05
+        case .oneSec:   return L10n.interval1
+        case .twoSec:   return L10n.interval2
+        case .threeSec: return L10n.interval3
+        case .fiveSec:  return L10n.interval5
+        case .tenSec:   return L10n.interval10
         }
     }
 }
@@ -221,23 +247,23 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
 
     var displayName: String {
         switch self {
-        case .cpu:         "CPU 使用率"
-        case .gpu:         "GPU 使用率"
-        case .memory:      "内存"
-        case .disk:        "磁盘"
-        case .networkDown: "下行网速"
-        case .networkUp:   "上行网速"
+        case .cpu:         L10n.metricCpu
+        case .gpu:         L10n.metricGpu
+        case .memory:      L10n.metricMemory
+        case .disk:        L10n.metricDisk
+        case .networkDown: L10n.metricNetDown
+        case .networkUp:   L10n.metricNetUp
         }
     }
 
     var overviewName: String {
         switch self {
-        case .cpu:         "CPU"
-        case .gpu:         "GPU"
-        case .memory:      "内存"
-        case .disk:        "磁盘"
-        case .networkDown: "下行"
-        case .networkUp:   "上行"
+        case .cpu:         L10n.metricOverviewCpu
+        case .gpu:         L10n.metricOverviewGpu
+        case .memory:      L10n.metricOverviewMemory
+        case .disk:        L10n.metricOverviewDisk
+        case .networkDown: L10n.metricOverviewDown
+        case .networkUp:   L10n.metricOverviewUp
         }
     }
 

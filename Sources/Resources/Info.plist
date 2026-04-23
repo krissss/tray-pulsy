@@ -10,6 +10,10 @@
 	<string>1.0.0</string>
 	<key>CFBundleIconFile</key>
 	<string>AppIcon</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleAllowMixedLocalizations</key>
+	<true/>
 	<key>LSUIElement</key>
 	<true/>
 </dict>

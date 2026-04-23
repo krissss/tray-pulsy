@@ -3,6 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "TrayPulsy",
+    defaultLocalization: "en",
     platforms: [.macOS(.v26)],
     products: [
         .executable(name: "TrayPulsy", targets: ["TrayPulsy"]),

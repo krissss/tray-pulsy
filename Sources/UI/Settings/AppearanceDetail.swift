@@ -28,14 +28,14 @@ struct SkinDetail: View {
                 .padding(.vertical, 4)
                 }
             } header: {
-                Text("皮肤")
+                Text(L10n.skinHeader)
             }
 
             Section {
                 HStack {
-                    TextField("路径", text: $externalSkinPath, prompt: Text("~/skins"))
+                    TextField(L10n.skinPathLabel, text: $externalSkinPath, prompt: Text(L10n.skinPathPrompt))
                         .textFieldStyle(.roundedBorder)
-                    Button("浏览") {
+                    Button(L10n.skinBrowse) {
                         let panel = NSOpenPanel()
                         panel.canChooseFiles = false
                         panel.canChooseDirectories = true
@@ -48,17 +48,17 @@ struct SkinDetail: View {
                 if !externalSkinPath.isEmpty {
                     let expanded = (externalSkinPath as NSString).expandingTildeInPath
                     if FileManager.default.fileExists(atPath: expanded) {
-                        Text("目录下的皮肤文件夹会自动加载，同名会覆盖内置皮肤")
+                        Text(L10n.skinExtInfo)
                             .font(.caption)
                             .foregroundStyle(.tertiary)
                     } else {
-                        Label("路径不存在", systemImage: "exclamationmark.triangle.fill")
+                        Label(L10n.skinPathNotFound, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption)
                             .foregroundStyle(.orange)
                     }
                 }
             } header: {
-                Text("外部皮肤")
+                Text(L10n.skinExtHeader)
             }
         }
         .formStyle(.grouped)
@@ -83,9 +83,9 @@ struct MetricsDetail: View {
                     MetricRowView(item: item)
                 }
             } header: {
-                Text("菜单栏指标")
+                Text(L10n.metricsHeader)
             } footer: {
-                Text("勾选要在菜单栏图标旁显示的指标，拖动滑块设置颜色阈值。")
+                Text(L10n.metricsFooter)
             }
         }
         .formStyle(.grouped)

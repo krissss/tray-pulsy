@@ -11,14 +11,14 @@ struct OverviewDetail: View {
                 MetricsGrid()
             } header: {
                 HStack {
-                    Text("系统监控")
+                    Text(L10n.overviewMonitorHeader)
                     Spacer()
                     Button {
                         guard let url = NSWorkspace.shared.urlForApplication(
                             withBundleIdentifier: "com.apple.ActivityMonitor") else { return }
                         NSWorkspace.shared.open(url)
                     } label: {
-                        Label("活动监视器", systemImage: "arrow.up.right.square")
+                        Label(L10n.overviewActivityMonitor, systemImage: "arrow.up.right.square")
                             .font(.subheadline)
                     }
                     .buttonStyle(.plain)
@@ -58,7 +58,7 @@ private struct SkinPreviewSection: View {
             .frame(width: 56, height: 56)
             .padding(12)
             .glassEffect(.regular, in: .circle)
-            .accessibilityLabel("当前皮肤预览")
+            .accessibilityLabel(L10n.accSkinPreview)
 
             VStack(alignment: .leading, spacing: 6) {
                 Text(SkinManager.shared.skin(for: skin).displayName)
@@ -162,7 +162,7 @@ private struct MetricsGrid: View {
                         .foregroundStyle(.secondary)
                         .frame(width: 24)
                         .accessibilityHidden(true)
-                    Text("网络")
+                    Text(L10n.overviewNetwork)
                         .foregroundStyle(.secondary)
                     Spacer()
                     HStack(spacing: 16) {

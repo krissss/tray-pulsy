@@ -13,7 +13,7 @@ struct AboutDetail: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(AppConstants.appName)
                             .font(.title2.bold())
-                        Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—")")
+                        Text(String(format: L10n.aboutVersion, Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"))
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
                     }
@@ -23,18 +23,18 @@ struct AboutDetail: View {
             }
 
             Section {
-                AboutLinkRow(icon: "person.fill", label: "开发者", value: "kriss", url: "https://github.com/krissss")
+                AboutLinkRow(icon: "person.fill", label: L10n.aboutDeveloper, value: "kriss", url: "https://github.com/krissss")
                 AboutLinkRow(icon: "chevron.left.forwardslash.chevron.right", label: "GITHUB", value: "GitHub", url: "https://github.com/krissss/tray-pulsy")
-                AboutLinkRow(icon: "lightbulb.fill", label: "灵感来源", value: "RunCat365", url: "https://github.com/Kyome22/RunCat365")
+                AboutLinkRow(icon: "lightbulb.fill", label: L10n.aboutInspiration, value: "RunCat365", url: "https://github.com/Kyome22/RunCat365")
             } header: {
-                Text("信息")
+                Text(L10n.aboutInfoHeader)
             }
 
             Section {
                 Button(role: .destructive) {
                     NSApplication.shared.terminate(nil)
                 } label: {
-                    Label("退出 \(AppConstants.appName)", systemImage: "power")
+                    Label(String(format: L10n.aboutQuit, AppConstants.appName), systemImage: "power")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.glass)

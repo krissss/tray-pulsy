@@ -4,20 +4,36 @@ import ServiceManagement
 
 struct GeneralDetail: View {
     @Default(.launchAtStartup) private var launchAtStartup
+    @Default(.language) private var language
 
     var body: some View {
         Form {
             Section {
                 Toggle(isOn: $launchAtStartup) {
-                    Label("开机自动启动", systemImage: "power.circle")
+                    Label(L10n.generalStartupToggle, systemImage: "power.circle")
                 }
                 .onChange(of: launchAtStartup) {
                     toggleLaunchAtLogin(launchAtStartup)
                 }
             } header: {
-                Text("启动")
+                Text(L10n.generalStartupHeader)
             } footer: {
-                Text("登录时自动在菜单栏启动 \(AppConstants.appName)。")
+                Text(String(format: L10n.generalStartupFooter, AppConstants.appName))
+            }
+
+            Section {
+                Picker(selection: $language) {
+                    ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                        Text(lang.displayName).tag(lang)
+                    }
+                } label: {
+                    Label(L10n.generalLanguageHeader, systemImage: "globe")
+                }
+            } header: {
+                Text(L10n.generalLanguageHeader)
+            }
+            .onChange(of: language) {
+                language.apply()
             }
         }
         .formStyle(.grouped)

@@ -60,6 +60,14 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
         // 8. Listen for settings changes via Defaults
         setupDefaultsObservers()
+
+        // 9. Listen for language changes to update window title & accessibility
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleLanguageChange),
+            name: L10n.languageDidChangeNotification,
+            object: nil
+        )
     }
 
     func stop() {
@@ -70,6 +78,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         settingsWindow = nil
         defaultsObservers.forEach { $0.invalidate() }
         defaultsObservers.removeAll()
+        NotificationCenter.default.removeObserver(self, name: L10n.languageDidChangeNotification, object: nil)
     }
 
     nonisolated func pause() {
@@ -127,7 +136,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 window.isReleasedWhenClosed = false
                 window.center()
                 window.delegate = self
-                window.title = "\(AppConstants.appName) 设置"
+                window.title = "\(AppConstants.appName) \(L10n.windowTitle)"
                 window.titlebarAppearsTransparent = true
                 window.titleVisibility = .hidden
                 settingsWindow = window
@@ -164,7 +173,13 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 // Drive animator with current metric value
                 let source = Defaults[.speedSource]
                 let rawValue = self.monitor.valueForSource(source)
-                self.animator.updateValue(source.normalizeForAnimation(rawValue))
+                let normalizedValue = source.normalizeForAnimation(rawValue)
+                self.animator.updateValue(normalizedValue)
+
+                // Dynamic Pulsy skin: regenerate frames with current value for colour/amplitude
+                if self.skinManager.currentSkin.id == "pulsy" {
+                    self.animator.updateFrames(PulsySkinRenderer.generateFrames(value: normalizedValue))
+                }
 
                 // Update metric text & accessibility (only when values change)
                 let selected = Defaults[.metricDisplayItems]
@@ -275,10 +290,17 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private func updateAccessibilityLabel() {
         let text: String
         if !Defaults[.metricDisplayItems].isEmpty, !lastDisplayedMetricText.isEmpty {
-            text = "\(AppConstants.appName) \(lastDisplayedMetricText)，点击打开设置"
+            text = "\(AppConstants.appName) \(lastDisplayedMetricText)\(L10n.accClickToOpen)"
         } else {
-            text = "\(AppConstants.appName)，点击打开设置"
+            text = "\(AppConstants.appName)\(L10n.accClickToOpen)"
         }
         statusItem.button?.setAccessibilityLabel(text)
+    }
+
+    @objc private func handleLanguageChange() {
+        if let window = settingsWindow {
+            window.title = "\(AppConstants.appName) \(L10n.windowTitle)"
+        }
+        updateAccessibilityLabel()
     }
 }

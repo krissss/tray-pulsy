@@ -1,0 +1,98 @@
+/* Tab Labels */
+"tab.overview" = "概览";
+"tab.skin" = "皮肤";
+"tab.metrics" = "指标";
+"tab.performance" = "性能";
+"tab.general" = "通用";
+"tab.about" = "关于";
+
+/* Speed Source */
+"speed.cpu" = "CPU";
+"speed.gpu" = "GPU";
+"speed.memory" = "内存";
+"speed.disk" = "磁盘";
+
+/* Metric Display Items */
+"metric.cpu" = "CPU 使用率";
+"metric.gpu" = "GPU 使用率";
+"metric.memory" = "内存";
+"metric.disk" = "磁盘";
+"metric.netDown" = "下行网速";
+"metric.netUp" = "上行网速";
+
+"metric.overview.cpu" = "CPU";
+"metric.overview.gpu" = "GPU";
+"metric.overview.memory" = "内存";
+"metric.overview.disk" = "磁盘";
+"metric.overview.down" = "下行";
+"metric.overview.up" = "上行";
+
+/* FPS Limit */
+"fps.10" = "10 FPS";
+"fps.20" = "20 FPS";
+"fps.30" = "30 FPS";
+"fps.40" = "40 FPS";
+
+/* Sample Interval */
+"interval.0.5" = "0.5 秒";
+"interval.1" = "1 秒";
+"interval.2" = "2 秒";
+"interval.3" = "3 秒";
+"interval.5" = "5 秒";
+"interval.10" = "10 秒";
+
+/* Theme Mode */
+"theme.system" = "跟随系统";
+"theme.light" = "浅色";
+"theme.dark" = "深色";
+
+/* Overview */
+"overview.monitorHeader" = "系统监控";
+"overview.activityMonitor" = "活动监视器";
+"overview.network" = "网络";
+
+/* Skin Settings */
+"settings.skin.header" = "皮肤";
+"settings.skin.pathLabel" = "路径";
+"settings.skin.pathPrompt" = "~/skins";
+"settings.skin.browse" = "浏览";
+"settings.skin.extHeader" = "外部皮肤";
+"settings.skin.extInfo" = "目录下的皮肤文件夹会自动加载，同名会覆盖内置皮肤";
+"settings.skin.pathNotFound" = "路径不存在";
+
+/* Metrics Settings */
+"settings.metrics.header" = "菜单栏指标";
+"settings.metrics.footer" = "勾选要在菜单栏图标旁显示的指标，拖动滑块设置颜色阈值。";
+
+/* Performance Settings */
+"performance.source.label" = "动画驱动";
+"performance.source.header" = "速度来源";
+"performance.source.footer" = "猫咪动画速度将跟随所选指标实时变化。";
+"performance.fps.label" = "最高帧率";
+"performance.fps.header" = "帧率控制";
+"performance.fps.footer" = "限制最高帧率以降低 CPU 占用。";
+"performance.sample.label" = "采样频率";
+"performance.sample.header" = "数据采样";
+"performance.sample.footer" = "间隔越短，动画响应越快，但 CPU 占用略高。";
+
+/* General Settings */
+"general.startup.header" = "启动";
+"general.startup.toggle" = "开机自动启动";
+"general.startup.footer" = "登录时自动在菜单栏启动 %@。";
+"general.language.header" = "语言";
+"general.language.system" = "跟随系统";
+
+/* About */
+"about.info.header" = "信息";
+"about.developer" = "开发者";
+"about.inspiration" = "灵感来源";
+"about.quit" = "退出 %@";
+"about.version" = "版本 %@";
+
+/* Accessibility */
+"acc.skinPreview" = "当前皮肤预览";
+"acc.selected" = "，已选中";
+"acc.clickToOpen" = "，点击打开设置";
+
+/* Window */
+"window.title" = "设置";

@@ -17,6 +17,11 @@ app: $(BINARY)
 	@for skin in $(SKINS); do \
 		cp -r Sources/Resources/$$skin $(APP_BUNDLE)/Contents/Resources/; \
 	done
+	@for lang in en zh-Hans; do \
+		mkdir -p $(APP_BUNDLE)/Contents/Resources/$$lang.lproj; \
+		cp Sources/Resources/lang/$$lang.lproj/Localizable.strings $(APP_BUNDLE)/Contents/Resources/$$lang.lproj/; \
+	done
+	cp -r Sources/Resources/lang $(APP_BUNDLE)/Contents/Resources/
 	@echo "✅ $(APP_BUNDLE)"
 
 $(BINARY):

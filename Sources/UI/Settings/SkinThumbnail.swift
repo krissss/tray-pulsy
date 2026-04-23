@@ -36,7 +36,7 @@ struct SkinThumbnail: View {
         )
         .animation(.easeInOut(duration: 0.15), value: isSelected)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(skin.displayName)\(isSelected ? "，已选中" : "")")
+        .accessibilityLabel("\(skin.displayName)\(isSelected ? L10n.accSelected : "")")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onAppear {
             thumbnailImage = SkinManager.shared.frame(for: skin.id, frameIndex: 0)

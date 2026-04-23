@@ -12,12 +12,12 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .overview:    "概览"
-        case .skin:        "皮肤"
-        case .metrics:     "指标"
-        case .performance: "性能"
-        case .general:     "通用"
-        case .about:       "关于"
+        case .overview:    L10n.tabOverview
+        case .skin:        L10n.tabSkin
+        case .metrics:     L10n.tabMetrics
+        case .performance: L10n.tabPerformance
+        case .general:     L10n.tabGeneral
+        case .about:       L10n.tabAbout
         }
     }
 }
