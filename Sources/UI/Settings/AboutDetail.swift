@@ -23,9 +23,9 @@ struct AboutDetail: View {
             }
 
             Section {
-                AboutRow(icon: "person.fill", label: "开发者", value: "krissss")
-                AboutRow(icon: "paintbrush.fill", label: "风格", value: "菜单栏猫咪动画")
-                AboutRow(icon: "lightbulb.fill", label: "灵感来源", value: "Kyome22 / RunCat365")
+                AboutLinkRow(icon: "person.fill", label: "开发者", value: "kriss", url: "https://github.com/krissss")
+                AboutLinkRow(icon: "chevron.left.forwardslash.chevron.right", label: "GITHUB", value: "GitHub", url: "https://github.com/krissss/tray-pulsy")
+                AboutLinkRow(icon: "lightbulb.fill", label: "灵感来源", value: "RunCat365", url: "https://github.com/Kyome22/RunCat365")
             } header: {
                 Text("信息")
             }
@@ -45,10 +45,11 @@ struct AboutDetail: View {
     }
 }
 
-private struct AboutRow: View {
+private struct AboutLinkRow: View {
     let icon: String
     let label: String
     let value: String
+    let url: String
 
     var body: some View {
         HStack(spacing: 10) {
@@ -59,8 +60,7 @@ private struct AboutRow: View {
             Text(label)
                 .foregroundStyle(.secondary)
             Spacer()
-            Text(value)
-                .foregroundStyle(.primary)
+            Link(value, destination: URL(string: url)!)
         }
     }
 }
