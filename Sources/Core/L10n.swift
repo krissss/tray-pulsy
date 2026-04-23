@@ -141,6 +141,29 @@ enum L10n {
             "acc.selected": ", selected",
             "acc.clickToOpen": ", click to open settings",
 
+            // Pulsy Color Theme
+            "pulsy.color.fire": "Fire",
+            "pulsy.color.ocean": "Ocean",
+            "pulsy.color.matrix": "Matrix",
+            "pulsy.color.neon": "Neon",
+            "pulsy.color.monochrome": "Monochrome",
+
+            // Pulsy Waveform Style
+            "pulsy.wave.ecg": "ECG",
+            "pulsy.wave.sine": "Sine",
+            "pulsy.wave.sawtooth": "Sawtooth",
+            "pulsy.wave.square": "Square",
+            "pulsy.wave.spike": "Spike",
+
+            // Pulsy Settings
+            "pulsy.settings.colorTheme": "Color Theme",
+            "pulsy.settings.waveform": "Waveform Style",
+            "pulsy.settings.lineWidth": "Line Width",
+            "pulsy.settings.glowIntensity": "Glow Intensity",
+            "pulsy.settings.amplitudeSensitivity": "Amplitude Size",
+            "pulsy.settings.calm": "Calm",
+            "pulsy.settings.intense": "Intense",
+
             // Window
             "window.title": "Settings",
         ],
@@ -244,6 +267,29 @@ enum L10n {
 
             // Window
             "window.title": "设置",
+
+            // Pulsy Color Theme
+            "pulsy.color.fire": "火焰",
+            "pulsy.color.ocean": "海洋",
+            "pulsy.color.matrix": "矩阵",
+            "pulsy.color.neon": "霓虹",
+            "pulsy.color.monochrome": "黑白",
+
+            // Pulsy Waveform Style
+            "pulsy.wave.ecg": "心电图",
+            "pulsy.wave.sine": "正弦波",
+            "pulsy.wave.sawtooth": "锯齿波",
+            "pulsy.wave.square": "方波",
+            "pulsy.wave.spike": "尖峰",
+
+            // Pulsy Settings
+            "pulsy.settings.colorTheme": "配色主题",
+            "pulsy.settings.waveform": "波形样式",
+            "pulsy.settings.lineWidth": "线条粗细",
+            "pulsy.settings.glowIntensity": "发光强度",
+            "pulsy.settings.amplitudeSensitivity": "振幅大小",
+            "pulsy.settings.calm": "平静",
+            "pulsy.settings.intense": "激烈",
         ],
     ]
 
@@ -355,6 +401,32 @@ enum L10n {
     static var accSkinPreview: String { tr("acc.skinPreview", "当前皮肤预览") }
     static var accSelected:    String { tr("acc.selected", "，已选中") }
     static var accClickToOpen: String { tr("acc.clickToOpen", "，点击打开设置") }
+
+    // MARK: - Pulsy Color Theme
+
+    static var pulsyColorFire:       String { tr("pulsy.color.fire", "Fire") }
+    static var pulsyColorOcean:      String { tr("pulsy.color.ocean", "Ocean") }
+    static var pulsyColorMatrix:     String { tr("pulsy.color.matrix", "Matrix") }
+    static var pulsyColorNeon:       String { tr("pulsy.color.neon", "Neon") }
+    static var pulsyColorMonochrome: String { tr("pulsy.color.monochrome", "Monochrome") }
+
+    // MARK: - Pulsy Waveform Style
+
+    static var pulsyWaveEcg:      String { tr("pulsy.wave.ecg", "ECG") }
+    static var pulsyWaveSine:     String { tr("pulsy.wave.sine", "Sine") }
+    static var pulsyWaveSawtooth: String { tr("pulsy.wave.sawtooth", "Sawtooth") }
+    static var pulsyWaveSquare:   String { tr("pulsy.wave.square", "Square") }
+    static var pulsyWaveSpike:    String { tr("pulsy.wave.spike", "Spike") }
+
+    // MARK: - Pulsy Settings
+
+    static var pulsySettingsColorTheme:          String { tr("pulsy.settings.colorTheme", "Color Theme") }
+    static var pulsySettingsWaveform:            String { tr("pulsy.settings.waveform", "Waveform Style") }
+    static var pulsySettingsLineWidth:           String { tr("pulsy.settings.lineWidth", "Line Width") }
+    static var pulsySettingsGlowIntensity:       String { tr("pulsy.settings.glowIntensity", "Glow Intensity") }
+    static var pulsySettingsAmplitudeSensitivity: String { tr("pulsy.settings.amplitudeSensitivity", "Amplitude Size") }
+    static var pulsySettingsCalm:                String { tr("pulsy.settings.calm", "Calm") }
+    static var pulsySettingsIntense:             String { tr("pulsy.settings.intense", "Intense") }
 
     // MARK: - Window
 

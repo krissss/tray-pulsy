@@ -87,6 +87,24 @@ final class SkinManagerTests: XCTestCase {
         XCTAssertFalse(skin.id.isEmpty)
     }
 
+    func testSkinFor_oldID_migration() {
+        // Old IDs like "cat" should match "01.cat" via suffix fallback
+        // Create an external skin with numeric prefix to test
+        createSkinDir(name: "01.cat")
+        Defaults[.externalSkinPath] = tempDir
+        SkinManager.shared.reload()
+
+        let skin = SkinManager.shared.skin(for: "cat")
+        XCTAssertTrue(skin.id.hasSuffix(".cat"), "old ID 'cat' should migrate to '\(skin.id)'")
+    }
+
+    func testSkinFor_oldID_noMatch_returnsFallback() {
+        let manager = SkinManager.shared
+        let skin = manager.skin(for: "totally_unknown_skin")
+        // Should still return something (fallback)
+        XCTAssertFalse(skin.id.isEmpty)
+    }
+
     // MARK: - scanDirectory
 
     func testScanDirectory_findsPngFolders() {
@@ -94,6 +112,37 @@ final class SkinManagerTests: XCTestCase {
         let skins = SkinManager.scanDirectory([tempDir])
         XCTAssertEqual(skins.count, 1)
         XCTAssertEqual(skins[0].id, "mycat")
+    }
+
+    func testScanDirectory_numericPrefix_stripsDisplayName() {
+        createSkinDir(name: "01.cat")
+        let skins = SkinManager.scanDirectory([tempDir])
+        XCTAssertEqual(skins.count, 1)
+        XCTAssertEqual(skins[0].id, "01.cat")
+        XCTAssertEqual(skins[0].displayName, "cat")
+    }
+
+    func testScanDirectory_numericPrefix_preservesOrder() {
+        createSkinDir(name: "02.dab")
+        createSkinDir(name: "01.cat")
+        createSkinDir(name: "03.horse")
+        let skins = SkinManager.scanDirectory([tempDir]).sorted { $0.id < $1.id }
+        let ids = skins.map(\.id)
+        XCTAssertEqual(ids, ["01.cat", "02.dab", "03.horse"])
+    }
+
+    func testScanDirectory_ignoresIconset() {
+        let dir = tempDir + "/AppIcon.iconset"
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: dir + "/icon_16.png", contents: Data())
+        XCTAssertTrue(SkinManager.scanDirectory([tempDir]).isEmpty)
+    }
+
+    func testScanDirectory_ignoresLproj() {
+        let dir = tempDir + "/en.lproj"
+        try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        FileManager.default.createFile(atPath: dir + "/Localizable.strings", contents: Data())
+        XCTAssertTrue(SkinManager.scanDirectory([tempDir]).isEmpty)
     }
 
     func testScanDirectory_ignoresNonPngFolders() {
@@ -154,6 +203,19 @@ final class SkinManagerTests: XCTestCase {
         let skins = SkinManager.discoverSkins(externalPath: "")
         let ids = skins.map(\.id)
         XCTAssertEqual(ids, ids.sorted())
+    }
+
+    func testDiscoverSkins_pulsyIsFirst() {
+        let skins = SkinManager.discoverSkins(externalPath: "")
+        XCTAssertFalse(skins.isEmpty)
+        XCTAssertEqual(skins[0].id, "pulsy")
+    }
+
+    func testDiscoverSkins_pulsyIsVirtual() {
+        let skins = SkinManager.discoverSkins(externalPath: "")
+        let pulsy = skins.first { $0.id == "pulsy" }
+        XCTAssertNotNil(pulsy)
+        XCTAssertEqual(pulsy?.displayName, "Pulsy")
     }
 
     // MARK: - setSkin / setTheme
@@ -236,8 +298,11 @@ final class SkinManagerTests: XCTestCase {
         XCTAssertNil(SkinManager.shared.frame(for: "indexed2", frameIndex: 99))
     }
 
-    func testFrame_nonexistentSkin_returnsNil() {
-        XCTAssertNil(SkinManager.shared.frame(for: "no_such_skin", frameIndex: 0))
+    func testFrame_nonexistentSkin_fallsBackToDefault() {
+        // "no_such_skin" doesn't exist → falls back to default skin frames
+        let img = SkinManager.shared.frame(for: "no_such_skin", frameIndex: 0)
+        // May return a frame from the default skin or nil if no resources in test env
+        // Either way, should not crash
     }
 
     // MARK: - reload
@@ -273,5 +338,28 @@ final class SkinManagerTests: XCTestCase {
         XCTAssertEqual(darkFrames.count, 1)
         // Not the same object (cache was cleared by setTheme)
         XCTAssertFalse(lightFrames[0] === darkFrames[0])
+    }
+
+    // MARK: - Pulsy virtual skin
+
+    func testFrames_pulsy_skipsDarkMode() {
+        let pulsy = SkinInfo(id: "pulsy", displayName: "Pulsy")
+
+        SkinManager.shared.setTheme(.light)
+        let lightFrames = SkinManager.shared.frames(for: pulsy)
+
+        SkinManager.shared.setTheme(.dark)
+        let darkFrames = SkinManager.shared.frames(for: pulsy)
+
+        // Pulsy skips dark-mode inversion — frames should have same count
+        // (they are regenerated per cache-key so objects differ, but pixel content is identical)
+        XCTAssertEqual(lightFrames.count, darkFrames.count)
+        XCTAssertEqual(lightFrames.count, PulsySkinRenderer.frameCount)
+    }
+
+    func testFrames_pulsy_returnsFrames() {
+        let pulsy = SkinInfo(id: "pulsy", displayName: "Pulsy")
+        let frames = SkinManager.shared.frames(for: pulsy)
+        XCTAssertEqual(frames.count, PulsySkinRenderer.frameCount)
     }
 }

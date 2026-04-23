@@ -40,6 +40,13 @@ final class TrayAnimator: @unchecked Sendable {
         }
     }
 
+    /// Replace frames without resetting animation position (for dynamic skins like Pulsy).
+    func updateFrames(_ newFrames: [NSImage]) {
+        guard !newFrames.isEmpty else { return }
+        frames = newFrames
+        if frameIndex >= frames.count { frameIndex = 0 }
+    }
+
     func start() { forceRestartTimer() }
     func stop() {
         runnerTimer?.invalidate()

@@ -24,7 +24,7 @@ struct SkinInfo: Identifiable, Hashable, Sendable {
 @Observable
 final class SkinManager: @unchecked Sendable {
     static let shared = SkinManager()
-    private static let defaultSkinID = "cat"
+    private static let defaultSkinID = "01.cat"
 
     /// All discovered skins (bundled + external), sorted by id.
     private(set) var allSkins: [SkinInfo]
@@ -52,16 +52,35 @@ final class SkinManager: @unchecked Sendable {
     }
 
     /// Look up a skin by ID, falling back to the default skin.
+    /// Also handles migration from old IDs without numeric prefix (e.g. "cat" → "01.cat").
     func skin(for id: String) -> SkinInfo {
-        allSkins.first(where: { $0.id == id }) ?? allSkins.first ?? SkinInfo(id: Self.defaultSkinID, displayName: Self.defaultSkinID)
+        if let s = allSkins.first(where: { $0.id == id }) { return s }
+        // Migration: old ID "cat" → match "01.cat" by suffix
+        if let s = allSkins.first(where: { $0.id.hasSuffix(".\(id)") }) { return s }
+        return allSkins.first ?? SkinInfo(id: Self.defaultSkinID, displayName: Self.defaultSkinID)
     }
 
     func setSkin(_ s: SkinInfo) { currentSkin = s }
     func setTheme(_ t: ThemeMode) { currentTheme = t; clearCache() }
 
+    /// Build PulsyConfig from current Defaults.
+    static func currentPulsyConfig() -> PulsyConfig {
+        PulsyConfig(
+            colorTheme: Defaults[.pulsyColorTheme],
+            waveformStyle: Defaults[.pulsyWaveformStyle],
+            lineWidth: Defaults[.pulsyLineWidth],
+            glowIntensity: Defaults[.pulsyGlowIntensity],
+            amplitudeSensitivity: Defaults[.pulsyAmplitudeSensitivity]
+        )
+    }
+
     /// Returns cached or freshly-themed frames for the given (or current) skin.
     func frames(for skin: SkinInfo? = nil) -> [NSImage] {
         let s = skin ?? currentSkin
+        // Pulsy frames are always regenerated (config may have changed) — skip cache
+        if s.id == "pulsy" {
+            return loadFrames(for: s.id)
+        }
         let key = "\(s.id):\(themeHash)"
         if let cached = frameCache[key] { return cached }
         let base = loadFrames(for: s.id)
@@ -90,6 +109,11 @@ final class SkinManager: @unchecked Sendable {
     // MARK: - Auto-Discovery
     // ═════════════════════════════════════════════════════════
 
+    /// Virtual (programmatic) skins — always available, no PNG files needed.
+    private static let virtualSkins: [SkinInfo] = [
+        SkinInfo(id: "pulsy", displayName: "Pulsy")
+    ]
+
     static func discoverSkins(externalPath: String) -> [SkinInfo] {
         var seen = Set<String>()
         var skins: [SkinInfo] = []
@@ -113,7 +137,20 @@ final class SkinManager: @unchecked Sendable {
             }
         }
 
-        return skins.sorted { $0.id < $1.id }
+        // 3. Virtual skins (cannot be overridden by file-based skins)
+        for s in virtualSkins {
+            if let idx = skins.firstIndex(where: { $0.id == s.id }) {
+                skins[idx] = s
+            } else if seen.insert(s.id).inserted {
+                skins.append(s)
+            }
+        }
+
+        return skins.sorted { a, b in
+            if a.id == "pulsy" { return true }
+            if b.id == "pulsy" { return false }
+            return a.id < b.id
+        }
     }
 
     private static func bundledSkinPaths() -> [String] {
@@ -126,6 +163,7 @@ final class SkinManager: @unchecked Sendable {
     }
 
     static func scanDirectory(_ paths: [String]) -> [SkinInfo] {
+        let ignoredExtensions: Set<String> = ["iconset", "lproj", "bundle"]
         let fm = FileManager.default
         var skins: [SkinInfo] = []
 
@@ -135,9 +173,19 @@ final class SkinManager: @unchecked Sendable {
                 let dirPath = (basePath as NSString).appendingPathComponent(name)
                 var isDir: ObjCBool = false
                 guard fm.fileExists(atPath: dirPath, isDirectory: &isDir), isDir.boolValue else { continue }
+                // Skip non-skin directories (.iconset, .lproj, .bundle, etc.)
+                let ext = (name as NSString).pathExtension
+                guard !ignoredExtensions.contains(ext) else { continue }
                 let hasPNG = (try? fm.contentsOfDirectory(atPath: dirPath))?.contains(where: { $0.hasSuffix(".png") }) ?? false
                 guard hasPNG else { continue }
-                skins.append(SkinInfo(id: name, displayName: name))
+                // Strip numeric prefix for display name: "01.cat" → "cat"
+                let display: String
+                if let dot = name.firstIndex(of: ".") {
+                    display = String(name[name.index(after: dot)...])
+                } else {
+                    display = name
+                }
+                skins.append(SkinInfo(id: name, displayName: display))
             }
         }
         return skins
@@ -148,6 +196,12 @@ final class SkinManager: @unchecked Sendable {
     // ═════════════════════════════════════════════════════════
 
     private func loadFrames(for skinID: String) -> [NSImage] {
+        // Virtual skins — generated programmatically
+        if skinID == "pulsy" {
+            let config = Self.currentPulsyConfig()
+            return PulsySkinRenderer.generateFrames(value: 0, config: config)
+        }
+
         let fm = FileManager.default
         let externalPath = Defaults[.externalSkinPath]
 

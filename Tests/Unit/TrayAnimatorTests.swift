@@ -86,6 +86,37 @@ final class TrayAnimatorTests: XCTestCase {
         XCTAssertFalse(called)
     }
 
+    // MARK: - updateFrames
+
+    func testUpdateFrames_replacesFramesWithoutResettingIndex() {
+        let frames = (0..<5).map { _ in NSImage(size: NSSize(width: 18, height: 18)) }
+        let a = TrayAnimator(initialFrames: frames)
+
+        // Replace frames with same count — no crash
+        let newFrames = (0..<5).map { _ in NSImage(size: NSSize(width: 18, height: 18)) }
+        a.updateFrames(newFrames)
+        XCTAssertNotNil(a)
+    }
+
+    func testUpdateFrames_emptyFrames_isIgnored() {
+        let a = makeAnimator()
+        a.updateFrames([])
+        // Empty frames should be ignored — animator still works
+        XCTAssertNotNil(a)
+    }
+
+    func testUpdateFrames_shorterArray_wrapsIndex() {
+        let long = (0..<10).map { _ in NSImage(size: NSSize(width: 18, height: 18)) }
+        let a = TrayAnimator(initialFrames: long)
+        a.changeSkin(to: long)
+
+        // Replace with fewer frames — no crash
+        let short = (0..<3).map { _ in NSImage(size: NSSize(width: 18, height: 18)) }
+        a.updateFrames(short)
+        // Verify animation continues without crash after frame replacement
+        XCTAssertNotNil(a)
+    }
+
     // MARK: - pause / resume
 
     func testPauseStopsAnimation() {

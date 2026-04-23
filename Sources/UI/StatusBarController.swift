@@ -178,7 +178,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
                 // Dynamic Pulsy skin: regenerate frames with current value for colour/amplitude
                 if self.skinManager.currentSkin.id == "pulsy" {
-                    self.animator.updateFrames(PulsySkinRenderer.generateFrames(value: normalizedValue))
+                    let config = SkinManager.currentPulsyConfig()
+                    self.animator.updateFrames(PulsySkinRenderer.generateFrames(value: normalizedValue, config: config))
                 }
 
                 // Update metric text & accessibility (only when values change)
@@ -259,6 +260,21 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                     self?.refreshMetricDisplay()
                 }
             },
+            Defaults.observe(.pulsyColorTheme) { [weak self] _ in
+                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
+            },
+            Defaults.observe(.pulsyWaveformStyle) { [weak self] _ in
+                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
+            },
+            Defaults.observe(.pulsyLineWidth) { [weak self] _ in
+                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
+            },
+            Defaults.observe(.pulsyGlowIntensity) { [weak self] _ in
+                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
+            },
+            Defaults.observe(.pulsyAmplitudeSensitivity) { [weak self] _ in
+                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
+            },
         ]
     }
 
@@ -285,6 +301,16 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         statusBarView.updateValues(values, colors: colors)
         syncStatusItemLength()
         updateAccessibilityLabel()
+    }
+
+    /// Immediately regenerate Pulsy frames with current config + value.
+    private func regeneratePulsyFrames() {
+        guard skinManager.currentSkin.id == "pulsy" else { return }
+        let config = SkinManager.currentPulsyConfig()
+        let source = Defaults[.speedSource]
+        let rawValue = monitor.valueForSource(source)
+        let normalizedValue = source.normalizeForAnimation(rawValue)
+        animator.updateFrames(PulsySkinRenderer.generateFrames(value: normalizedValue, config: config))
     }
 
     private func updateAccessibilityLabel() {

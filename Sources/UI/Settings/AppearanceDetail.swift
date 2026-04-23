@@ -9,6 +9,11 @@ import SwiftUI
 struct SkinDetail: View {
     @Default(.skin) private var skin
     @Default(.externalSkinPath) private var externalSkinPath
+    @Default(.pulsyColorTheme) private var pulsyColorTheme
+    @Default(.pulsyWaveformStyle) private var pulsyWaveformStyle
+    @Default(.pulsyLineWidth) private var pulsyLineWidth
+    @Default(.pulsyGlowIntensity) private var pulsyGlowIntensity
+    @Default(.pulsyAmplitudeSensitivity) private var pulsyAmplitudeSensitivity
     private let skinManager = SkinManager.shared
 
     var body: some View {
@@ -30,6 +35,8 @@ struct SkinDetail: View {
             } header: {
                 Text(L10n.skinHeader)
             }
+
+            pulsyConfigSection()
 
             Section {
                 HStack {
@@ -64,6 +71,112 @@ struct SkinDetail: View {
         .formStyle(.grouped)
         .onChange(of: externalSkinPath) {
             SkinManager.shared.reload()
+        }
+    }
+
+    /// Show Pulsy config section when pulsy skin is selected.
+    private var showPulsyConfig: Bool { skin == "pulsy" }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Pulsy Configuration Section
+// ═══════════════════════════════════════════════════════════════
+
+private extension SkinDetail {
+    @ViewBuilder
+    func pulsyConfigSection() -> some View {
+        if showPulsyConfig {
+            Section {
+                // Color theme picker
+                Picker(L10n.pulsySettingsColorTheme, selection: $pulsyColorTheme) {
+                    ForEach(PulsyColorTheme.allCases, id: \.self) { theme in
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(Color(nsColor: theme.iconColor))
+                                .frame(width: 10, height: 10)
+                            Text(theme.displayName)
+                        }
+                        .tag(theme)
+                    }
+                }
+
+                // Waveform style picker
+                Picker(L10n.pulsySettingsWaveform, selection: $pulsyWaveformStyle) {
+                    ForEach(PulsyWaveformStyle.allCases, id: \.self) { style in
+                        Label(style.displayName, systemImage: style.systemImage)
+                            .tag(style)
+                    }
+                }
+
+                // Line width slider
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.pulsySettingsLineWidth)
+                    ValueSlider(value: $pulsyLineWidth, in: 0.5...2.0, step: 0.1)
+                        .valueSliderStyle(
+                            HorizontalValueSliderStyle(
+                                track: HorizontalTrack(
+                                    view: Capsule().foregroundColor(.accentColor)
+                                )
+                                .background(Capsule().foregroundColor(.primary.opacity(0.15)))
+                                .frame(height: 2),
+                                thumb: Circle()
+                                    .foregroundColor(.accentColor)
+                                    .shadow(color: .black.opacity(0.15), radius: 1),
+                                thumbSize: CGSize(width: 12, height: 12),
+                                thumbInteractiveSize: CGSize(width: 24, height: 24),
+                                options: .interactiveTrack
+                            )
+                        )
+                    Text(String(format: "%.1f", pulsyLineWidth))
+                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                }
+
+                // Glow intensity slider
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.pulsySettingsGlowIntensity)
+                    ValueSlider(value: $pulsyGlowIntensity, in: 0...1.0, step: 0.1)
+                        .valueSliderStyle(
+                            HorizontalValueSliderStyle(
+                                track: HorizontalTrack(
+                                    view: Capsule().foregroundColor(.accentColor)
+                                )
+                                .background(Capsule().foregroundColor(.primary.opacity(0.15)))
+                                .frame(height: 2),
+                                thumb: Circle()
+                                    .foregroundColor(.accentColor)
+                                    .shadow(color: .black.opacity(0.15), radius: 1),
+                                thumbSize: CGSize(width: 12, height: 12),
+                                thumbInteractiveSize: CGSize(width: 24, height: 24),
+                                options: .interactiveTrack
+                            )
+                        )
+                    Text(String(format: "%.1f", pulsyGlowIntensity))
+                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                }
+
+                // Amplitude sensitivity slider
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.pulsySettingsAmplitudeSensitivity)
+                    ValueSlider(value: $pulsyAmplitudeSensitivity, in: 0.2...1.0, step: 0.05)
+                        .valueSliderStyle(
+                            HorizontalValueSliderStyle(
+                                track: HorizontalTrack(
+                                    view: Capsule().foregroundColor(.accentColor)
+                                )
+                                .background(Capsule().foregroundColor(.primary.opacity(0.15)))
+                                .frame(height: 2),
+                                thumb: Circle()
+                                    .foregroundColor(.accentColor)
+                                    .shadow(color: .black.opacity(0.15), radius: 1),
+                                thumbSize: CGSize(width: 12, height: 12),
+                                thumbInteractiveSize: CGSize(width: 24, height: 24),
+                                options: .interactiveTrack
+                            )
+                        )
+                    Text(String(format: "%.2f", pulsyAmplitudeSensitivity))
+                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                }
+            }
         }
     }
 }

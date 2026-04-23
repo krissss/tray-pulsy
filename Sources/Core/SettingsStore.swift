@@ -48,6 +48,13 @@ extension Defaults.Keys {
 
     // 颜色阈值
     static let thresholds = Key<ThresholdConfig>("traypulsy_thresholds", default: .defaults)
+
+    // Pulsy 波形配置
+    static let pulsyColorTheme            = Key<PulsyColorTheme>("traypulsy_pulsyColorTheme", default: .fire)
+    static let pulsyWaveformStyle         = Key<PulsyWaveformStyle>("traypulsy_pulsyWaveformStyle", default: .ecg)
+    static let pulsyLineWidth             = Key<Double>("traypulsy_pulsyLineWidth", default: 1.5)
+    static let pulsyGlowIntensity         = Key<Double>("traypulsy_pulsyGlowIntensity", default: 1.0)
+    static let pulsyAmplitudeSensitivity  = Key<Double>("traypulsy_pulsyAmplitudeSensitivity", default: 1.0)
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -387,5 +394,84 @@ struct ThresholdConfig: Codable, Defaults.Serializable, Sendable {
         disk: .init(warning: 80, critical: 95),
         networkDown: .init(warning: 1_000_000, critical: 10_000_000),
         networkUp: .init(warning: 500_000, critical: 5_000_000)
+    )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Pulsy Waveform Config
+// ═══════════════════════════════════════════════════════════════
+
+enum PulsyColorTheme: String, CaseIterable, Defaults.Serializable {
+    case fire, ocean, matrix, neon, monochrome
+
+    var displayName: String {
+        switch self {
+        case .fire:       return L10n.pulsyColorFire
+        case .ocean:      return L10n.pulsyColorOcean
+        case .matrix:     return L10n.pulsyColorMatrix
+        case .neon:       return L10n.pulsyColorNeon
+        case .monochrome: return L10n.pulsyColorMonochrome
+        }
+    }
+
+    /// Three gradient stops: start, mid, end.
+    var gradientStops: [NSColor] {
+        switch self {
+        case .fire:       return [NSColor(red: 1, green: 1, blue: 1, alpha: 1),
+                                  NSColor(red: 1, green: 1, blue: 0, alpha: 1),
+                                  NSColor(red: 1, green: 0.15, blue: 0, alpha: 1)]
+        case .ocean:      return [NSColor(red: 0, green: 1, blue: 1, alpha: 1),
+                                  NSColor(red: 0, green: 0.4, blue: 1, alpha: 1),
+                                  NSColor(red: 0.6, green: 0, blue: 1, alpha: 1)]
+        case .matrix:     return [NSColor(red: 0.2, green: 1, blue: 0.3, alpha: 1),
+                                  NSColor(red: 0, green: 0.8, blue: 0.1, alpha: 1),
+                                  NSColor(red: 0, green: 0.5, blue: 0.05, alpha: 1)]
+        case .neon:       return [NSColor(red: 1, green: 0, blue: 0.6, alpha: 1),
+                                  NSColor(red: 0.8, green: 0, blue: 1, alpha: 1),
+                                  NSColor(red: 0.2, green: 0.4, blue: 1, alpha: 1)]
+        case .monochrome: return [NSColor(red: 1, green: 1, blue: 1, alpha: 1),
+                                  NSColor(red: 0.7, green: 0.7, blue: 0.7, alpha: 1),
+                                  NSColor(red: 0.4, green: 0.4, blue: 0.4, alpha: 1)]
+        }
+    }
+
+    /// Representative colour for settings UI preview.
+    var iconColor: NSColor { gradientStops[1] }
+}
+
+enum PulsyWaveformStyle: String, CaseIterable, Defaults.Serializable {
+    case ecg, sine, sawtooth, square, spike
+
+    var displayName: String {
+        switch self {
+        case .ecg:      return L10n.pulsyWaveEcg
+        case .sine:     return L10n.pulsyWaveSine
+        case .sawtooth: return L10n.pulsyWaveSawtooth
+        case .square:   return L10n.pulsyWaveSquare
+        case .spike:    return L10n.pulsyWaveSpike
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .ecg:      return "heart.fill"
+        case .sine:     return "waveform.path"
+        case .sawtooth: return "chart.line.flattrend.xyaxis"
+        case .square:   return "rectangle.split.3x1"
+        case .spike:    return "bolt.fill"
+        }
+    }
+}
+
+struct PulsyConfig: Sendable {
+    let colorTheme: PulsyColorTheme
+    let waveformStyle: PulsyWaveformStyle
+    let lineWidth: CGFloat
+    let glowIntensity: CGFloat
+    let amplitudeSensitivity: CGFloat
+
+    static let defaults = PulsyConfig(
+        colorTheme: .fire, waveformStyle: .ecg,
+        lineWidth: 1.5, glowIntensity: 1.0, amplitudeSensitivity: 1.0
     )
 }
