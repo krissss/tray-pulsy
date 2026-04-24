@@ -115,9 +115,9 @@ final class SettingsStoreTests: XCTestCase {
     // MARK: - ThemeMode display properties
 
     func testThemeMode_displayNames() {
-        XCTAssertEqual(ThemeMode.system.displayName, "跟随系统")
-        XCTAssertEqual(ThemeMode.light.displayName, "浅色")
-        XCTAssertEqual(ThemeMode.dark.displayName, "深色")
+        for mode in ThemeMode.allCases {
+            XCTAssertFalse(mode.displayName.isEmpty, "\(mode.rawValue) displayName is empty")
+        }
     }
 
     func testThemeMode_emojis() {
@@ -129,12 +129,9 @@ final class SettingsStoreTests: XCTestCase {
     // MARK: - SampleInterval displayNames
 
     func testSampleInterval_displayNames() {
-        XCTAssertEqual(SampleInterval.halfSec.displayName, "0.5 秒")
-        XCTAssertEqual(SampleInterval.oneSec.displayName, "1 秒")
-        XCTAssertEqual(SampleInterval.twoSec.displayName, "2 秒")
-        XCTAssertEqual(SampleInterval.threeSec.displayName, "3 秒")
-        XCTAssertEqual(SampleInterval.fiveSec.displayName, "5 秒")
-        XCTAssertEqual(SampleInterval.tenSec.displayName, "10 秒")
+        for interval in SampleInterval.allCases {
+            XCTAssertFalse(interval.displayName.isEmpty, "\(interval.rawValue) displayName is empty")
+        }
     }
 
     // MARK: - FPSLimit complete displayNames

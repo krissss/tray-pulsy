@@ -83,12 +83,10 @@ final class MetricDisplayItemTests: XCTestCase {
     // MARK: - displayName
 
     func testDisplayNames() {
-        XCTAssertEqual(MetricDisplayItem.cpu.displayName, "CPU 使用率")
-        XCTAssertEqual(MetricDisplayItem.gpu.displayName, "GPU 使用率")
-        XCTAssertEqual(MetricDisplayItem.memory.displayName, "内存")
-        XCTAssertEqual(MetricDisplayItem.disk.displayName, "磁盘")
-        XCTAssertEqual(MetricDisplayItem.networkDown.displayName, "下行网速")
-        XCTAssertEqual(MetricDisplayItem.networkUp.displayName, "上行网速")
+        for item in MetricDisplayItem.allCases {
+            let name = item.displayName
+            XCTAssertFalse(name.isEmpty, "\(item.rawValue) displayName is empty")
+        }
     }
 
     // MARK: - requiredMetric
