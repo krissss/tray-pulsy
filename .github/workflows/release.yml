@@ -56,7 +56,6 @@ jobs:
           files: |
             TrayPulsy-${{ github.ref_name }}.zip
             TrayPulsy-${{ github.ref_name }}.dmg
-          generate_release_notes: true
 
       - name: Update Homebrew Tap
         env:
