@@ -1,7 +1,13 @@
+import Defaults
 import XCTest
 @testable import TrayPulsy
 
 final class MetricDisplayItemTests: XCTestCase {
+
+    override class func setUp() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+    }
 
     // MARK: - formatSpeed thresholds
 
@@ -83,10 +89,12 @@ final class MetricDisplayItemTests: XCTestCase {
     // MARK: - displayName
 
     func testDisplayNames() {
-        for item in MetricDisplayItem.allCases {
-            let name = item.displayName
-            XCTAssertFalse(name.isEmpty, "\(item.rawValue) displayName is empty")
-        }
+        XCTAssertEqual(MetricDisplayItem.cpu.displayName, "CPU 使用率")
+        XCTAssertEqual(MetricDisplayItem.gpu.displayName, "GPU 使用率")
+        XCTAssertEqual(MetricDisplayItem.memory.displayName, "内存")
+        XCTAssertEqual(MetricDisplayItem.disk.displayName, "磁盘")
+        XCTAssertEqual(MetricDisplayItem.networkDown.displayName, "下行网速")
+        XCTAssertEqual(MetricDisplayItem.networkUp.displayName, "上行网速")
     }
 
     // MARK: - requiredMetric

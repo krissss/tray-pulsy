@@ -1,7 +1,14 @@
+import Defaults
 import XCTest
 @testable import TrayPulsy
 
 final class SettingsStoreTests: XCTestCase {
+
+    override class func setUp() {
+        // Force Chinese for consistent locale-dependent assertions
+        Defaults[.language] = .zhHans
+        L10n.reload()
+    }
 
     // MARK: - SpeedSource.normalizeForAnimation
 
@@ -115,9 +122,9 @@ final class SettingsStoreTests: XCTestCase {
     // MARK: - ThemeMode display properties
 
     func testThemeMode_displayNames() {
-        for mode in ThemeMode.allCases {
-            XCTAssertFalse(mode.displayName.isEmpty, "\(mode.rawValue) displayName is empty")
-        }
+        XCTAssertEqual(ThemeMode.system.displayName, "跟随系统")
+        XCTAssertEqual(ThemeMode.light.displayName, "浅色")
+        XCTAssertEqual(ThemeMode.dark.displayName, "深色")
     }
 
     func testThemeMode_emojis() {
@@ -129,9 +136,12 @@ final class SettingsStoreTests: XCTestCase {
     // MARK: - SampleInterval displayNames
 
     func testSampleInterval_displayNames() {
-        for interval in SampleInterval.allCases {
-            XCTAssertFalse(interval.displayName.isEmpty, "\(interval.rawValue) displayName is empty")
-        }
+        XCTAssertEqual(SampleInterval.halfSec.displayName, "0.5 秒")
+        XCTAssertEqual(SampleInterval.oneSec.displayName, "1 秒")
+        XCTAssertEqual(SampleInterval.twoSec.displayName, "2 秒")
+        XCTAssertEqual(SampleInterval.threeSec.displayName, "3 秒")
+        XCTAssertEqual(SampleInterval.fiveSec.displayName, "5 秒")
+        XCTAssertEqual(SampleInterval.tenSec.displayName, "10 秒")
     }
 
     // MARK: - FPSLimit complete displayNames
