@@ -157,6 +157,7 @@ final class SkinManager: @unchecked Sendable {
         let bundle = sharedResourceBundle()
         return [
             bundle.resourcePath.map { ($0 as NSString).appendingPathComponent("Resources/skins") },
+            bundle.resourcePath.map { ($0 as NSString).appendingPathComponent("skins") },
             bundle.resourcePath,
             bundle.resourcePath.map { ($0 as NSString).appendingPathComponent("Resources") }
         ].compactMap { $0 }
