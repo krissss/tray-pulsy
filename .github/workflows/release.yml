@@ -62,13 +62,15 @@ jobs:
           CASK
           sed -i '' "s/_VER_/${VER}/g; s/_SHA_/${SHA256}/g; s/_TAG_/${VERSION}/g" tray-pulsy.rb
           ENCODED=$(base64 < tray-pulsy.rb | tr -d '\n')
-          FILE_SHA=$(curl -s -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" | python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || true)
-          ARGS=(-X PUT "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb"
-            -H "Authorization: token $GH_TOKEN"
-            -H "Accept: application/vnd.github+json"
-            -d "{\"message\":\"Update tray-pulsy to ${VER}\",\"content\":\"${ENCODED}\"")
+          FILE_SHA=$(curl -sf -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" \
+            | python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || echo "")
+          BODY="{\"message\":\"Update tray-pulsy to ${VER}\",\"content\":\"${ENCODED}\"}"
           if [ -n "$FILE_SHA" ]; then
-            ARGS+=(-d "{\"message\":\"Update tray-pulsy to ${VER}\",\"content\":\"${ENCODED}\",\"sha\":\"${FILE_SHA}\"}")
+            BODY="{\"message\":\"Update tray-pulsy to ${VER}\",\"content\":\"${ENCODED}\",\"sha\":\"${FILE_SHA}\"}"
           fi
-          curl -s "${ARGS[@]}" || echo "Tap update skipped"
+          curl -sf -X PUT \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" \
+            -d "$BODY" || echo "Tap update skipped"
