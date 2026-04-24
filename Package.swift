@@ -1,10 +1,10 @@
-// swift-tools-version: 6.3
+// swift-tools-version: 6.1
 import PackageDescription
 
 let package = Package(
     name: "TrayPulsy",
     defaultLocalization: "en",
-    platforms: [.macOS(.v26)],
+    platforms: [.macOS(.v15)],
     products: [
         .executable(name: "TrayPulsy", targets: ["TrayPulsy"]),
     ],

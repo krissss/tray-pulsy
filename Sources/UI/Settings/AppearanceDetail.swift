@@ -19,7 +19,7 @@ struct SkinDetail: View {
     var body: some View {
         Form {
             Section {
-                GlassEffectContainer {
+                Group {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 10)], spacing: 10) {
                     ForEach(skinManager.allSkins) { s in
                         Button {

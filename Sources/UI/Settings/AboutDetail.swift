@@ -9,7 +9,7 @@ struct AboutDetail: View {
                         .resizable()
                         .frame(width: 64, height: 64)
                         .padding(8)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 16, style: .continuous))
+                        .background(.quaternary, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
                     VStack(alignment: .leading, spacing: 2) {
                         Text(AppConstants.appName)
                             .font(.title2.bold())
@@ -37,7 +37,7 @@ struct AboutDetail: View {
                     Label(String(format: L10n.aboutQuit, AppConstants.appName), systemImage: "power")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.glass)
+                .buttonStyle(.bordered)
                 .controlSize(.large)
             }
         }

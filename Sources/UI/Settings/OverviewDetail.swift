@@ -57,7 +57,7 @@ private struct SkinPreviewSection: View {
             }
             .frame(width: 56, height: 56)
             .padding(12)
-            .glassEffect(.regular, in: .circle)
+            .background(.quaternary, in: Circle())
             .accessibilityLabel(L10n.accSkinPreview)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -143,7 +143,7 @@ private struct MetricsGrid: View {
     @State private var tick = 0
 
     var body: some View {
-        GlassEffectContainer {
+        Group {
             VStack(spacing: 0) {
                 ForEach(Array(percentItems.enumerated()), id: \.element) { index, item in
                     if index > 0 { Divider().padding(.leading, 34) }

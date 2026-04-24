@@ -21,7 +21,7 @@ struct SkinThumbnail: View {
             }
             .frame(width: 32, height: 32)
             .padding(6)
-            .glassEffect(.regular, in: .rect(cornerRadius: 8, style: .continuous))
+            .background(.quaternary, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
             .accessibilityHidden(true)
 
             Text(skin.displayName)
@@ -30,9 +30,9 @@ struct SkinThumbnail: View {
         }
         .padding(.vertical, 6)
         .padding(.horizontal, 4)
-        .glassEffect(
-            isSelected ? .regular.tint(.accentColor.opacity(0.3)) : .regular,
-            in: .rect(cornerRadius: 10, style: .continuous)
+        .background(
+            isSelected ? Color.accentColor.opacity(0.15) : Color.clear,
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
         )
         .animation(.easeInOut(duration: 0.15), value: isSelected)
         .accessibilityElement(children: .combine)

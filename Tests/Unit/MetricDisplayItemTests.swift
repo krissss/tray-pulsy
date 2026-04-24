@@ -72,12 +72,12 @@ final class MetricDisplayItemTests: XCTestCase {
     // MARK: - shortLabel
 
     func testShortLabels() {
-        XCTAssertEqual(MetricDisplayItem.cpu.shortLabel, "cpu")
-        XCTAssertEqual(MetricDisplayItem.gpu.shortLabel, "gpu")
-        XCTAssertEqual(MetricDisplayItem.memory.shortLabel, "mem")
-        XCTAssertEqual(MetricDisplayItem.disk.shortLabel, "disk")
-        XCTAssertEqual(MetricDisplayItem.networkDown.shortLabel, "net↓")
-        XCTAssertEqual(MetricDisplayItem.networkUp.shortLabel, "net↑")
+        XCTAssertEqual(MetricDisplayItem.cpu.shortLabel, "CPU")
+        XCTAssertEqual(MetricDisplayItem.gpu.shortLabel, "GPU")
+        XCTAssertEqual(MetricDisplayItem.memory.shortLabel, "RAM")
+        XCTAssertEqual(MetricDisplayItem.disk.shortLabel, "SSD")
+        XCTAssertEqual(MetricDisplayItem.networkDown.shortLabel, "NET↓")
+        XCTAssertEqual(MetricDisplayItem.networkUp.shortLabel, "NET↑")
     }
 
     // MARK: - displayName

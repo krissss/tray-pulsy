@@ -7,26 +7,36 @@ struct SettingsView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            Tab(L10n.tabOverview, systemImage: "chart.bar.fill", value: SettingsSection.overview) {
-                OverviewDetail().navigationTitle(selectedTab.title)
-            }
-            Tab(L10n.tabSkin, systemImage: "paintpalette.fill", value: SettingsSection.skin) {
-                SkinDetail().navigationTitle(selectedTab.title)
-            }
-            Tab(L10n.tabMetrics, systemImage: "chart.bar.doc.horizontal", value: SettingsSection.metrics) {
-                MetricsDetail().navigationTitle(selectedTab.title)
-            }
-            Tab(L10n.tabPerformance, systemImage: "gauge.with.dots.needle.33percent", value: SettingsSection.performance) {
-                PerformanceDetail().navigationTitle(selectedTab.title)
-            }
-            Tab(L10n.tabGeneral, systemImage: "gearshape.fill", value: SettingsSection.general) {
-                GeneralDetail().navigationTitle(selectedTab.title)
-            }
-            Tab(L10n.tabAbout, systemImage: "info.circle.fill", value: SettingsSection.about) {
-                AboutDetail().navigationTitle(selectedTab.title)
-            }
+            OverviewDetail()
+                .navigationTitle(selectedTab.title)
+                .tabItem { Label(L10n.tabOverview, systemImage: "chart.bar.fill") }
+                .tag(SettingsSection.overview)
+
+            SkinDetail()
+                .navigationTitle(selectedTab.title)
+                .tabItem { Label(L10n.tabSkin, systemImage: "paintpalette.fill") }
+                .tag(SettingsSection.skin)
+
+            MetricsDetail()
+                .navigationTitle(selectedTab.title)
+                .tabItem { Label(L10n.tabMetrics, systemImage: "chart.bar.doc.horizontal") }
+                .tag(SettingsSection.metrics)
+
+            PerformanceDetail()
+                .navigationTitle(selectedTab.title)
+                .tabItem { Label(L10n.tabPerformance, systemImage: "gauge.with.dots.needle.33percent") }
+                .tag(SettingsSection.performance)
+
+            GeneralDetail()
+                .navigationTitle(selectedTab.title)
+                .tabItem { Label(L10n.tabGeneral, systemImage: "gearshape.fill") }
+                .tag(SettingsSection.general)
+
+            AboutDetail()
+                .navigationTitle(selectedTab.title)
+                .tabItem { Label(L10n.tabAbout, systemImage: "info.circle.fill") }
+                .tag(SettingsSection.about)
         }
-        .tabViewStyle(.sidebarAdaptable)
         .id(languageVersion)
         .onReceive(NotificationCenter.default.publisher(for: L10n.languageDidChangeNotification)) { _ in
             languageVersion += 1
