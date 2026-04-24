@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build
+        run: make app
+
+      - name: Zip
+        run: |
+          cd TrayPulsy.app/..
+          zip -r TrayPulsy-${{ github.ref_name }}.zip TrayPulsy.app
+
+      - name: Generate checksum
+        id: checksum
+        run: |
+          SHA=$(shasum -a 256 TrayPulsy-${{ github.ref_name }}.zip | cut -d ' ' -f 1)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: TrayPulsy-${{ github.ref_name }}.zip
+          generate_release_notes: true
+
+      - name: Update Homebrew Tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ github.ref_name }}
+          SHA256: ${{ steps.checksum.outputs.sha }}
+        run: |
+          VER="${VERSION#v}"
+          cat > tray-pulsy.rb <<CASK
+          cask "tray-pulsy" do
+            version "${VER}"
+            sha256 "${SHA256}"
+
+            url "https://github.com/krissss/tray-pulsy/releases/download/${VERSION}/TrayPulsy-${VERSION}.zip"
+            name "TrayPulsy"
+            desc "Lightweight macOS menu bar app with animated system monitor"
+            homepage "https://github.com/krissss/tray-pulsy"
+
+            depends_on macos: ">= :tahoe"
+
+            app "TrayPulsy.app"
+
+            zap delete: [
+              "~/Library/Preferences/com.traypulsy.app.plist",
+            ]
+          end
+          CASK
+          gh api --method PUT \
+            -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" \
+            -f message "Update tray-pulsy to ${VER}" \
+            -f content="$(base64 -i tray-pulsy.rb)" \
+            -f sha="$(gh api -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" --jq '.sha' 2>/dev/null || echo '')" \
+            || echo "Tap update skipped — repo may not exist yet"
