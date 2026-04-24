@@ -23,6 +23,11 @@ brew tap krissss/tap
 brew install --cask tray-pulsy
 ```
 
+> **首次打开提示"已损坏"？** 这是 macOS Gatekeeper 对未签名应用的限制，执行以下命令即可：
+> ```bash
+> xattr -cr /Applications/TrayPulsy.app
+> ```
+
 ## ✨ 功能
 
 | 功能           | 说明 |

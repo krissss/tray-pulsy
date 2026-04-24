@@ -23,6 +23,11 @@ brew tap krissss/tap
 brew install --cask tray-pulsy
 ```
 
+> **"App is damaged" on first launch?** This is macOS Gatekeeper blocking unsigned apps. Run:
+> ```bash
+> xattr -cr /Applications/TrayPulsy.app
+> ```
+
 ## ✨ Features
 
 | Feature | Description |
