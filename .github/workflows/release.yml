@@ -41,12 +41,12 @@ jobs:
           SHA256: ${{ steps.checksum.outputs.sha }}
         run: |
           VER="${VERSION#v}"
-          cat > tray-pulsy.rb <<CASK
+          cat > tray-pulsy.rb <<'CASK'
           cask "tray-pulsy" do
-            version "${VER}"
-            sha256 "${SHA256}"
+            version "_VER_"
+            sha256 "_SHA_"
 
-            url "https://github.com/krissss/tray-pulsy/releases/download/${VERSION}/TrayPulsy-${VERSION}.zip"
+            url "https://github.com/krissss/tray-pulsy/releases/download/_TAG_/TrayPulsy-_TAG_.zip"
             name "TrayPulsy"
             desc "Lightweight macOS menu bar app with animated system monitor"
             homepage "https://github.com/krissss/tray-pulsy"
@@ -60,10 +60,15 @@ jobs:
             ]
           end
           CASK
-          gh api --method PUT \
-            -H "Authorization: token $GH_TOKEN" \
-            "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" \
-            -f message "Update tray-pulsy to ${VER}" \
-            -f content="$(base64 -i tray-pulsy.rb)" \
-            -f sha="$(gh api -H "Authorization: token $GH_TOKEN" "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" --jq '.sha' 2>/dev/null || echo '')" \
-            || echo "Tap update skipped — repo may not exist yet"
+          sed -i '' "s/_VER_/${VER}/g; s/_SHA_/${SHA256}/g; s/_TAG_/${VERSION}/g" tray-pulsy.rb
+          ENCODED=$(base64 < tray-pulsy.rb | tr -d '\n')
+          FILE_SHA=$(curl -s -H "Authorization: token $GH_TOKEN" \
+            "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb" | python3 -c "import sys,json; print(json.load(sys.stdin).get('sha',''))" 2>/dev/null || true)
+          ARGS=(-X PUT "https://api.github.com/repos/krissss/homebrew-tap/contents/Casks/tray-pulsy.rb"
+            -H "Authorization: token $GH_TOKEN"
+            -H "Accept: application/vnd.github+json"
+            -d "{\"message\":\"Update tray-pulsy to ${VER}\",\"content\":\"${ENCODED}\"")
+          if [ -n "$FILE_SHA" ]; then
+            ARGS+=(-d "{\"message\":\"Update tray-pulsy to ${VER}\",\"content\":\"${ENCODED}\",\"sha\":\"${FILE_SHA}\"}")
+          fi
+          curl -s "${ARGS[@]}" || echo "Tap update skipped"
