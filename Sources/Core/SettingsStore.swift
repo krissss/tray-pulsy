@@ -243,12 +243,12 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
 
     var shortLabel: String {
         switch self {
-        case .cpu:         "cpu"
-        case .gpu:         "gpu"
-        case .memory:      "mem"
-        case .disk:        "disk"
-        case .networkDown: "net↓"
-        case .networkUp:   "net↑"
+        case .cpu:         "CPU"
+        case .gpu:         "GPU"
+        case .memory:      "RAM"
+        case .disk:        "SSD"
+        case .networkDown: "NET↓"
+        case .networkUp:   "NET↑"
         }
     }
 

@@ -12,6 +12,10 @@
 
 **TrayPulsy** 是一款轻量的 macOS 菜单栏应用，在状态栏显示一个小动画角色，它的奔跑速度随系统使用率实时变化。Mac 越忙，跑得越快！灵感来自 [RunCat365](https://github.com/Kyome22/RunCat365)。
 
+<p align="center">
+  <img src="assets/tray.gif" width="600" alt="TrayPulsy Preview">
+</p>
+
 ## ✨ 功能
 
 | 功能           | 说明 |
