@@ -12,6 +12,10 @@
 
 **TrayPulsy** is a lightweight macOS menu bar app that displays an animated character whose speed responds in real time to system usage. The busier your Mac, the faster it runs! Inspired by [RunCat365](https://github.com/Kyome22/RunCat365).
 
+<p align="center">
+  <img src="assets/tray.gif" width="600" alt="TrayPulsy Preview">
+</p>
+
 ## ✨ Features
 
 | Feature | Description |

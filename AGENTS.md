@@ -41,3 +41,7 @@ This project is indexed by GitNexus as **tray-pulsy** (59 symbols, 54 relationsh
 | Index, status, clean, wiki CLI commands | `.claude/skills/gitnexus/gitnexus-cli/SKILL.md` |
 
 <!-- gitnexus:end -->
+
+## Project Rules
+
+- **修改 README 时必须同步中英文两个版本**（`README.md` 中文、`README_EN.md` 英文），确保内容一致。
