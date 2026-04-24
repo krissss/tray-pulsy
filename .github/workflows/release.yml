@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: macos-15
@@ -48,7 +51,7 @@ jobs:
             desc "Lightweight macOS menu bar app with animated system monitor"
             homepage "https://github.com/krissss/tray-pulsy"
 
-            depends_on macos: ">= :tahoe"
+            depends_on macos: ">= :sequoia"
 
             app "TrayPulsy.app"
 
