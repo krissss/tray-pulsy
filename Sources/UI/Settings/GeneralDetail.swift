@@ -7,36 +7,38 @@ struct GeneralDetail: View {
     @Default(.language) private var language
 
     var body: some View {
-        Form {
-            Section {
-                Toggle(isOn: $launchAtStartup) {
-                    Label(L10n.generalStartupToggle, systemImage: "power.circle")
-                }
-                .onChange(of: launchAtStartup) {
-                    toggleLaunchAtLogin(launchAtStartup)
-                }
-            } header: {
-                Text(L10n.generalStartupHeader)
-            } footer: {
-                Text(String(format: L10n.generalStartupFooter, AppConstants.appName))
-            }
-
-            Section {
-                Picker(selection: $language) {
-                    ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
-                        Text(lang.displayName).tag(lang)
+        GlassEffectContainer {
+            Form {
+                Section {
+                    Toggle(isOn: $launchAtStartup) {
+                        Label(L10n.generalStartupToggle, systemImage: "power.circle")
                     }
-                } label: {
-                    Label(L10n.generalLanguageHeader, systemImage: "globe")
+                    .onChange(of: launchAtStartup) {
+                        toggleLaunchAtLogin(launchAtStartup)
+                    }
+                } header: {
+                    Text(L10n.generalStartupHeader)
+                } footer: {
+                    Text(String(format: L10n.generalStartupFooter, AppConstants.appName))
                 }
-            } header: {
-                Text(L10n.generalLanguageHeader)
+
+                Section {
+                    Picker(selection: $language) {
+                        ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                            Text(lang.displayName).tag(lang)
+                        }
+                    } label: {
+                        Label(L10n.generalLanguageHeader, systemImage: "globe")
+                    }
+                } header: {
+                    Text(L10n.generalLanguageHeader)
+                }
+                .onChange(of: language) {
+                    language.apply()
+                }
             }
-            .onChange(of: language) {
-                language.apply()
-            }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
     }
 
     private func toggleLaunchAtLogin(_ enabled: Bool) {

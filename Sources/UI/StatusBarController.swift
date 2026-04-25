@@ -138,7 +138,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 window.delegate = self
                 window.title = "\(AppConstants.appName) \(L10n.windowTitle)"
                 window.titlebarAppearsTransparent = true
-                window.titleVisibility = .hidden
                 settingsWindow = window
                 targetWindow = window
             }
