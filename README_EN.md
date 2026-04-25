@@ -4,7 +4,7 @@
 
 **Tray + Pulse — System heartbeat, always sensing.**
 
-[![macOS 15+](https://img.shields.io/badge/macOS-15%2B-blue)]() [![Swift](https://img.shields.io/badge/Swift-6.1-orange)]() [![License: MIT](https://img.shields.io/badge/License-MIT-green)]()
+[![macOS 26+](https://img.shields.io/badge/macOS-26%2B-blue)]() [![Swift](https://img.shields.io/badge/Swift-6.3-orange)]() [![License: MIT](https://img.shields.io/badge/License-MIT-green)]()
 
 [中文](README.md) · [English](README_EN.md)
 

@@ -7,39 +7,40 @@ struct SettingsView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            OverviewDetail()
-                .navigationTitle(selectedTab.title)
-                .tabItem { Label(L10n.tabOverview, systemImage: "chart.bar.fill") }
-                .tag(SettingsSection.overview)
-
-            SkinDetail()
-                .navigationTitle(selectedTab.title)
-                .tabItem { Label(L10n.tabSkin, systemImage: "paintpalette.fill") }
-                .tag(SettingsSection.skin)
-
-            MetricsDetail()
-                .navigationTitle(selectedTab.title)
-                .tabItem { Label(L10n.tabMetrics, systemImage: "chart.bar.doc.horizontal") }
-                .tag(SettingsSection.metrics)
-
-            PerformanceDetail()
-                .navigationTitle(selectedTab.title)
-                .tabItem { Label(L10n.tabPerformance, systemImage: "gauge.with.dots.needle.33percent") }
-                .tag(SettingsSection.performance)
-
-            GeneralDetail()
-                .navigationTitle(selectedTab.title)
-                .tabItem { Label(L10n.tabGeneral, systemImage: "gearshape.fill") }
-                .tag(SettingsSection.general)
-
-            AboutDetail()
-                .navigationTitle(selectedTab.title)
-                .tabItem { Label(L10n.tabAbout, systemImage: "info.circle.fill") }
-                .tag(SettingsSection.about)
+            ForEach(SettingsSection.allCases) { section in
+                Tab(value: section) {
+                    section.contentView
+                        .navigationTitle(section.title)
+                } label: {
+                    Label {
+                        Text(section.title)
+                    } icon: {
+                        Image(nsImage: section.coloredIcon)
+                    }
+                }
+            }
         }
+        .tabViewStyle(.sidebarAdaptable)
+        .toolbarBackgroundVisibility(.visible, for: .windowToolbar)
         .id(languageVersion)
         .onReceive(NotificationCenter.default.publisher(for: L10n.languageDidChangeNotification)) { _ in
             languageVersion += 1
+        }
+    }
+}
+
+// MARK: - Section Content
+
+private extension SettingsSection {
+    @ViewBuilder
+    var contentView: some View {
+        switch self {
+        case .overview:    OverviewDetail()
+        case .skin:        SkinDetail()
+        case .metrics:     MetricsDetail()
+        case .performance: PerformanceDetail()
+        case .general:     GeneralDetail()
+        case .about:       AboutDetail()
         }
     }
 }

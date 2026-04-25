@@ -17,58 +17,60 @@ struct SkinDetail: View {
     private let skinManager = SkinManager.shared
 
     var body: some View {
-        Form {
-            Section {
-                Group {
+        GlassEffectContainer {
+            Form {
+                Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 10)], spacing: 10) {
-                    ForEach(skinManager.allSkins) { s in
-                        Button {
-                            skin = s.id
-                        } label: {
-                            SkinThumbnail(skin: s, isSelected: skin == s.id)
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.vertical, 4)
-                }
-            } header: {
-                Text(L10n.skinHeader)
-            }
-
-            pulsyConfigSection()
-
-            Section {
-                HStack {
-                    TextField(L10n.skinPathLabel, text: $externalSkinPath, prompt: Text(L10n.skinPathPrompt))
-                        .textFieldStyle(.roundedBorder)
-                    Button(L10n.skinBrowse) {
-                        let panel = NSOpenPanel()
-                        panel.canChooseFiles = false
-                        panel.canChooseDirectories = true
-                        panel.allowsMultipleSelection = false
-                        if panel.runModal() == .OK, let url = panel.url {
-                            externalSkinPath = url.path
+                        ForEach(skinManager.allSkins) { s in
+                            Button {
+                                skin = s.id
+                            } label: {
+                                SkinThumbnail(skin: s, isSelected: skin == s.id)
+                            }
+                            .buttonStyle(.plain)
                         }
                     }
+                    .padding(.vertical, 4)
+                } header: {
+                    Text(L10n.skinHeader)
                 }
-                if !externalSkinPath.isEmpty {
-                    let expanded = (externalSkinPath as NSString).expandingTildeInPath
-                    if FileManager.default.fileExists(atPath: expanded) {
-                        Text(L10n.skinExtInfo)
-                            .font(.caption)
-                            .foregroundStyle(.tertiary)
-                    } else {
-                        Label(L10n.skinPathNotFound, systemImage: "exclamationmark.triangle.fill")
-                            .font(.caption)
-                            .foregroundStyle(.orange)
+
+                pulsyConfigSection()
+
+                Section {
+                    HStack {
+                        TextField(L10n.skinPathLabel, text: $externalSkinPath, prompt: Text(L10n.skinPathPrompt))
+                            .textFieldStyle(.roundedBorder)
+                        Button(L10n.skinBrowse) {
+                            let panel = NSOpenPanel()
+                            panel.canChooseFiles = false
+                            panel.canChooseDirectories = true
+                            panel.allowsMultipleSelection = false
+                            if panel.runModal() == .OK, let url = panel.url {
+                                externalSkinPath = url.path
+                            }
+                        }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
                     }
+                    if !externalSkinPath.isEmpty {
+                        let expanded = (externalSkinPath as NSString).expandingTildeInPath
+                        if FileManager.default.fileExists(atPath: expanded) {
+                            Text(L10n.skinExtInfo)
+                                .font(.caption)
+                                .foregroundStyle(.tertiary)
+                        } else {
+                            Label(L10n.skinPathNotFound, systemImage: "exclamationmark.triangle.fill")
+                                .font(.caption)
+                                .foregroundStyle(.orange)
+                        }
+                    }
+                } header: {
+                    Text(L10n.skinExtHeader)
                 }
-            } header: {
-                Text(L10n.skinExtHeader)
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
         .onChange(of: externalSkinPath) {
             SkinManager.shared.reload()
         }
@@ -190,18 +192,20 @@ struct MetricsDetail: View {
     @Default(.thresholds) private var thresholds
 
     var body: some View {
-        Form {
-            Section {
-                ForEach(MetricDisplayItem.allCases) { item in
-                    MetricRowView(item: item)
+        GlassEffectContainer {
+            Form {
+                Section {
+                    ForEach(MetricDisplayItem.allCases) { item in
+                        MetricRowView(item: item)
+                    }
+                } header: {
+                    Text(L10n.metricsHeader)
+                } footer: {
+                    Text(L10n.metricsFooter)
                 }
-            } header: {
-                Text(L10n.metricsHeader)
-            } footer: {
-                Text(L10n.metricsFooter)
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
     }
 }
 

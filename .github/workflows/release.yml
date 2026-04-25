@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   test:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -22,7 +22,7 @@ jobs:
   release:
     needs: test
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
 
@@ -74,7 +74,7 @@ jobs:
             desc "Lightweight macOS menu bar app with animated system monitor"
             homepage "https://github.com/krissss/tray-pulsy"
 
-            depends_on macos: ">= :sequoia"
+            depends_on macos: ">= :tahoe"
 
             app "TrayPulsy.app"
 

@@ -3,30 +3,32 @@ import SwiftUI
 
 struct OverviewDetail: View {
     var body: some View {
-        Form {
-            Section {
-                SkinPreviewSection()
-            }
-            Section {
-                MetricsGrid()
-            } header: {
-                HStack {
-                    Text(L10n.overviewMonitorHeader)
-                    Spacer()
-                    Button {
-                        guard let url = NSWorkspace.shared.urlForApplication(
-                            withBundleIdentifier: "com.apple.ActivityMonitor") else { return }
-                        NSWorkspace.shared.open(url)
-                    } label: {
-                        Label(L10n.overviewActivityMonitor, systemImage: "arrow.up.right.square")
-                            .font(.subheadline)
+        GlassEffectContainer {
+            Form {
+                Section {
+                    SkinPreviewSection()
+                }
+                Section {
+                    MetricsGrid()
+                } header: {
+                    HStack {
+                        Text(L10n.overviewMonitorHeader)
+                        Spacer()
+                        Button {
+                            guard let url = NSWorkspace.shared.urlForApplication(
+                                withBundleIdentifier: "com.apple.ActivityMonitor") else { return }
+                            NSWorkspace.shared.open(url)
+                        } label: {
+                            Label(L10n.overviewActivityMonitor, systemImage: "arrow.up.right.square")
+                                .font(.subheadline)
+                        }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
                     }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
                 }
             }
+            .formStyle(.grouped)
         }
-        .formStyle(.grouped)
     }
 }
 
@@ -57,7 +59,7 @@ private struct SkinPreviewSection: View {
             }
             .frame(width: 56, height: 56)
             .padding(12)
-            .background(.quaternary, in: Circle())
+            .glassEffect(.regular, in: .circle)
             .accessibilityLabel(L10n.accSkinPreview)
 
             VStack(alignment: .leading, spacing: 6) {
@@ -112,7 +114,8 @@ private struct OverviewMetricRow: View {
             Image(systemName: item.icon)
                 .font(.title3)
                 .foregroundStyle(.secondary)
-                .frame(width: 24)
+                .frame(width: 28, height: 28)
+                .glassEffect(.regular, in: .circle)
                 .accessibilityHidden(true)
 
             Text(item.overviewName)
@@ -146,7 +149,7 @@ private struct MetricsGrid: View {
         Group {
             VStack(spacing: 0) {
                 ForEach(Array(percentItems.enumerated()), id: \.element) { index, item in
-                    if index > 0 { Divider().padding(.leading, 34) }
+                    if index > 0 { Divider().padding(.leading, 40) }
                     OverviewMetricRow(
                         item: item,
                         value: item.formatValue(from: monitor).trimmingCharacters(in: .whitespaces),
@@ -154,13 +157,14 @@ private struct MetricsGrid: View {
                         detail: item == .memory ? memoryDetail : nil
                     )
                 }
-                Divider().padding(.leading, 34)
+                Divider().padding(.leading, 40)
 
                 HStack(spacing: 8) {
                     Image(systemName: "antenna.radiowaves.left.and.right")
                         .font(.title3)
                         .foregroundStyle(.secondary)
-                        .frame(width: 24)
+                        .frame(width: 28, height: 28)
+                        .glassEffect(.regular, in: .circle)
                         .accessibilityHidden(true)
                     Text(L10n.overviewNetwork)
                         .foregroundStyle(.secondary)
