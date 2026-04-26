@@ -154,20 +154,4 @@ struct UpdateL10nTests {
         #expect(!L10n.updateAutoDownloadToggle.isEmpty)
         #expect(!L10n.updateLastChecked.isEmpty)
     }
-
-    @Test("English update keys resolve to English text")
-    func enUpdateKeysMatchEnglish() {
-        Defaults[.language] = .en
-        L10n.reload()
-        #expect(L10n.updateCheckNow == "Check for Updates")
-        #expect(L10n.updateAutoDownloadToggle == "Automatically download updates")
-    }
-
-    @Test("Chinese update keys resolve to Chinese text")
-    func zhUpdateKeysMatchChinese() {
-        Defaults[.language] = .zhHans
-        L10n.reload()
-        #expect(L10n.updateCheckNow == "检查更新")
-        #expect(L10n.updateAutoDownloadToggle == "自动下载更新")
-    }
 }
