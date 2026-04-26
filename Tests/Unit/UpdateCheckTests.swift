@@ -87,53 +87,35 @@ struct UpdateCheckIntervalTests {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// MARK: - Update Check State Tests
+// MARK: - AppUpdateManager Tests (debug builds)
 // ═══════════════════════════════════════════════════════════════
 
-@Suite("UpdateCheckState")
-struct UpdateCheckStateTests {
+@Suite("AppUpdateManager")
+@MainActor
+struct AppUpdateManagerTests {
 
-    @Test("idle equals idle")
-    func idleEquality() {
-        #expect(UpdateCheckState.idle == UpdateCheckState.idle)
+    @Test("automaticallyChecksForUpdates returns false in debug builds")
+    func autoCheckDebugDefault() {
+        let manager = AppUpdateManager()
+        #if DEBUG
+        #expect(manager.automaticallyChecksForUpdates == false)
+        #endif
     }
 
-    @Test("checking equals checking")
-    func checkingEquality() {
-        #expect(UpdateCheckState.checking == UpdateCheckState.checking)
+    @Test("updateCheckInterval defaults to weekly in debug builds")
+    func intervalDebugDefault() {
+        let manager = AppUpdateManager()
+        #if DEBUG
+        #expect(manager.updateCheckInterval == 604_800)
+        #endif
     }
 
-    @Test("upToDate equals upToDate")
-    func upToDateEquality() {
-        #expect(UpdateCheckState.upToDate == UpdateCheckState.upToDate)
-    }
-
-    @Test("available with same version are equal")
-    func availableSameVersion() {
-        #expect(UpdateCheckState.available(version: "1.2.0") == .available(version: "1.2.0"))
-    }
-
-    @Test("available with different versions are not equal")
-    func availableDifferentVersions() {
-        #expect(UpdateCheckState.available(version: "1.2.0") != .available(version: "1.3.0"))
-    }
-
-    @Test("error with same message are equal")
-    func errorSameMessage() {
-        #expect(UpdateCheckState.error("timeout") == .error("timeout"))
-    }
-
-    @Test("error with different messages are not equal")
-    func errorDifferentMessages() {
-        #expect(UpdateCheckState.error("timeout") != .error("network"))
-    }
-
-    @Test("different cases are not equal")
-    func differentCasesNotEqual() {
-        #expect(UpdateCheckState.idle != .checking)
-        #expect(UpdateCheckState.upToDate != .idle)
-        #expect(UpdateCheckState.available(version: "1.0") != .upToDate)
-        #expect(UpdateCheckState.error("err") != .checking)
+    @Test("automaticallyDownloadsUpdates returns false in debug builds")
+    func autoDownloadDebugDefault() {
+        let manager = AppUpdateManager()
+        #if DEBUG
+        #expect(manager.automaticallyDownloadsUpdates == false)
+        #endif
     }
 }
 
@@ -151,20 +133,14 @@ struct UpdateL10nTests {
 
         #expect(!L10n.updateAutoCheckHeader.isEmpty)
         #expect(!L10n.updateAutoCheckToggle.isEmpty)
-        #expect(!L10n.updateAutoCheckFooter.isEmpty)
         #expect(!L10n.updateCheckNow.isEmpty)
-        #expect(!L10n.updateChecking.isEmpty)
-        #expect(!L10n.updateUpToDate.isEmpty)
-        #expect(!L10n.updateNewVersion.isEmpty)
-        #expect(!L10n.updateError.isEmpty)
         #expect(!L10n.updateErrorDebug.isEmpty)
-        #expect(!L10n.updateErrorTimeout.isEmpty)
         #expect(!L10n.updateIntervalHeader.isEmpty)
         #expect(!L10n.updateIntervalDaily.isEmpty)
         #expect(!L10n.updateIntervalWeekly.isEmpty)
         #expect(!L10n.updateIntervalMonthly.isEmpty)
-        #expect(!L10n.updateReleaseNotes.isEmpty)
-        #expect(!L10n.updateViewDetails.isEmpty)
+        #expect(!L10n.updateAutoDownloadToggle.isEmpty)
+        #expect(!L10n.updateLastChecked.isEmpty)
     }
 
     @Test("Chinese update keys resolve to non-empty values")
@@ -175,11 +151,8 @@ struct UpdateL10nTests {
         #expect(!L10n.updateAutoCheckHeader.isEmpty)
         #expect(!L10n.updateAutoCheckToggle.isEmpty)
         #expect(!L10n.updateCheckNow.isEmpty)
-        #expect(!L10n.updateChecking.isEmpty)
-        #expect(!L10n.updateUpToDate.isEmpty)
-        #expect(!L10n.updateNewVersion.isEmpty)
-        #expect(!L10n.updateReleaseNotes.isEmpty)
-        #expect(!L10n.updateViewDetails.isEmpty)
+        #expect(!L10n.updateAutoDownloadToggle.isEmpty)
+        #expect(!L10n.updateLastChecked.isEmpty)
     }
 
     @Test("English update keys resolve to English text")
@@ -187,8 +160,7 @@ struct UpdateL10nTests {
         Defaults[.language] = .en
         L10n.reload()
         #expect(L10n.updateCheckNow == "Check for Updates")
-        #expect(L10n.updateUpToDate == "You're already on the latest version.")
-        #expect(L10n.updateChecking == "Checking…")
+        #expect(L10n.updateAutoDownloadToggle == "Automatically download updates")
     }
 
     @Test("Chinese update keys resolve to Chinese text")
@@ -196,7 +168,6 @@ struct UpdateL10nTests {
         Defaults[.language] = .zhHans
         L10n.reload()
         #expect(L10n.updateCheckNow == "检查更新")
-        #expect(L10n.updateUpToDate == "已是最新版本。")
-        #expect(L10n.updateChecking == "正在检查…")
+        #expect(L10n.updateAutoDownloadToggle == "自动下载更新")
     }
 }

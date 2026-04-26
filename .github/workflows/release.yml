@@ -85,8 +85,37 @@ jobs:
           with open('/tmp/release_notes.md') as f:
               notes = f.read().strip()
 
+          # Convert Markdown to simple HTML for Sparkle's update dialog
+          lines = notes.split('\n')
+          html_parts = []
+          in_list = False
+          for line in lines:
+              stripped = line.strip()
+              if not stripped:
+                  if in_list:
+                      html_parts.append('</ul>')
+                      in_list = False
+                  continue
+              m = re.match(r'^#{1,3}\s+(.*)', stripped)
+              if m:
+                  if in_list:
+                      html_parts.append('</ul>')
+                      in_list = False
+                  html_parts.append(f'<b>{html.escape(m.group(1))}</b>')
+              elif re.match(r'^[-*]\s+', stripped):
+                  if not in_list:
+                      html_parts.append('<ul>')
+                      in_list = True
+                  html_parts.append(f'<li>{html.escape(re.sub(r"^[-*]\\s+", "", stripped))}</li>')
+              else:
+                  if in_list:
+                      html_parts.append('</ul>')
+                      in_list = False
+                  html_parts.append(html.escape(stripped))
+          if in_list:
+              html_parts.append('</ul>')
           # Escape CDATA terminator inside notes
-          notes_safe = notes.replace(']]>', ']]]]><![CDATA[>')
+          notes_html = notes_html.replace(']]>', ']]]]><![CDATA[>')
 
           item = f'''              <item>
                   <title>TrayPulsy {ver_num}</title>
@@ -94,7 +123,7 @@ jobs:
                   <sparkle:shortVersionString>{ver_num}</sparkle:shortVersionString>
                   <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
                   <pubDate>{date_str}</pubDate>
-                  <description><![CDATA[{notes_safe}]]></description>
+                  <description><![CDATA[{notes_html}]]></description>
                   <enclosure
                       url=\"https://github.com/krissss/tray-pulsy/releases/download/{ver}/TrayPulsy-{ver}.zip\"
                       sparkle:edSignature=\"{ed_sig}\"

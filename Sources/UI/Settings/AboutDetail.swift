@@ -1,9 +1,22 @@
 import SwiftUI
 
 struct AboutDetail: View {
+    @Environment(AppState.self) private var appState
+
+    private var updateManager: AppUpdateManager { appState.updateManager }
+
+    private var lastUpdateCheckString: String {
+        if let date = updateManager.lastUpdateCheckDate {
+            return date.formatted(date: .abbreviated, time: .standard)
+        } else {
+            return L10n.updateNeverChecked
+        }
+    }
+
     var body: some View {
         GlassEffectContainer {
             Form {
+                // MARK: - App Identity
                 Section {
                     HStack(spacing: 16) {
                         Image(nsImage: NSApp.applicationIconImage)
@@ -23,6 +36,48 @@ struct AboutDetail: View {
                     .padding(.vertical, 4)
                 }
 
+                // MARK: - Updates
+                Section {
+                    Toggle(L10n.updateAutoCheckToggle, isOn: Binding(
+                        get: { updateManager.automaticallyChecksForUpdates },
+                        set: { updateManager.automaticallyChecksForUpdates = $0; updateManager.updater.automaticallyChecksForUpdates = $0 }
+                    ))
+
+                    Toggle(L10n.updateAutoDownloadToggle, isOn: Binding(
+                        get: { updateManager.automaticallyDownloadsUpdates },
+                        set: { updateManager.automaticallyDownloadsUpdates = $0; updateManager.updater.automaticallyDownloadsUpdates = $0 }
+                    ))
+
+                    Picker(selection: Binding(
+                        get: { UpdateCheckInterval.from(seconds: updateManager.updateCheckInterval) },
+                        set: { updateManager.updateCheckInterval = $0.seconds; updateManager.updater.updateCheckInterval = $0.seconds }
+                    )) {
+                        ForEach(UpdateCheckInterval.allCases, id: \.rawValue) { interval in
+                            Text(interval.displayName).tag(interval)
+                        }
+                    } label: {
+                        Text(L10n.updateIntervalHeader)
+                    }
+
+                    HStack {
+                        Button(L10n.updateCheckNow) {
+                            updateManager.checkForUpdates()
+                        }
+                        .disabled(!updateManager.canCheckForUpdates)
+
+                        Spacer()
+
+                        Text(String(format: L10n.updateLastChecked, lastUpdateCheckString))
+                            .font(.caption)
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .opacity(updateManager.lastUpdateCheckDate == nil ? 0.75 : 1.0)
+                    }
+                } header: {
+                    Text(L10n.updateAutoCheckHeader)
+                }
+
+                // MARK: - Info
                 Section {
                     AboutLinkRow(icon: "person.fill", label: L10n.aboutDeveloper, value: "kriss", url: "https://github.com/krissss")
                     AboutLinkRow(icon: "chevron.left.forwardslash.chevron.right", label: "GITHUB", value: "GitHub", url: "https://github.com/krissss/tray-pulsy")
@@ -31,6 +86,7 @@ struct AboutDetail: View {
                     Text(L10n.aboutInfoHeader)
                 }
 
+                // MARK: - Quit
                 Section {
                     Button(role: .destructive) {
                         NSApplication.shared.terminate(nil)

@@ -178,18 +178,14 @@ enum L10n {
             "update.autoCheck.toggle": "Check for Updates Automatically",
             "update.autoCheck.footer": "Click to check for new versions of %@.",
             "update.checkNow": "Check for Updates",
-            "update.checking": "Checking…",
-            "update.upToDate": "You're already on the latest version.",
-            "update.newVersion": "New version %@ is now available.",
-            "update.error": "Update check failed: %@",
             "update.error.debug": "Update check is not available in debug mode.",
-            "update.error.timeout": "Update check timed out.",
             "update.interval.header": "Check Frequency",
             "update.interval.daily": "Daily",
             "update.interval.weekly": "Weekly",
             "update.interval.monthly": "Monthly",
-            "update.releaseNotes": "Release Notes",
-            "update.viewDetails": "View on GitHub",
+            "update.autoDownload.toggle": "Automatically download updates",
+            "update.lastChecked": "Last checked: %@",
+            "update.neverChecked": "Never",
         ],
 
         "zh-Hans": [
@@ -295,20 +291,15 @@ enum L10n {
             // Update
             "update.autoCheck.header": "更新",
             "update.autoCheck.toggle": "自动检查更新",
-            "update.autoCheck.footer": "定期检查 %@ 的新版本并自动下载更新。",
             "update.checkNow": "检查更新",
-            "update.checking": "正在检查…",
-            "update.upToDate": "已是最新版本。",
-            "update.newVersion": "新版本 %@ 已发布。",
-            "update.error": "检查更新失败：%@",
             "update.error.debug": "调试模式下不支持检查更新。",
-            "update.error.timeout": "检查更新超时。",
             "update.interval.header": "检查频率",
             "update.interval.daily": "每天",
             "update.interval.weekly": "每周",
             "update.interval.monthly": "每月",
-            "update.releaseNotes": "更新日志",
-            "update.viewDetails": "在 GitHub 上查看",
+            "update.autoDownload.toggle": "自动下载更新",
+            "update.lastChecked": "上次检查：%@",
+            "update.neverChecked": "从未",
 
             // Pulsy Color Theme
             "pulsy.color.fire": "火焰",
@@ -478,18 +469,13 @@ enum L10n {
 
     static var updateAutoCheckHeader:  String { tr("update.autoCheck.header", "更新") }
     static var updateAutoCheckToggle:  String { tr("update.autoCheck.toggle", "自动检查更新") }
-    static var updateAutoCheckFooter:  String { tr("update.autoCheck.footer", "点击检查 %@ 的新版本。") }
     static var updateCheckNow:         String { tr("update.checkNow", "检查更新") }
-    static var updateChecking:         String { tr("update.checking", "正在检查…") }
-    static var updateUpToDate:         String { tr("update.upToDate", "已是最新版本。") }
-    static var updateNewVersion:       String { tr("update.newVersion", "新版本 %@ 已发布。") }
-    static var updateError:            String { tr("update.error", "检查更新失败：%@") }
     static var updateErrorDebug:       String { tr("update.error.debug", "调试模式下不支持检查更新。") }
-    static var updateErrorTimeout:     String { tr("update.error.timeout", "检查更新超时。") }
     static var updateIntervalHeader:   String { tr("update.interval.header", "检查频率") }
     static var updateIntervalDaily:    String { tr("update.interval.daily", "每天") }
     static var updateIntervalWeekly:   String { tr("update.interval.weekly", "每周") }
     static var updateIntervalMonthly:  String { tr("update.interval.monthly", "每月") }
-    static var updateReleaseNotes:     String { tr("update.releaseNotes", "更新日志") }
-    static var updateViewDetails:      String { tr("update.viewDetails", "在 GitHub 上查看") }
+    static var updateAutoDownloadToggle: String { tr("update.autoDownload.toggle", "自动下载更新") }
+    static var updateLastChecked:       String { tr("update.lastChecked", "上次检查：%@") }
+    static var updateNeverChecked:      String { tr("update.neverChecked", "从未") }
 }

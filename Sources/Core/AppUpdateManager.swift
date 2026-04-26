@@ -1,221 +1,138 @@
+import Combine
+import Observation
 import Sparkle
 import SwiftUI
 
-enum UpdateCheckState: Equatable {
-    case idle
-    case checking
-    case upToDate
-    case available(version: String)
-    case error(String)
-}
-
-// MARK: - Silent Update Driver
-
-/// Suppresses all native Sparkle dialogs. Update state is surfaced only
-/// through the custom UI in GeneralDetail.
-@MainActor
-final class SilentUpdateDriver: NSObject, SPUUserDriver {
-    private let onStateChange: @Sendable (UpdateCheckState) -> Void
-    private let onReleaseNotes: @Sendable (String?) -> Void
-
-    init(
-        onStateChange: @escaping @Sendable (UpdateCheckState) -> Void,
-        onReleaseNotes: @escaping @Sendable (String?) -> Void
-    ) {
-        self.onStateChange = onStateChange
-        self.onReleaseNotes = onReleaseNotes
-        super.init()
-    }
-
-    // -- Required --
-
-    func show(
-        _ request: SPUUpdatePermissionRequest,
-        reply: @escaping (SUUpdatePermissionResponse) -> Void
-    ) {
-        // Auto-accept: user controls this via the settings toggle
-        reply(.init(automaticUpdateChecks: true, sendSystemProfile: false))
-    }
-
-    func showUserInitiatedUpdateCheck(cancellation: @escaping () -> Void) {
-        // Our own UI already shows "Checking…"
-    }
-
-    func showUpdateFound(
-        with appcastItem: SUAppcastItem,
-        state: SPUUserUpdateState,
-        reply: @escaping (SPUUserUpdateChoice) -> Void
-    ) {
-        onStateChange(.available(version: appcastItem.displayVersionString))
-        onReleaseNotes(appcastItem.itemDescription)
-        reply(.install)
-    }
-
-    func showUpdateReleaseNotes(with downloadData: SPUDownloadData) {}
-    func showUpdateReleaseNotesFailedToDownloadWithError(_ error: any Error) {}
-
-    func showUpdateNotFoundWithError(
-        _ error: any Error,
-        acknowledgement: @escaping () -> Void
-    ) {
-        onStateChange(.upToDate)
-        acknowledgement()
-    }
-
-    func showUpdaterError(
-        _ error: any Error,
-        acknowledgement: @escaping () -> Void
-    ) {
-        onStateChange(.error(error.localizedDescription))
-        acknowledgement()
-    }
-
-    func showDownloadInitiated(cancellation: @escaping () -> Void) {}
-    func showDownloadDidReceiveExpectedContentLength(_ expectedContentLength: UInt64) {}
-    func showDownloadDidReceiveData(ofLength length: UInt64) {}
-    func showDownloadDidStartExtractingUpdate() {}
-    func showExtractionReceivedProgress(_ progress: Double) {}
-
-    func showReady(toInstallAndRelaunch reply: @escaping (SPUUserUpdateChoice) -> Void) {
-        reply(.install)
-    }
-
-    func showInstallingUpdate(
-        withApplicationTerminated applicationTerminated: Bool,
-        retryTerminatingApplication: @escaping () -> Void
-    ) {}
-
-    func showUpdateInstalledAndRelaunched(
-        _ relaunched: Bool,
-        acknowledgement: @escaping () -> Void
-    ) {
-        acknowledgement()
-    }
-
-    func dismissUpdateInstallation() {}
-}
-
 // MARK: - App Update Manager
 
+/// Manages app updates using Sparkle's standard UI.
+/// Uses `SPUStandardUpdaterController` so Sparkle handles update dialogs natively.
+///
+/// Uses `@Observable` so SwiftUI tracks property changes through `@Environment(AppState.self)`.
+/// Sparkle's KVO publishers sync state into stored properties that Observation can track.
 @MainActor
-final class AppUpdateManager: NSObject, ObservableObject {
-    private var updater: SPUUpdater!
-    private var started = false
+final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+    // MARK: - Observable State (synced from Sparkle via KVO)
 
-    @Published private(set) var checkState: UpdateCheckState = .idle
-    @Published private(set) var autoCheckEnabled: Bool = false
-    @Published private(set) var releaseNotes: String?
-    private var clearTimer: Timer?
+    var canCheckForUpdates = false
+    var lastUpdateCheckDate: Date?
+    var automaticallyChecksForUpdates = false
+    var automaticallyDownloadsUpdates = false
+    var updateCheckInterval: TimeInterval = 604_800
 
-    /// Whether the current bundle has valid metadata for Sparkle.
-    /// Xcode's SPM debug builds lack CFBundleIdentifier, making Sparkle unusable.
-    private static let bundleHasIdentifier = Bundle.main.bundleIdentifier != nil
+    // MARK: - Internal (excluded from Observation)
+
+    @ObservationIgnored private var cancellables = Set<AnyCancellable>()
+    @ObservationIgnored private var updaterStarted = false
+    @ObservationIgnored private static let bundleHasIdentifier = Bundle.main.bundleIdentifier != nil
+    @ObservationIgnored private(set) lazy var updaterController: SPUStandardUpdaterController = {
+        SPUStandardUpdaterController(
+            startingUpdater: false,
+            updaterDelegate: self,
+            userDriverDelegate: self
+        )
+    }()
+
+    var updater: SPUUpdater { updaterController.updater }
 
     override init() {
         super.init()
-
         guard Self.bundleHasIdentifier else {
-            // Xcode debug build — skip Sparkle entirely
+            // Debug build: enable button so user can see the "not available" alert
+            canCheckForUpdates = true
             return
         }
-
-        let driver = SilentUpdateDriver(
-            onStateChange: { [weak self] state in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.checkState = state
-                    switch state {
-                    case .upToDate, .error:
-                        self.scheduleClear()
-                    default:
-                        self.cancelClear()
-                    }
-                }
-            },
-            onReleaseNotes: { [weak self] notes in
-                MainActor.assumeIsolated {
-                    self?.releaseNotes = notes
-                }
-            }
-        )
-
-        updater = SPUUpdater(
-            hostBundle: .main,
-            applicationBundle: .main,
-            userDriver: driver,
-            delegate: nil
-        )
-
-        autoCheckEnabled = updater.automaticallyChecksForUpdates
-
-        startUpdater()
+        _ = updaterController  // force lazy init to register delegates
+        configureCancellables()
+        startUpdaterIfNeeded()
+        // Read initial values from Sparkle (KVO only fires on *changes*)
+        syncFromSparkle()
     }
+
+    // MARK: - Public API
 
     func checkForUpdates() {
         guard Self.bundleHasIdentifier else {
-            checkState = .error(L10n.updateError)
-            scheduleClear()
+            let alert = NSAlert()
+            alert.messageText = L10n.updateErrorDebug
+            alert.runModal()
             return
         }
-        cancelClear()
-        checkState = .checking
-        releaseNotes = nil
+        startUpdaterIfNeeded()
+        updater.checkForUpdates()
+    }
 
-        startUpdater()
-        updater!.checkForUpdates()
+    // MARK: - Private
 
-        // Fallback: if no callback within 30 s, assume timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
-            guard let self, self.checkState == .checking else { return }
-            self.checkState = .error(L10n.updateErrorTimeout)
-            self.scheduleClear()
+    /// Bind Sparkle's KVO publishers to local stored properties.
+    /// Writing to the stored property triggers Observation → SwiftUI re-renders.
+    private func configureCancellables() {
+        // KVO publishers only emit on *changes*, not the initial value.
+        // Use .sink (not .assign) to write through @Observable setters.
+        updater.publisher(for: \.canCheckForUpdates)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] v in self?.canCheckForUpdates = v }
+            .store(in: &cancellables)
+
+        updater.publisher(for: \.lastUpdateCheckDate)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] v in self?.lastUpdateCheckDate = v }
+            .store(in: &cancellables)
+
+        updater.publisher(for: \.automaticallyChecksForUpdates)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] v in self?.automaticallyChecksForUpdates = v }
+            .store(in: &cancellables)
+
+        updater.publisher(for: \.automaticallyDownloadsUpdates)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] v in self?.automaticallyDownloadsUpdates = v }
+            .store(in: &cancellables)
+
+        updater.publisher(for: \.updateCheckInterval)
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] v in self?.updateCheckInterval = v }
+            .store(in: &cancellables)
+    }
+
+    private func startUpdaterIfNeeded() {
+        guard !updaterStarted, Self.bundleHasIdentifier else { return }
+        updaterStarted = true
+        updaterController.startUpdater()
+    }
+
+    /// Read current values from Sparkle into local stored properties.
+    /// KVO publishers only emit on changes, so we must seed initial state.
+    private func syncFromSparkle() {
+        automaticallyChecksForUpdates = updater.automaticallyChecksForUpdates
+        automaticallyDownloadsUpdates = updater.automaticallyDownloadsUpdates
+        updateCheckInterval = updater.updateCheckInterval
+        canCheckForUpdates = updater.canCheckForUpdates
+        lastUpdateCheckDate = updater.lastUpdateCheckDate
+    }
+
+    // MARK: - SPUUpdaterDelegate
+
+    nonisolated func updaterShouldPromptForPermissionToCheck(forUpdates _: SPUUpdater) -> Bool {
+        false
+    }
+
+    nonisolated func updater(_: SPUUpdater, didFindValidUpdate _: SUAppcastItem) {
+        // Menu-bar only app (.accessory) won't bring windows to front automatically
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
         }
     }
 
-    func setAutoCheck(_ enabled: Bool) {
-        autoCheckEnabled = enabled
-        guard Self.bundleHasIdentifier else { return }
-        updater!.automaticallyChecksForUpdates = enabled
-        if enabled {
-            startUpdater()
+    // MARK: - SPUStandardUserDriverDelegate
+
+    nonisolated var supportsGentleScheduledUpdateReminders: Bool { false }
+
+    nonisolated func standardUserDriverWillShowModalAlert() {
+        // Menu-bar only app (.accessory) won't bring windows to front automatically
+        DispatchQueue.main.async {
+            NSApp.activate(ignoringOtherApps: true)
         }
-    }
-
-    func setCheckInterval(_ interval: UpdateCheckInterval) {
-        guard Self.bundleHasIdentifier else { return }
-        updater!.updateCheckInterval = interval.seconds
-    }
-
-    func currentInterval() -> UpdateCheckInterval {
-        guard Self.bundleHasIdentifier else { return .weekly }
-        return UpdateCheckInterval.from(seconds: updater!.updateCheckInterval)
-    }
-
-    private func startUpdater() {
-        guard !started, Self.bundleHasIdentifier else { return }
-        do {
-            try updater.start()
-            started = true
-        } catch {
-            print("⚠️ SPUUpdater.start() failed: \(error)")
-            checkState = .error(error.localizedDescription)
-            scheduleClear()
-        }
-    }
-
-    private func scheduleClear() {
-        cancelClear()
-        clearTimer = Timer.scheduledTimer(withTimeInterval: 5, repeats: false) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.checkState = .idle
-                self?.releaseNotes = nil
-            }
-        }
-    }
-
-    private func cancelClear() {
-        clearTimer?.invalidate()
-        clearTimer = nil
     }
 }
 
