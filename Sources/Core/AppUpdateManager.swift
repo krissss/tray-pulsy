@@ -102,6 +102,7 @@ final class AppUpdateManager: NSObject, ObservableObject {
     static let shared = AppUpdateManager()
 
     private var updater: SPUUpdater!
+    private var started = false
 
     @Published private(set) var checkState: UpdateCheckState = .idle
     @Published private(set) var autoCheckEnabled: Bool = false
@@ -140,11 +141,7 @@ final class AppUpdateManager: NSObject, ObservableObject {
 
         autoCheckEnabled = updater.automaticallyChecksForUpdates
 
-        // Delay start to skip launch-time check; periodic checks still run after this
-        DispatchQueue.main.asyncAfter(deadline: .now() + 60) { [weak self] in
-            guard let self, self.autoCheckEnabled else { return }
-            try? self.updater.start()
-        }
+        startUpdater()
     }
 
     func checkForUpdates() {
@@ -152,17 +149,11 @@ final class AppUpdateManager: NSObject, ObservableObject {
         checkState = .checking
         releaseNotes = nil
 
-        guard Bundle.main.bundleIdentifier != nil else {
-            checkState = .error(L10n.updateErrorDebug)
-            scheduleClear()
-            return
-        }
-
-        try? updater.start()
+        startUpdater()
         updater.checkForUpdates()
 
-        // Fallback: if no callback within 15 s, assume timeout
-        DispatchQueue.main.asyncAfter(deadline: .now() + 15) { [weak self] in
+        // Fallback: if no callback within 30 s, assume timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
             guard let self, self.checkState == .checking else { return }
             self.checkState = .error(L10n.updateErrorTimeout)
             self.scheduleClear()
@@ -173,7 +164,7 @@ final class AppUpdateManager: NSObject, ObservableObject {
         autoCheckEnabled = enabled
         updater.automaticallyChecksForUpdates = enabled
         if enabled {
-            try? updater.start()
+            startUpdater()
         }
     }
 
@@ -183,6 +174,18 @@ final class AppUpdateManager: NSObject, ObservableObject {
 
     func currentInterval() -> UpdateCheckInterval {
         UpdateCheckInterval.from(seconds: updater.updateCheckInterval)
+    }
+
+    private func startUpdater() {
+        guard !started else { return }
+        do {
+            try updater.start()
+            started = true
+        } catch {
+            print("⚠️ SPUUpdater.start() failed: \(error)")
+            checkState = .error(error.localizedDescription)
+            scheduleClear()
+        }
     }
 
     private func scheduleClear() {

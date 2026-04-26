@@ -18,6 +18,7 @@ app: $(BINARY)
 	cp $(BINARY) $(APP_BUNDLE)/Contents/MacOS/
 	cp Sources/Resources/Info.plist $(APP_BUNDLE)/Contents/
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(APP_BUNDLE)/Contents/Info.plist
+	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(APP_BUNDLE)/Contents/Info.plist
 	cp Sources/Resources/AppIcon.icns $(APP_BUNDLE)/Contents/Resources/
 	@for skin in $(SKINS); do \
 		cp -r Sources/Resources/$$skin $(APP_BUNDLE)/Contents/Resources/; \
