@@ -106,7 +106,8 @@ jobs:
                   if not in_list:
                       html_parts.append('<ul>')
                       in_list = True
-                  html_parts.append(f'<li>{html.escape(re.sub(r"^[-*]\\s+", "", stripped))}</li>')
+                  text = re.sub(r'^[-*]\s+', '', stripped)
+                  html_parts.append(f'<li>{html.escape(text)}</li>')
               else:
                   if in_list:
                       html_parts.append('</ul>')
@@ -114,6 +115,7 @@ jobs:
                   html_parts.append(html.escape(stripped))
           if in_list:
               html_parts.append('</ul>')
+          notes_html = '\n'.join(html_parts)
           # Escape CDATA terminator inside notes
           notes_html = notes_html.replace(']]>', ']]]]><![CDATA[>')
 
