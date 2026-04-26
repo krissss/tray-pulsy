@@ -14,6 +14,7 @@ enum L10n {
 
     static let languageDidChangeNotification = Notification.Name("L10n.languageDidChange")
 
+    private static let _lock = NSLock()
     private nonisolated(unsafe) static var _strings: [String: String] = loadTable()
 
     private static func loadTable() -> [String: String] {
@@ -32,12 +33,17 @@ enum L10n {
     }
 
     static func tr(_ key: String, _ defaultValue: String) -> String {
-        _strings[key] ?? defaultValue
+        _lock.lock()
+        defer { _lock.unlock() }
+        return _strings[key] ?? defaultValue
     }
 
     /// Reload strings (call after language change).
     static func reload() {
-        _strings = loadTable()
+        let newTable = loadTable()
+        _lock.lock()
+        _strings = newTable
+        _lock.unlock()
         NotificationCenter.default.post(name: languageDidChangeNotification, object: nil)
     }
 

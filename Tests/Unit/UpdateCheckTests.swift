@@ -182,4 +182,21 @@ struct UpdateL10nTests {
         #expect(!L10n.updateViewDetails.isEmpty)
     }
 
+    @Test("English update keys resolve to English text")
+    func enUpdateKeysMatchEnglish() {
+        Defaults[.language] = .en
+        L10n.reload()
+        #expect(L10n.updateCheckNow == "Check for Updates")
+        #expect(L10n.updateUpToDate == "You're already on the latest version.")
+        #expect(L10n.updateChecking == "Checking…")
+    }
+
+    @Test("Chinese update keys resolve to Chinese text")
+    func zhUpdateKeysMatchChinese() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+        #expect(L10n.updateCheckNow == "检查更新")
+        #expect(L10n.updateUpToDate == "已是最新版本。")
+        #expect(L10n.updateChecking == "正在检查…")
+    }
 }
