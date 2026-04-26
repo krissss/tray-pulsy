@@ -48,5 +48,31 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.5</title>
+        <sparkle:version>1.0.5</sparkle:version>
+        <sparkle:shortVersionString>1.0.5</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sun, 26 Apr 2026 16:41:14 +0000</pubDate>
+        <description><![CDATA[<b>Fixed</b>
+<ul>
+<li>修复 Sparkle 更新检查无法启动 + 补全 Info.plist 必要字段</li>
+<li>修复 Xcode 调试运行时的控制台告警</li>
+</ul>
+<b>Changed</b>
+<ul>
+<li>引入集中式 AppState 管理模式，消除全局单例</li>
+<li>用 AsyncStream 替代轮询 Timer，实现数据驱动的更新模式</li>
+<li>重构自动更新：改用 Sparkle 标准 UI（SPUStandardUpdaterController），更新设置迁移至关于页面</li>
+<li>Release Notes appcast 增加 Markdown→HTML 转换，修复 Sparkle 弹窗中显示</li>
+<li>统一默认皮肤 ID 至 SkinManager.defaultSkinID，默认改为 pulsy</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.5/TrayPulsy-v1.0.5.zip"
+            sparkle:edSignature="YNg1r6lq56Z7FZQ06x7aSZxZ93GkCBdMHvwcaqOgAoCYSSa2hxpDISn6TSNkBviRDsMhs2QuvtFVAYC90/HgAA=="
+            length="5768124"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
