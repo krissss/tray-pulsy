@@ -39,17 +39,8 @@ jobs:
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
-          # Unlock Keychain so generate_keys can import without prompting
-          security unlock-keychain -p "" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
-
-          # Import private key into Keychain (restricted permissions)
-          umask 0177
-          echo -n "$SPARKLE_PRIVATE_KEY" > /tmp/sparkle_key.pem
-          .build/artifacts/sparkle/Sparkle/bin/generate_keys -f /tmp/sparkle_key.pem
-          rm -f /tmp/sparkle_key.pem
-
-          # Sign the zip
-          SIGNATURE=$(.build/artifacts/sparkle/Sparkle/bin/sign_update TrayPulsy-${{ github.ref_name }}.zip 2>&1)
+          # Sign the zip — pipe private key via stdin, no Keychain needed
+          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | .build/artifacts/sparkle/Sparkle/bin/sign_update TrayPulsy-${{ github.ref_name }}.zip --ed-key-file - 2>&1)
           echo "signature=$SIGNATURE" >> "$GITHUB_OUTPUT"
 
           # Get file size
