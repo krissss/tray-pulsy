@@ -10,7 +10,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let appState: AppState
     private var animator: TrayAnimator!
-    private var updateTimer: Timer?
+    private var updateTask: Task<Void, Never>?
     private var settingsWindow: NSWindow?
     private let statusBarView = StatusBarView()
     private var lastDisplayedMetricText: String = ""
@@ -45,9 +45,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         // 5. Configure button: any click → open settings
         setupButton()
 
-        // 6. Start animator and timer
+        // 6. Start animator and update loop
         animator.start()
-        startUpdateTimer()
+        startUpdateLoop()
         appState.updateEnabledMetrics(settingsOpen: false)
 
         // 7. Register callbacks from AppState
@@ -64,8 +64,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         appState.onPulsyConfigChanged = { [weak self] in
             self?.animator.updateFrames(self?.appState.regeneratePulsyFrames() ?? [])
         }
-        appState.onSampleIntervalChanged = { _ in
-            // Handled by AppState directly
+        appState.onSampleIntervalChanged = { [weak self] _ in
+            // Stream is re-created by SystemMonitor.reconfigure(), rebuild the task
+            self?.startUpdateLoop()
         }
         appState.onExternalSkinPathChanged = { [weak self] in
             guard let self else { return }
@@ -84,7 +85,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     func stop() {
         appState.deactivate()
         animator.stop()
-        updateTimer?.invalidate(); updateTimer = nil
+        updateTask?.cancel()
+        updateTask = nil
         settingsWindow?.close()
         settingsWindow = nil
         NotificationCenter.default.removeObserver(self, name: L10n.languageDidChangeNotification, object: nil)
@@ -174,14 +176,16 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Update Timer
+    // MARK: - Update Loop (AsyncStream)
     // ═════════════════════════════════════════════════════════
 
-    /// Single timer drives: animator speed + metric text + accessibility.
-    private func startUpdateTimer() {
-        updateTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self else { return }
+    /// Consume SystemMonitor's AsyncStream to drive animator speed + metric text + accessibility.
+    /// Call again to re-subscribe after `reconfigure()` creates a new stream.
+    private func startUpdateLoop() {
+        updateTask?.cancel()
+        updateTask = Task { [weak self] in
+            for await _ in self?.monitor.metricsStream ?? AsyncStream.makeStream().stream {
+                guard let self, !Task.isCancelled else { return }
 
                 // Drive animator with current metric value
                 let normalizedValue = self.appState.currentNormalizedValue()

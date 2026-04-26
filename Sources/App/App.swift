@@ -64,10 +64,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             updateManager: AppUpdateManager()
         )
 
-        // ── 4️⃣ Create status bar item + start animation ──
+        // ── 4️⃣ Start SystemMonitor first, then status bar ──
+        appState.activate()
         statusBarController = StatusBarController(appState: appState)
         statusBarController?.start()
-        appState.activate()
 
         // ── 5️⃣ Register for launch-at-login ──
         _ = SMAppService.mainApp

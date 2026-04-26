@@ -25,13 +25,17 @@ final class SystemMonitor: @unchecked Sendable {
     private(set) var netSpeedOut: Double = 0.0  // bytes/sec upload
     private(set) var gpuUsage: Double = 0.0     // GPU device utilization %
 
-    private var timer: DispatchSourceTimer?
-    private let queue = DispatchQueue(label: "com.traypulsy.system", qos: .utility)
-    private var interval: TimeInterval
-    private let pageSize: Double  // cached at init, never changes at runtime
-    private let totalMemory: Double  // cached at init — physicalMemory never changes
+    @ObservationIgnored private var timer: DispatchSourceTimer?
+    @ObservationIgnored private var metricsContinuation: AsyncStream<Void>.Continuation?
+    /// Yields once per tick after all properties are updated on main thread.
+    /// Re-created each time `start()` is called.
+    @ObservationIgnored private(set) var metricsStream: AsyncStream<Void> = AsyncStream.makeStream().stream
+    @ObservationIgnored private let queue = DispatchQueue(label: "com.traypulsy.system", qos: .utility)
+    @ObservationIgnored private var interval: TimeInterval
+    @ObservationIgnored private let pageSize: Double  // cached at init, never changes at runtime
+    @ObservationIgnored private let totalMemory: Double  // cached at init — physicalMemory never changes
 
-    var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
+    @ObservationIgnored var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
 
     struct StorageInfo: Sendable {
         let usagePercent: Double, usedGB: Double, totalGB: Double
@@ -42,24 +46,24 @@ final class SystemMonitor: @unchecked Sendable {
     }
 
     // CPU state (host_cpu_load_info tick counters)
-    private var prevUser: UInt64 = 0
-    private var prevSystem: UInt64 = 0
-    private var prevIdle: UInt64 = 0
-    private var prevNice: UInt64 = 0
+    @ObservationIgnored private var prevUser: UInt64 = 0
+    @ObservationIgnored private var prevSystem: UInt64 = 0
+    @ObservationIgnored private var prevIdle: UInt64 = 0
+    @ObservationIgnored private var prevNice: UInt64 = 0
 
     // Network state (byte counters from getifaddrs)
-    private var prevNetInBytes: UInt64 = 0
-    private var prevNetOutBytes: UInt64 = 0
-    private var netInitialized: Bool = false
+    @ObservationIgnored private var prevNetInBytes: UInt64 = 0
+    @ObservationIgnored private var prevNetOutBytes: UInt64 = 0
+    @ObservationIgnored private var netInitialized: Bool = false
 
     // Disk throttling — capacity changes slowly, re-read every ~30s
-    private var lastDiskResult = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
-    private var lastDiskTick: Int = 0
-    private static let diskThrottleTicks: Int = 30  // at 1s interval ≈ 30 seconds
+    @ObservationIgnored private var lastDiskResult = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
+    @ObservationIgnored private var lastDiskTick: Int = 0
+    @ObservationIgnored private static let diskThrottleTicks: Int = 30  // at 1s interval ≈ 30 seconds
 
     // Cached GPU IORegistry service (avoids per-tick lookup)
-    private var cachedGPUService: io_service_t = 0
-    private var gpuServiceCached: Bool = false
+    @ObservationIgnored private var cachedGPUService: io_service_t = 0
+    @ObservationIgnored private var gpuServiceCached: Bool = false
 
     init() {
         self.interval = Defaults[.sampleInterval].seconds
@@ -74,6 +78,9 @@ final class SystemMonitor: @unchecked Sendable {
         _ = readMemoryStats()
         lastDiskResult = readDiskStats()
         _ = readNetBytes()     // seed initial counters
+        let (stream, continuation) = AsyncStream<Void>.makeStream()
+        metricsStream = stream
+        metricsContinuation = continuation
         timer = DispatchSource.makeTimerSource(queue: queue)
         timer?.schedule(deadline: .now() + interval, repeating: interval)
         timer?.setEventHandler { [weak self] in self?.tick() }
@@ -82,6 +89,8 @@ final class SystemMonitor: @unchecked Sendable {
 
     func stop() {
         timer?.cancel(); timer = nil
+        metricsContinuation?.finish()
+        metricsContinuation = nil
         releaseGPUService()
     }
 
@@ -135,6 +144,7 @@ final class SystemMonitor: @unchecked Sendable {
                 self.netSpeedOut = netOut
             }
             if metrics.contains(.gpu) { self.gpuUsage = gpu }
+            self.metricsContinuation?.yield()
         }
     }
 
