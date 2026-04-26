@@ -6,18 +6,20 @@ import XCTest
 final class SkinManagerTests: XCTestCase {
 
     private var tempDir: String!
+    private var manager: SkinManager!
 
     override func setUp() {
         super.setUp()
         tempDir = NSTemporaryDirectory() + "TrayPulsyTest_\(UUID().uuidString)"
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+        Defaults[.externalSkinPath] = ""
+        manager = SkinManager()
     }
 
     override func tearDown() {
         // Reset to clean state to avoid polluting other tests
         Defaults[.externalSkinPath] = ""
-        SkinManager.shared.setTheme(.system)
-        SkinManager.shared.reload()
+        manager = nil
         try? FileManager.default.removeItem(atPath: tempDir)
         tempDir = nil
         super.tearDown()
@@ -74,7 +76,6 @@ final class SkinManagerTests: XCTestCase {
     // MARK: - skin(for:) fallback logic
 
     func testSkinFor_existingID_returnsMatchingSkin() {
-        let manager = SkinManager.shared
         // Get a skin that actually exists in allSkins
         guard let first = manager.allSkins.first else { return }
         let skin = manager.skin(for: first.id)
@@ -82,7 +83,6 @@ final class SkinManagerTests: XCTestCase {
     }
 
     func testSkinFor_unknownID_returnsFallback() {
-        let manager = SkinManager.shared
         let skin = manager.skin(for: "nonexistent_skin_xyz")
         XCTAssertFalse(skin.id.isEmpty)
     }
@@ -92,14 +92,13 @@ final class SkinManagerTests: XCTestCase {
         // Create an external skin with numeric prefix to test
         createSkinDir(name: "01.cat")
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
+        manager.reload()
 
-        let skin = SkinManager.shared.skin(for: "cat")
+        let skin = manager.skin(for: "cat")
         XCTAssertTrue(skin.id.hasSuffix(".cat"), "old ID 'cat' should migrate to '\(skin.id)'")
     }
 
     func testSkinFor_oldID_noMatch_returnsFallback() {
-        let manager = SkinManager.shared
         let skin = manager.skin(for: "totally_unknown_skin")
         // Should still return something (fallback)
         XCTAssertFalse(skin.id.isEmpty)
@@ -221,7 +220,6 @@ final class SkinManagerTests: XCTestCase {
     // MARK: - setSkin / setTheme
 
     func testSetSkin() {
-        let manager = SkinManager.shared
         let original = manager.currentSkin
         let newSkin = SkinInfo(id: "test_skin", displayName: "Test")
         manager.setSkin(newSkin)
@@ -231,7 +229,6 @@ final class SkinManagerTests: XCTestCase {
     }
 
     func testSetTheme_clearsCache() {
-        let manager = SkinManager.shared
         // Load frames to populate cache
         let f1 = manager.frames()
         manager.setTheme(.light)
@@ -247,21 +244,21 @@ final class SkinManagerTests: XCTestCase {
     func testFrames_loadsFromExternalPath() {
         createSkinDir(name: "testskin", frameCount: 3)
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
+        manager.reload()
 
         let skin = SkinInfo(id: "testskin", displayName: "testskin")
-        let frames = SkinManager.shared.frames(for: skin)
+        let frames = manager.frames(for: skin)
         XCTAssertEqual(frames.count, 3)
     }
 
     func testFrames_returnsCachedOnSecondCall() {
         createSkinDir(name: "cachedskin", frameCount: 2)
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
+        manager.reload()
 
         let skin = SkinInfo(id: "cachedskin", displayName: "cachedskin")
-        let f1 = SkinManager.shared.frames(for: skin)
-        let f2 = SkinManager.shared.frames(for: skin)
+        let f1 = manager.frames(for: skin)
+        let f2 = manager.frames(for: skin)
         XCTAssertEqual(f1.count, f2.count)
         // Same instances (from cache)
         for i in 0..<f1.count {
@@ -272,7 +269,7 @@ final class SkinManagerTests: XCTestCase {
     func testFrames_unknownSkin_fallsBackToDefault() {
         // Request frames for a nonexistent skin — should fall back to "cat"
         let skin = SkinInfo(id: "nonexistent_xyz", displayName: "n/a")
-        let frames = SkinManager.shared.frames(for: skin)
+        let frames = manager.frames(for: skin)
         // Should return something (default cat skin frames) — at least not crash
         // In test env may be empty if bundle resources unavailable
     }
@@ -282,9 +279,9 @@ final class SkinManagerTests: XCTestCase {
     func testFrame_validIndex() {
         createSkinDir(name: "indexed", frameCount: 3)
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
+        manager.reload()
 
-        let img = SkinManager.shared.frame(for: "indexed", frameIndex: 1)
+        let img = manager.frame(for: "indexed", frameIndex: 1)
         XCTAssertNotNil(img)
         XCTAssertEqual(img?.size.width, 18)
     }
@@ -292,15 +289,15 @@ final class SkinManagerTests: XCTestCase {
     func testFrame_outOfBounds_returnsNil() {
         createSkinDir(name: "indexed2", frameCount: 2)
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
+        manager.reload()
 
-        XCTAssertNil(SkinManager.shared.frame(for: "indexed2", frameIndex: -1))
-        XCTAssertNil(SkinManager.shared.frame(for: "indexed2", frameIndex: 99))
+        XCTAssertNil(manager.frame(for: "indexed2", frameIndex: -1))
+        XCTAssertNil(manager.frame(for: "indexed2", frameIndex: 99))
     }
 
     func testFrame_nonexistentSkin_fallsBackToDefault() {
         // "no_such_skin" doesn't exist → falls back to default skin frames
-        let img = SkinManager.shared.frame(for: "no_such_skin", frameIndex: 0)
+        let img = manager.frame(for: "no_such_skin", frameIndex: 0)
         // May return a frame from the default skin or nil if no resources in test env
         // Either way, should not crash
     }
@@ -309,12 +306,12 @@ final class SkinManagerTests: XCTestCase {
 
     func testReload_discoversNewSkins() {
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
-        let before = SkinManager.shared.allSkins
+        manager.reload()
+        let before = manager.allSkins
 
         createSkinDir(name: "zzz_new")
-        SkinManager.shared.reload()
-        let after = SkinManager.shared.allSkins
+        manager.reload()
+        let after = manager.allSkins
 
         XCTAssertTrue(after.count >= before.count)
         XCTAssertTrue(after.contains(where: { $0.id == "zzz_new" }))
@@ -325,13 +322,13 @@ final class SkinManagerTests: XCTestCase {
     func testFrames_darkTheme_recolors() {
         createSkinDir(name: "darktest", frameCount: 1)
         Defaults[.externalSkinPath] = tempDir
-        SkinManager.shared.reload()
+        manager.reload()
 
-        SkinManager.shared.setTheme(.light)
-        let lightFrames = SkinManager.shared.frames(for: SkinInfo(id: "darktest", displayName: "darktest"))
+        manager.setTheme(.light)
+        let lightFrames = manager.frames(for: SkinInfo(id: "darktest", displayName: "darktest"))
 
-        SkinManager.shared.setTheme(.dark)
-        let darkFrames = SkinManager.shared.frames(for: SkinInfo(id: "darktest", displayName: "darktest"))
+        manager.setTheme(.dark)
+        let darkFrames = manager.frames(for: SkinInfo(id: "darktest", displayName: "darktest"))
 
         // Both should return frames; dark theme should produce different images
         XCTAssertEqual(lightFrames.count, 1)
@@ -345,11 +342,11 @@ final class SkinManagerTests: XCTestCase {
     func testFrames_pulsy_skipsDarkMode() {
         let pulsy = SkinInfo(id: "pulsy", displayName: "Pulsy")
 
-        SkinManager.shared.setTheme(.light)
-        let lightFrames = SkinManager.shared.frames(for: pulsy)
+        manager.setTheme(.light)
+        let lightFrames = manager.frames(for: pulsy)
 
-        SkinManager.shared.setTheme(.dark)
-        let darkFrames = SkinManager.shared.frames(for: pulsy)
+        manager.setTheme(.dark)
+        let darkFrames = manager.frames(for: pulsy)
 
         // Pulsy skips dark-mode inversion — frames should have same count
         // (they are regenerated per cache-key so objects differ, but pixel content is identical)
@@ -359,7 +356,7 @@ final class SkinManagerTests: XCTestCase {
 
     func testFrames_pulsy_returnsFrames() {
         let pulsy = SkinInfo(id: "pulsy", displayName: "Pulsy")
-        let frames = SkinManager.shared.frames(for: pulsy)
+        let frames = manager.frames(for: pulsy)
         XCTAssertEqual(frames.count, PulsySkinRenderer.frameCount)
     }
 }

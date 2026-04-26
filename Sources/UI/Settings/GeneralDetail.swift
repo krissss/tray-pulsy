@@ -3,9 +3,11 @@ import ServiceManagement
 import SwiftUI
 
 struct GeneralDetail: View {
+    @Environment(AppState.self) private var appState
     @Default(.launchAtStartup) private var launchAtStartup
     @Default(.language) private var language
-    @ObservedObject private var updateManager = AppUpdateManager.shared
+
+    private var updateManager: AppUpdateManager { appState.updateManager }
 
     var body: some View {
         GlassEffectContainer {

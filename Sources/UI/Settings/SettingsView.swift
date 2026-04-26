@@ -32,7 +32,7 @@ struct SettingsView: View {
 // MARK: - Section Content
 
 private extension SettingsSection {
-    @ViewBuilder
+    @MainActor @ViewBuilder
     var contentView: some View {
         switch self {
         case .overview:    OverviewDetail()

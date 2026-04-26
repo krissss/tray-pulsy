@@ -35,7 +35,7 @@ struct OverviewDetail: View {
 // MARK: - Skin Preview
 
 private struct SkinPreviewSection: View {
-    private var monitor = SystemMonitor.shared
+    @Environment(AppState.self) private var appState
     @Default(.speedSource) private var speedSource
     @Default(.skin) private var skin
     @Default(.fpsLimit) private var fpsLimit
@@ -63,10 +63,10 @@ private struct SkinPreviewSection: View {
             .accessibilityLabel(L10n.accSkinPreview)
 
             VStack(alignment: .leading, spacing: 6) {
-                Text(SkinManager.shared.skin(for: skin).displayName)
+                Text(appState.skinManager.skin(for: skin).displayName)
                     .font(.headline)
                 HStack(spacing: 20) {
-                    Label("\(Int(monitor.valueForSource(speedSource)))%", systemImage: speedSource.systemImage)
+                    Label("\(Int(appState.systemMonitor.valueForSource(speedSource)))%", systemImage: speedSource.systemImage)
                     Label("\(Int(previewAnimator?.currentFPS ?? 0)) FPS", systemImage: "gauge.with.dots.needle.33percent")
                 }
                 .font(.subheadline)
@@ -85,8 +85,8 @@ private struct SkinPreviewSection: View {
 
     private func setupAnimator() {
         previewAnimator?.stop()
-        let skinInfo = SkinManager.shared.skin(for: skin)
-        let frames = SkinManager.shared.frames(for: skinInfo)
+        let skinInfo = appState.skinManager.skin(for: skin)
+        let frames = appState.skinManager.frames(for: skinInfo)
         let animator = TrayAnimator(initialFrames: frames)
         animator.setFPSLimit(fpsLimit)
         animator.onFrameUpdate = { [weak animator] image in
@@ -95,7 +95,7 @@ private struct SkinPreviewSection: View {
             MainActor.assumeIsolated { currentFrame = image }
         }
         let source = speedSource
-        animator.updateValue(source.normalizeForAnimation(monitor.valueForSource(source)))
+        animator.updateValue(source.normalizeForAnimation(appState.systemMonitor.valueForSource(source)))
         animator.start()
         previewAnimator = animator
     }
@@ -141,12 +141,13 @@ private struct OverviewMetricRow: View {
 // MARK: - Metrics Grid
 
 private struct MetricsGrid: View {
-    private var monitor = SystemMonitor.shared
+    @Environment(AppState.self) private var appState
     @Default(.thresholds) private var thresholds
     @State private var tick = 0
 
     var body: some View {
         Group {
+            let monitor = appState.systemMonitor
             VStack(spacing: 0) {
                 ForEach(Array(percentItems.enumerated()), id: \.element) { index, item in
                     if index > 0 { Divider().padding(.leading, 40) }
@@ -193,6 +194,7 @@ private struct MetricsGrid: View {
     }
 
     private var memoryDetail: String {
+        let monitor = appState.systemMonitor
         let formatter = ByteCountFormatter()
         formatter.countStyle = .memory
         let used = formatter.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))

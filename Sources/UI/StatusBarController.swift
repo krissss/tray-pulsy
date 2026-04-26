@@ -8,28 +8,21 @@ import SwiftUI
 @MainActor
 final class StatusBarController: NSObject, NSWindowDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-    private let monitor = SystemMonitor.shared
+    private let appState: AppState
     private var animator: TrayAnimator!
-    private let skinManager = SkinManager.shared
     private var updateTimer: Timer?
-    private var defaultsObservers: [Defaults.Observation] = []
     private var settingsWindow: NSWindow?
     private let statusBarView = StatusBarView()
     private var lastDisplayedMetricText: String = ""
 
-    /// Only read the metrics we actually need.
-    private func updateEnabledMetrics() {
-        let settingsOpen = settingsWindow?.isVisible == true
-        if settingsOpen {
-            monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
-        } else {
-            var needed = Set([Defaults[.speedSource].requiredMetric])
-            if !Defaults[.metricDisplayItems].isEmpty {
-                needed.formUnion(Defaults[.metricDisplayItems].map(\.requiredMetric))
-            }
-            monitor.enabledMetrics = needed
-        }
+    init(appState: AppState) {
+        self.appState = appState
+        super.init()
     }
+
+    // Computed accessors — delegate to AppState
+    private var monitor: SystemMonitor { appState.systemMonitor }
+    private var skinManager: SkinManager { appState.skinManager }
 
     func start() {
         // 1. Create animator with initial frames
@@ -46,22 +39,40 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         skinManager.setSkin(savedSkin)
         animator.changeSkin(to: skinManager.frames(for: savedSkin))
 
-        // 5. Apply FPS limit
+        // 4. Apply FPS limit
         animator.setFPSLimit(Defaults[.fpsLimit])
 
-        // 6. Configure button: any click → open settings
+        // 5. Configure button: any click → open settings
         setupButton()
 
-        // 7. Start everything
-        monitor.start()
+        // 6. Start animator and timer
         animator.start()
         startUpdateTimer()
-        updateEnabledMetrics()
+        appState.updateEnabledMetrics(settingsOpen: false)
 
-        // 8. Listen for settings changes via Defaults
-        setupDefaultsObservers()
+        // 7. Register callbacks from AppState
+        appState.onSkinChanged = { [weak self] frames in
+            self?.animator.changeSkin(to: frames)
+        }
+        appState.onFPSLimitChanged = { [weak self] limit in
+            self?.animator.setFPSLimit(limit)
+        }
+        appState.onMetricsConfigChanged = { [weak self] in
+            self?.updateEnabledMetrics()
+            self?.refreshMetricDisplay()
+        }
+        appState.onPulsyConfigChanged = { [weak self] in
+            self?.animator.updateFrames(self?.appState.regeneratePulsyFrames() ?? [])
+        }
+        appState.onSampleIntervalChanged = { _ in
+            // Handled by AppState directly
+        }
+        appState.onExternalSkinPathChanged = { [weak self] in
+            guard let self else { return }
+            self.animator.changeSkin(to: self.skinManager.frames())
+        }
 
-        // 9. Listen for language changes to update window title & accessibility
+        // 8. Listen for language changes to update window title & accessibility
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(handleLanguageChange),
@@ -71,13 +82,11 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     func stop() {
-        monitor.stop()
+        appState.deactivate()
         animator.stop()
         updateTimer?.invalidate(); updateTimer = nil
         settingsWindow?.close()
         settingsWindow = nil
-        defaultsObservers.forEach { $0.invalidate() }
-        defaultsObservers.removeAll()
         NotificationCenter.default.removeObserver(self, name: L10n.languageDidChangeNotification, object: nil)
     }
 
@@ -121,7 +130,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         if let existing = settingsWindow, existing.isVisible {
             targetWindow = existing
         } else {
-            let view = NSHostingView(rootView: SettingsView())
+            let view = NSHostingView(rootView: SettingsView().environment(appState))
             if let existing = settingsWindow {
                 existing.contentView = view
                 targetWindow = existing
@@ -171,15 +180,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 guard let self else { return }
 
                 // Drive animator with current metric value
-                let source = Defaults[.speedSource]
-                let rawValue = self.monitor.valueForSource(source)
-                let normalizedValue = source.normalizeForAnimation(rawValue)
+                let normalizedValue = self.appState.currentNormalizedValue()
                 self.animator.updateValue(normalizedValue)
 
                 // Dynamic Pulsy skin: regenerate frames with current value for colour/amplitude
                 if self.skinManager.currentSkin.id == "pulsy" {
-                    let config = SkinManager.currentPulsyConfig()
-                    self.animator.updateFrames(PulsySkinRenderer.generateFrames(value: normalizedValue, config: config))
+                    self.animator.updateFrames(self.appState.regeneratePulsyFrames())
                 }
 
                 // Update metric text & accessibility (only when values change)
@@ -212,75 +218,14 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Defaults Observers
-    // ═════════════════════════════════════════════════════════
-
-    private func setupDefaultsObservers() {
-        defaultsObservers = [
-            Defaults.observe(.skin) { [weak self] change in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    let s = self.skinManager.skin(for: change.newValue)
-                    self.skinManager.setSkin(s)
-                    self.animator.changeSkin(to: self.skinManager.frames(for: s))
-                }
-            },
-            Defaults.observe(.speedSource) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.updateEnabledMetrics()
-                }
-            },
-            Defaults.observe(.fpsLimit) { [weak self] change in
-                MainActor.assumeIsolated {
-                    self?.animator.setFPSLimit(change.newValue)
-                }
-            },
-            Defaults.observe(.sampleInterval) { [weak self] change in
-                MainActor.assumeIsolated {
-                    self?.monitor.reconfigure(sampleInterval: change.newValue.seconds)
-                }
-            },
-            Defaults.observe(.metricDisplayItems) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.updateEnabledMetrics()
-                    self.refreshMetricDisplay()
-                }
-            },
-            Defaults.observe(.externalSkinPath) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    guard let self else { return }
-                    self.skinManager.reload()
-                    self.animator.changeSkin(to: self.skinManager.frames())
-                }
-            },
-            Defaults.observe(.thresholds) { [weak self] _ in
-                MainActor.assumeIsolated {
-                    self?.refreshMetricDisplay()
-                }
-            },
-            Defaults.observe(.pulsyColorTheme) { [weak self] _ in
-                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
-            },
-            Defaults.observe(.pulsyWaveformStyle) { [weak self] _ in
-                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
-            },
-            Defaults.observe(.pulsyLineWidth) { [weak self] _ in
-                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
-            },
-            Defaults.observe(.pulsyGlowIntensity) { [weak self] _ in
-                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
-            },
-            Defaults.observe(.pulsyAmplitudeSensitivity) { [weak self] _ in
-                MainActor.assumeIsolated { self?.regeneratePulsyFrames() }
-            },
-        ]
-    }
-
-    // ═════════════════════════════════════════════════════════
     // MARK: - Helpers
     // ═════════════════════════════════════════════════════════
+
+    /// Update enabled metrics based on whether settings window is open.
+    private func updateEnabledMetrics() {
+        let settingsOpen = settingsWindow?.isVisible == true
+        appState.updateEnabledMetrics(settingsOpen: settingsOpen)
+    }
 
     /// Force-refresh metric display (called by observers when settings change).
     private func refreshMetricDisplay() {
@@ -301,16 +246,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         statusBarView.updateValues(values, colors: colors)
         syncStatusItemLength()
         updateAccessibilityLabel()
-    }
-
-    /// Immediately regenerate Pulsy frames with current config + value.
-    private func regeneratePulsyFrames() {
-        guard skinManager.currentSkin.id == "pulsy" else { return }
-        let config = SkinManager.currentPulsyConfig()
-        let source = Defaults[.speedSource]
-        let rawValue = monitor.valueForSource(source)
-        let normalizedValue = source.normalizeForAnimation(rawValue)
-        animator.updateFrames(PulsySkinRenderer.generateFrames(value: normalizedValue, config: config))
     }
 
     private func updateAccessibilityLabel() {

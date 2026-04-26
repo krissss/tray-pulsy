@@ -44,6 +44,7 @@ struct TrayPulsyApp: App {
 }
 
 class AppDelegate: NSObject, NSApplicationDelegate {
+    private var appState: AppState!
     private var statusBarController: StatusBarController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -56,15 +57,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // ── 2️⃣ Hide Dock icon & menu bar presence ──
         NSApp.setActivationPolicy(.accessory)
 
-        // ── 3️⃣ Create status bar item + start animation ──
-        statusBarController = StatusBarController()
+        // ── 3️⃣ Create centralized state ──
+        appState = AppState(
+            systemMonitor: SystemMonitor(),
+            skinManager: SkinManager(),
+            updateManager: AppUpdateManager()
+        )
+
+        // ── 4️⃣ Create status bar item + start animation ──
+        statusBarController = StatusBarController(appState: appState)
         statusBarController?.start()
+        appState.activate()
 
-        // ── 4️⃣ Register for launch-at-login ──
+        // ── 5️⃣ Register for launch-at-login ──
         _ = SMAppService.mainApp
-
-        // ── 5️⃣ Start Sparkle updater (auto-checks for updates) ──
-        _ = AppUpdateManager.shared
 
         // ── 6️⃣ Handle sleep/wake to pause/resume animation ──
         NSWorkspace.shared.notificationCenter.addObserver(

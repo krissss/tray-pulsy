@@ -99,8 +99,6 @@ final class SilentUpdateDriver: NSObject, SPUUserDriver {
 
 @MainActor
 final class AppUpdateManager: NSObject, ObservableObject {
-    static let shared = AppUpdateManager()
-
     private var updater: SPUUpdater!
     private var started = false
 

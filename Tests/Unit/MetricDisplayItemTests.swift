@@ -69,7 +69,7 @@ final class MetricDisplayItemTests: XCTestCase {
     // MARK: - formatValue (percent items)
 
     func testFormatValue_cpu() {
-        let monitor = SystemMonitor.shared
+        let monitor = SystemMonitor()
         // Just verify the format pattern: 3 chars like "17%"
         let result = MetricDisplayItem.cpu.formatValue(from: monitor)
         XCTAssertTrue(result.hasSuffix("%"), "CPU value should end with %, got: \(result)")

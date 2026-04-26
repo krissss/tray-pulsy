@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct SkinThumbnail: View {
+    @Environment(AppState.self) private var appState
     let skin: SkinInfo
     let isSelected: Bool
     @State private var thumbnailImage: NSImage?
@@ -39,7 +40,7 @@ struct SkinThumbnail: View {
         .accessibilityLabel("\(skin.displayName)\(isSelected ? L10n.accSelected : "")")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .onAppear {
-            thumbnailImage = SkinManager.shared.frame(for: skin.id, frameIndex: 0)
+            thumbnailImage = appState.skinManager.frame(for: skin.id, frameIndex: 0)
         }
     }
 }

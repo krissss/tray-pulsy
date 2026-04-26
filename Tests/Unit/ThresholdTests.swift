@@ -146,7 +146,7 @@ final class ThresholdTests: XCTestCase {
     // MARK: - rawValue(from:) returns non-negative
 
     func testRawValue_fromMonitor_nonNegative() {
-        let monitor = SystemMonitor.shared
+        let monitor = SystemMonitor()
         for item in MetricDisplayItem.allCases {
             let raw = item.rawValue(from: monitor)
             XCTAssertGreaterThanOrEqual(raw, 0, "\(item.rawValue) should be non-negative")

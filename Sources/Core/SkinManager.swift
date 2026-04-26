@@ -23,7 +23,6 @@ struct SkinInfo: Identifiable, Hashable, Sendable {
 
 @Observable
 final class SkinManager: @unchecked Sendable {
-    static let shared = SkinManager()
     private static let defaultSkinID = "01.cat"
 
     /// All discovered skins (bundled + external), sorted by id.
@@ -34,7 +33,7 @@ final class SkinManager: @unchecked Sendable {
     private var frameCache: [String: [NSImage]] = [:]
     @ObservationIgnored private lazy var ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
-    private init() {
+    init() {
         let skins = Self.discoverSkins(externalPath: Defaults[.externalSkinPath])
         self.allSkins = skins
         self.currentSkin = skins.first ?? SkinInfo(id: Self.defaultSkinID, displayName: Self.defaultSkinID)

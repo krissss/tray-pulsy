@@ -7,6 +7,7 @@ import SwiftUI
 // ═══════════════════════════════════════════════════════════════
 
 struct SkinDetail: View {
+    @Environment(AppState.self) private var appState
     @Default(.skin) private var skin
     @Default(.externalSkinPath) private var externalSkinPath
     @Default(.pulsyColorTheme) private var pulsyColorTheme
@@ -14,14 +15,13 @@ struct SkinDetail: View {
     @Default(.pulsyLineWidth) private var pulsyLineWidth
     @Default(.pulsyGlowIntensity) private var pulsyGlowIntensity
     @Default(.pulsyAmplitudeSensitivity) private var pulsyAmplitudeSensitivity
-    private let skinManager = SkinManager.shared
 
     var body: some View {
         GlassEffectContainer {
             Form {
                 Section {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 10)], spacing: 10) {
-                        ForEach(skinManager.allSkins) { s in
+                        ForEach(appState.skinManager.allSkins) { s in
                             Button {
                                 skin = s.id
                             } label: {
@@ -72,7 +72,7 @@ struct SkinDetail: View {
             .formStyle(.grouped)
         }
         .onChange(of: externalSkinPath) {
-            SkinManager.shared.reload()
+            // AppState already observes .externalSkinPath and calls skinManager.reload()
         }
     }
 

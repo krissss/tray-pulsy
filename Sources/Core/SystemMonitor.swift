@@ -12,7 +12,6 @@ import Observation
 /// Provides CPU%, memory usage, disk usage, network speed, and GPU utilization.
 @Observable
 final class SystemMonitor: @unchecked Sendable {
-    static let shared = SystemMonitor()
     private static let bytesPerGB: Double = 1024 * 1024 * 1024
 
     private(set) var cpuUsage: Double = 0.0
@@ -62,7 +61,7 @@ final class SystemMonitor: @unchecked Sendable {
     private var cachedGPUService: io_service_t = 0
     private var gpuServiceCached: Bool = false
 
-    private init() {
+    init() {
         self.interval = Defaults[.sampleInterval].seconds
         var ps: vm_size_t = 0
         host_page_size(mach_host_self(), &ps)
