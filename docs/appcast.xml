@@ -28,5 +28,25 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.4</title>
+        <sparkle:version>1.0.4</sparkle:version>
+        <sparkle:shortVersionString>1.0.4</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sun, 26 Apr 2026 08:54:33 +0000</pubDate>
+        <description><![CDATA[### Fixed
+
+- L10n._strings 加 NSLock 线程安全保护，根治跨 suite 竞态导致 CI 测试失败
+
+### Changed
+
+- Release Notes 改为从 CHANGELOG.md 提取，替代 GitHub 自动生成]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.4/TrayPulsy-v1.0.4.zip"
+            sparkle:edSignature="lgxPdVsUj5YfAkooHlghtMKegxsditkgxNkSkTpg6JyrSqrohARyBnQKOS1Umfk86pabKinozjPGwIk2AAmuBQ=="
+            length="5774899"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
