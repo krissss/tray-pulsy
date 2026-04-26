@@ -5,26 +5,28 @@
         <link>https://krissss.github.io/tray-pulsy/appcast.xml</link>
         <description>TrayPulsy release updates</description>
         <language>en</language>
-        <!--
-            Add a new <item> for each release.
-            Generate EdDSA signature with: ./bin/generate_keys
-            Then sign with: ./bin/sign_update TrayPulsy-1.1.0.zip
-        -->
-        <!--
-        <item>
-            <title>TrayPulsy 1.1.0</title>
-            <sparkle:version>1.1.0</sparkle:version>
-            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <pubDate>Fri, 25 Apr 2026 00:00:00 +0800</pubDate>
-            <description><![CDATA[Release notes here]]></description>
-            <enclosure
-                url="https://github.com/krissss/tray-pulsy/releases/download/v1.1.0/TrayPulsy-1.1.0.zip"
-                sparkle:edSignature=""
-                length="0"
-                type="application/octet-stream"
-            />
-        </item>
-        -->
+        
+        
+                  <item>
+        <title>TrayPulsy 1.0.3</title>
+        <sparkle:version>1.0.3</sparkle:version>
+        <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sun, 26 Apr 2026 06:10:29 +0000</pubDate>
+        <description><![CDATA[## What's Changed
+* ✨ 升级至 macOS 26 + Liquid Glass + 侧边栏导航 by @krissss in https://github.com/krissss/tray-pulsy/pull/1
+* ✨ 集成 Sparkle 2 自动更新 by @krissss in https://github.com/krissss/tray-pulsy/pull/3
+
+## New Contributors
+* @krissss made their first contribution in https://github.com/krissss/tray-pulsy/pull/1
+
+**Full Changelog**: https://github.com/krissss/tray-pulsy/compare/v1.0.2...v1.0.3]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.3/TrayPulsy-v1.0.3.zip"
+            sparkle:edSignature="uUDkW9zjA69LKH5BXIPE6UPDc8alYkojSgpvIisnSBWgB+mT7210QjByoL5DOoahvnWSSkIP6lwhRL6OQe7SDA=="
+            length="5777167"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
