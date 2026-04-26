@@ -28,6 +28,21 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-04-27
+
+### Fixed
+
+- 修复 Sparkle 更新检查无法启动 + 补全 Info.plist 必要字段
+- 修复 Xcode 调试运行时的控制台告警
+
+### Changed
+
+- 引入集中式 AppState 管理模式，消除全局单例
+- 用 AsyncStream 替代轮询 Timer，实现数据驱动的更新模式
+- 重构自动更新：改用 Sparkle 标准 UI（SPUStandardUpdaterController），更新设置迁移至关于页面
+- Release Notes appcast 增加 Markdown→HTML 转换，修复 Sparkle 弹窗中显示
+- 统一默认皮肤 ID 至 SkinManager.defaultSkinID，默认改为 pulsy
+
 ## [1.0.4] - 2026-04-26
 
 ### Fixed
@@ -56,7 +71,8 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 - README 添加首次打开提示损坏的解决方法
 - AGENTS.md 添加 Sparkle 自动更新文档
 
-[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/krissss/tray-pulsy/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/krissss/tray-pulsy/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/krissss/tray-pulsy/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/krissss/tray-pulsy/compare/v1.0.1...v1.0.2
