@@ -47,13 +47,20 @@ jobs:
           SIZE=$(stat -f%z TrayPulsy-${{ github.ref_name }}.zip)
           echo "length=$SIZE" >> "$GITHUB_OUTPUT"
 
-      - name: Generate release notes
-        id: release_notes
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Extract release notes from CHANGELOG
         run: |
-          # Write notes to file to avoid shell interpolation issues
-          gh api -X POST /repos/${{ github.repository }}/releases/generate-notes -f tag_name="${{ github.ref_name }}" --jq '.body' > /tmp/release_notes.md
+          VER="${{ github.ref_name }}"
+          VERSION_NUM="${VER#v}"
+          python3 -c "
+          import re
+          with open('CHANGELOG.md') as f:
+              content = f.read()
+          m = re.search(r'^## \[${VERSION_NUM}\].*?\n(.*?)(?=^## \[|\Z)', content, re.MULTILINE | re.DOTALL)
+          section = m.group(1).strip() if m else ''
+          lines = [l for l in section.split('\n') if not l.startswith('[')]
+          with open('/tmp/release_notes.md', 'w') as f:
+              f.write('\n'.join(lines).strip() + '\n')
+          "
 
       - name: Update appcast.xml
         run: |
