@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>TrayPulsy Update Feed</title>
+        <link>https://krissss.github.io/tray-pulsy/appcast.xml</link>
+        <description>TrayPulsy release updates</description>
+        <language>en</language>
+        <!--
+            Add a new <item> for each release.
+            Generate EdDSA signature with: ./bin/generate_keys
+            Then sign with: ./bin/sign_update TrayPulsy-1.1.0.zip
+        -->
+        <!--
+        <item>
+            <title>TrayPulsy 1.1.0</title>
+            <sparkle:version>1.1.0</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <pubDate>Fri, 25 Apr 2026 00:00:00 +0800</pubDate>
+            <description><![CDATA[Release notes here]]></description>
+            <enclosure
+                url="https://github.com/krissss/tray-pulsy/releases/download/v1.1.0/TrayPulsy-1.1.0.zip"
+                sparkle:edSignature=""
+                length="0"
+                type="application/octet-stream"
+            />
+        </item>
+        -->
+    </channel>
+</rss>

@@ -2,6 +2,9 @@ APP_NAME := TrayPulsy
 BINARY := .build/release/$(APP_NAME)
 APP_BUNDLE := $(APP_NAME).app
 SKINS := $(shell git ls-files 'Sources/Resources/*.png' | sed 's|Sources/Resources/\([^/]*\)/.*|\1|' | sort -u)
+SPARKLE_FW := .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework
+VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
+VERSION := $(or $(VERSION),0.0.0)
 
 .PHONY: all app clean run
 
@@ -10,9 +13,11 @@ all: app
 app: $(BINARY)
 	@rm -rf $(APP_BUNDLE)
 	@mkdir -p $(APP_BUNDLE)/Contents/MacOS
+	@mkdir -p $(APP_BUNDLE)/Contents/Frameworks
 	@mkdir -p $(APP_BUNDLE)/Contents/Resources
 	cp $(BINARY) $(APP_BUNDLE)/Contents/MacOS/
 	cp Sources/Resources/Info.plist $(APP_BUNDLE)/Contents/
+	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(APP_BUNDLE)/Contents/Info.plist
 	cp Sources/Resources/AppIcon.icns $(APP_BUNDLE)/Contents/Resources/
 	@for skin in $(SKINS); do \
 		cp -r Sources/Resources/$$skin $(APP_BUNDLE)/Contents/Resources/; \
@@ -22,6 +27,8 @@ app: $(BINARY)
 		cp Sources/Resources/lang/$$lang.lproj/Localizable.strings $(APP_BUNDLE)/Contents/Resources/$$lang.lproj/; \
 	done
 	cp -r Sources/Resources/lang $(APP_BUNDLE)/Contents/Resources/
+	cp -r $(SPARKLE_FW) $(APP_BUNDLE)/Contents/Frameworks/
+	install_name_tool -add_rpath "@executable_path/../Frameworks" $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME) 2>/dev/null || true
 	@echo "✅ $(APP_BUNDLE)"
 
 $(BINARY):

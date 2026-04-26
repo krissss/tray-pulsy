@@ -16,5 +16,9 @@
 	<true/>
 	<key>LSUIElement</key>
 	<true/>
+	<key>SUFeedURL</key>
+	<string>https://krissss.github.io/tray-pulsy/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>UAdVXq2Cg1XYOT6lxG1d7GY2lw5GYO2JLNBvtpbCjWA=</string>
 </dict>
 </plist>

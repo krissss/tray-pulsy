@@ -11,7 +11,7 @@ struct AboutDetail: View {
                             .frame(width: 64, height: 64)
                             .padding(8)
                             .glassEffect(in: .rect(cornerRadius: 16, style: .continuous))
-                        VStack(alignment: .leading, spacing: 2) {
+                        VStack(alignment: .leading, spacing: 4) {
                             Text(AppConstants.appName)
                                 .font(.title2.bold())
                             Text(String(format: L10n.aboutVersion, Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "—"))
