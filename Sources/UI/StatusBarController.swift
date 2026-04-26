@@ -109,12 +109,16 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.image = NSImage()  // clear native image — StatusBarView handles all drawing
         button.addSubview(statusBarView)
-        syncStatusItemLength()
+        // Defer to avoid layoutSubtreeIfNeeded recursion during initial layout
+        DispatchQueue.main.async { [weak self] in
+            self?.syncStatusItemLength()
+        }
     }
 
     @objc private func statusItemClicked() { openSettings() }
 
     /// Keep NSStatusItem.length in sync with StatusBarView's required width.
+    /// Always called async to avoid layout recursion.
     private func syncStatusItemLength() {
         statusItem.length = statusBarView.requiredWidth
     }

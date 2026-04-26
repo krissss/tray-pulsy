@@ -107,8 +107,17 @@ final class AppUpdateManager: NSObject, ObservableObject {
     @Published private(set) var releaseNotes: String?
     private var clearTimer: Timer?
 
+    /// Whether the current bundle has valid metadata for Sparkle.
+    /// Xcode's SPM debug builds lack CFBundleIdentifier, making Sparkle unusable.
+    private static let bundleHasIdentifier = Bundle.main.bundleIdentifier != nil
+
     override init() {
         super.init()
+
+        guard Self.bundleHasIdentifier else {
+            // Xcode debug build — skip Sparkle entirely
+            return
+        }
 
         let driver = SilentUpdateDriver(
             onStateChange: { [weak self] state in
@@ -143,12 +152,17 @@ final class AppUpdateManager: NSObject, ObservableObject {
     }
 
     func checkForUpdates() {
+        guard Self.bundleHasIdentifier else {
+            checkState = .error(L10n.updateError)
+            scheduleClear()
+            return
+        }
         cancelClear()
         checkState = .checking
         releaseNotes = nil
 
         startUpdater()
-        updater.checkForUpdates()
+        updater!.checkForUpdates()
 
         // Fallback: if no callback within 30 s, assume timeout
         DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in
@@ -160,22 +174,25 @@ final class AppUpdateManager: NSObject, ObservableObject {
 
     func setAutoCheck(_ enabled: Bool) {
         autoCheckEnabled = enabled
-        updater.automaticallyChecksForUpdates = enabled
+        guard Self.bundleHasIdentifier else { return }
+        updater!.automaticallyChecksForUpdates = enabled
         if enabled {
             startUpdater()
         }
     }
 
     func setCheckInterval(_ interval: UpdateCheckInterval) {
-        updater.updateCheckInterval = interval.seconds
+        guard Self.bundleHasIdentifier else { return }
+        updater!.updateCheckInterval = interval.seconds
     }
 
     func currentInterval() -> UpdateCheckInterval {
-        UpdateCheckInterval.from(seconds: updater.updateCheckInterval)
+        guard Self.bundleHasIdentifier else { return .weekly }
+        return UpdateCheckInterval.from(seconds: updater!.updateCheckInterval)
     }
 
     private func startUpdater() {
-        guard !started else { return }
+        guard !started, Self.bundleHasIdentifier else { return }
         do {
             try updater.start()
             started = true
