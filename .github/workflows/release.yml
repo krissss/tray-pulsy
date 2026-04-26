@@ -39,6 +39,9 @@ jobs:
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
+          # Unlock Keychain so generate_keys can import without prompting
+          security unlock-keychain -p "" ~/Library/Keychains/login.keychain-db 2>/dev/null || true
+
           # Import private key into Keychain (restricted permissions)
           umask 0177
           echo -n "$SPARKLE_PRIVATE_KEY" > /tmp/sparkle_key.pem
