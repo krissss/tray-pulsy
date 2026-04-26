@@ -63,7 +63,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // ── 4️⃣ Register for launch-at-login ──
         _ = SMAppService.mainApp
 
-        // ── 5️⃣ Handle sleep/wake to pause/resume animation ──
+        // ── 5️⃣ Start Sparkle updater (auto-checks for updates) ──
+        _ = AppUpdateManager.shared
+
+        // ── 6️⃣ Handle sleep/wake to pause/resume animation ──
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(handleSleep),

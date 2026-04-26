@@ -11,6 +11,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/sindresorhus/Defaults", from: "9.0.0"),
         .package(url: "https://github.com/spacenation/swiftui-sliders", from: "2.1.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
         // TODO: KeyboardShortcuts — 等 Xcode 构建集成后再加（当前 swift build 不支持其 Preview 宏插件）
         // .package(url: "https://github.com/sindresorhus/KeyboardShortcuts", from: "2.0.0"),
     ],
@@ -20,6 +21,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Defaults", package: "Defaults"),
                 .product(name: "Sliders", package: "swiftui-sliders"),
+                .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources",
             resources: [

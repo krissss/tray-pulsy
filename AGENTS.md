@@ -45,3 +45,12 @@ This project is indexed by GitNexus as **tray-pulsy** (59 symbols, 54 relationsh
 ## Project Rules
 
 - **修改 README 时必须同步中英文两个版本**（`README.md` 中文、`README_EN.md` 英文），确保内容一致。
+
+## Sparkle Auto-Update
+
+应用使用 [Sparkle 2](https://sparkle-project.org/) 实现自动更新（下载 + 安装 + 重启）。
+
+- **appcast**：`docs/appcast.xml`，通过 GitHub Pages 托管
+- **配置**：`Info.plist` 中 `SUFeedURL` + `SUPublicEDKey`；封装层 `Sources/Core/AppUpdateManager.swift`
+- **发布流程**已集成到 `.github/workflows/release.yml`（签名 + 更新 appcast 自动完成）
+- **密钥**：EdDSA 私钥需配置为 GitHub Secret `SPARKLE_PRIVATE_KEY`
