@@ -20,7 +20,7 @@ enum AppConstants {
 
 extension Defaults.Keys {
     // 皮肤
-    static let skin = Key<String>("traypulsy_skin", default: "cat")
+    static let skin = Key<String>("traypulsy_skin", default: SkinManager.defaultSkinID)
 
     // 帧率上限
     static let fpsLimit = Key<FPSLimit>("traypulsy_fpsLimit", default: .fps40)

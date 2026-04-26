@@ -23,7 +23,7 @@ struct SkinInfo: Identifiable, Hashable, Sendable {
 
 @Observable
 final class SkinManager: @unchecked Sendable {
-    private static let defaultSkinID = "01.cat"
+    static let defaultSkinID = "pulsy"
 
     /// All discovered skins (bundled + external), sorted by id.
     private(set) var allSkins: [SkinInfo]
