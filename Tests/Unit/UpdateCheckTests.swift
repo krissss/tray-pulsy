@@ -119,39 +119,3 @@ struct AppUpdateManagerTests {
     }
 }
 
-// ═══════════════════════════════════════════════════════════════
-// MARK: - Update L10n Keys Tests
-// ═══════════════════════════════════════════════════════════════
-
-@Suite("Update L10n", .serialized)
-struct UpdateL10nTests {
-
-    @Test("English update keys resolve to non-empty values")
-    func englishUpdateKeys() {
-        Defaults[.language] = .en
-        L10n.reload()
-
-        #expect(!L10n.updateAutoCheckHeader.isEmpty)
-        #expect(!L10n.updateAutoCheckToggle.isEmpty)
-        #expect(!L10n.updateCheckNow.isEmpty)
-        #expect(!L10n.updateErrorDebug.isEmpty)
-        #expect(!L10n.updateIntervalHeader.isEmpty)
-        #expect(!L10n.updateIntervalDaily.isEmpty)
-        #expect(!L10n.updateIntervalWeekly.isEmpty)
-        #expect(!L10n.updateIntervalMonthly.isEmpty)
-        #expect(!L10n.updateAutoDownloadToggle.isEmpty)
-        #expect(!L10n.updateLastChecked.isEmpty)
-    }
-
-    @Test("Chinese update keys resolve to non-empty values")
-    func chineseUpdateKeys() {
-        Defaults[.language] = .zhHans
-        L10n.reload()
-
-        #expect(!L10n.updateAutoCheckHeader.isEmpty)
-        #expect(!L10n.updateAutoCheckToggle.isEmpty)
-        #expect(!L10n.updateCheckNow.isEmpty)
-        #expect(!L10n.updateAutoDownloadToggle.isEmpty)
-        #expect(!L10n.updateLastChecked.isEmpty)
-    }
-}

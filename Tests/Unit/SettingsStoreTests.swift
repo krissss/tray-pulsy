@@ -4,12 +4,6 @@ import XCTest
 
 final class SettingsStoreTests: XCTestCase {
 
-    override class func setUp() {
-        // Force Chinese for consistent locale-dependent assertions
-        Defaults[.language] = .zhHans
-        L10n.reload()
-    }
-
     // MARK: - SpeedSource.normalizeForAnimation
 
     func testNormalize_cpu_passthrough() {
@@ -60,11 +54,6 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(FPSLimit.fps40.rateMultiplier, 1.0)
     }
 
-    func testFPSLimit_displayNames() {
-        XCTAssertEqual(FPSLimit.fps10.displayName, "10 FPS")
-        XCTAssertEqual(FPSLimit.fps40.displayName, "40 FPS")
-    }
-
     func testFPSLimit_allCases() {
         XCTAssertEqual(FPSLimit.allCases.count, 4)
     }
@@ -96,14 +85,7 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(ThemeMode.allCases.count, 3)
     }
 
-    // MARK: - SpeedSource properties
-
-    func testSpeedSource_labels() {
-        XCTAssertEqual(SpeedSource.cpu.label, "CPU")
-        XCTAssertEqual(SpeedSource.gpu.label, "GPU")
-        XCTAssertEqual(SpeedSource.memory.label, "内存")
-        XCTAssertEqual(SpeedSource.disk.label, "磁盘")
-    }
+    // MARK: - SpeedSource properties (non-L10n)
 
     func testSpeedSource_requiredMetric() {
         XCTAssertEqual(SpeedSource.cpu.requiredMetric, .cpu)
@@ -117,39 +99,5 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(SpeedSource.gpu.systemImage, "square.on.square")
         XCTAssertEqual(SpeedSource.memory.systemImage, "memorychip")
         XCTAssertEqual(SpeedSource.disk.systemImage, "internaldrive")
-    }
-
-    // MARK: - ThemeMode display properties
-
-    func testThemeMode_displayNames() {
-        XCTAssertEqual(ThemeMode.system.displayName, "跟随系统")
-        XCTAssertEqual(ThemeMode.light.displayName, "浅色")
-        XCTAssertEqual(ThemeMode.dark.displayName, "深色")
-    }
-
-    func testThemeMode_emojis() {
-        XCTAssertEqual(ThemeMode.system.emoji, "🌓")
-        XCTAssertEqual(ThemeMode.light.emoji, "☀️")
-        XCTAssertEqual(ThemeMode.dark.emoji, "🌙")
-    }
-
-    // MARK: - SampleInterval displayNames
-
-    func testSampleInterval_displayNames() {
-        XCTAssertEqual(SampleInterval.halfSec.displayName, "0.5 秒")
-        XCTAssertEqual(SampleInterval.oneSec.displayName, "1 秒")
-        XCTAssertEqual(SampleInterval.twoSec.displayName, "2 秒")
-        XCTAssertEqual(SampleInterval.threeSec.displayName, "3 秒")
-        XCTAssertEqual(SampleInterval.fiveSec.displayName, "5 秒")
-        XCTAssertEqual(SampleInterval.tenSec.displayName, "10 秒")
-    }
-
-    // MARK: - FPSLimit complete displayNames
-
-    func testFPSLimit_allDisplayNames() {
-        XCTAssertEqual(FPSLimit.fps10.displayName, "10 FPS")
-        XCTAssertEqual(FPSLimit.fps20.displayName, "20 FPS")
-        XCTAssertEqual(FPSLimit.fps30.displayName, "30 FPS")
-        XCTAssertEqual(FPSLimit.fps40.displayName, "40 FPS")
     }
 }

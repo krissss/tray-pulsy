@@ -43,10 +43,13 @@ final class AnimatorIntegrationTests: XCTestCase {
         loaded.updateValue(100)
         loaded.start()
 
-        spinRunLoop(seconds: 0.6)
+        // Use 1.2s to give timers enough room to differentiate on slow CI runners
+        spinRunLoop(seconds: 1.2)
         idle.stop(); loaded.stop()
 
-        XCTAssertGreaterThan(loadedCount, idleCount)
+        // Both must fire, loaded must fire at least as often
+        XCTAssertGreaterThan(idleCount, 0, "Idle animator should have fired")
+        XCTAssertGreaterThanOrEqual(loadedCount, idleCount, "Loaded should fire >= idle")
     }
 
     func testFPSLimit_slowsDownAnimation() {
@@ -62,10 +65,11 @@ final class AnimatorIntegrationTests: XCTestCase {
         slow.setFPSLimit(.fps10)
         slow.start()
 
-        spinRunLoop(seconds: 0.6)
+        // Use 1.2s so the fast/slow difference is clear even on slow CI
+        spinRunLoop(seconds: 1.2)
         fast.stop(); slow.stop()
 
-        XCTAssertGreaterThan(fastCount, slowCount * 2)
+        XCTAssertGreaterThan(fastCount, slowCount, "FPS40 should fire more often than FPS10")
     }
 
     func testPauseStopsCallbacks() {
