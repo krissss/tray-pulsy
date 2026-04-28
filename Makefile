@@ -3,6 +3,7 @@ BINARY := .build/release/$(APP_NAME)
 APP_BUNDLE := $(APP_NAME).app
 SKINS := $(shell git ls-files 'Sources/Resources/*.png' | sed 's|Sources/Resources/\([^/]*\)/.*|\1|' | sort -u)
 SPARKLE_FW := .build/artifacts/sparkle/Sparkle/Sparkle.xcframework/macos-arm64_x86_64/Sparkle.framework
+SPARKLE_DIR := $(APP_BUNDLE)/Contents/Frameworks/Sparkle.framework
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
 VERSION := $(or $(VERSION),0.0.0)
 
@@ -16,6 +17,7 @@ app: $(BINARY)
 	@mkdir -p $(APP_BUNDLE)/Contents/Frameworks
 	@mkdir -p $(APP_BUNDLE)/Contents/Resources
 	cp $(BINARY) $(APP_BUNDLE)/Contents/MacOS/
+	strip -u -r $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME)
 	cp Sources/Resources/Info.plist $(APP_BUNDLE)/Contents/
 	/usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $(VERSION)" $(APP_BUNDLE)/Contents/Info.plist
 	/usr/libexec/PlistBuddy -c "Set :CFBundleVersion $(VERSION)" $(APP_BUNDLE)/Contents/Info.plist
@@ -28,7 +30,11 @@ app: $(BINARY)
 		cp Sources/Resources/lang/$$lang.lproj/Localizable.strings $(APP_BUNDLE)/Contents/Resources/$$lang.lproj/; \
 	done
 	cp -r Sources/Resources/lang $(APP_BUNDLE)/Contents/Resources/
-	cp -r $(SPARKLE_FW) $(APP_BUNDLE)/Contents/Frameworks/
+	# Copy Sparkle framework preserving symlinks, then thin to arm64 only
+	cp -R -P $(SPARKLE_FW) $(APP_BUNDLE)/Contents/Frameworks/
+	@find $(SPARKLE_DIR)/Versions -perm +111 -type f | while read f; do \
+		lipo -info "$$f" 2>/dev/null | grep -q "are:" && lipo "$$f" -thin arm64 -output "$$f" || true; \
+	done
 	install_name_tool -add_rpath "@executable_path/../Frameworks" $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME) 2>/dev/null || true
 	@echo "✅ $(APP_BUNDLE)"
 
