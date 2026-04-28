@@ -124,4 +124,89 @@ struct L10nTests {
             #expect(L10n.tr(key, "") != "", "Chinese key '\(key)' should have a value")
         }
     }
+
+    // MARK: - Update L10n Keys
+
+    @Test("English update keys resolve to non-empty values")
+    func englishUpdateKeys() {
+        Defaults[.language] = .en
+        L10n.reload()
+
+        #expect(!L10n.updateAutoCheckHeader.isEmpty)
+        #expect(!L10n.updateAutoCheckToggle.isEmpty)
+        #expect(!L10n.updateCheckNow.isEmpty)
+        #expect(!L10n.updateErrorDebug.isEmpty)
+        #expect(!L10n.updateIntervalHeader.isEmpty)
+        #expect(!L10n.updateIntervalDaily.isEmpty)
+        #expect(!L10n.updateIntervalWeekly.isEmpty)
+        #expect(!L10n.updateIntervalMonthly.isEmpty)
+        #expect(!L10n.updateAutoDownloadToggle.isEmpty)
+        #expect(!L10n.updateLastChecked.isEmpty)
+    }
+
+    @Test("Chinese update keys resolve to non-empty values")
+    func chineseUpdateKeys() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+
+        #expect(!L10n.updateAutoCheckHeader.isEmpty)
+        #expect(!L10n.updateAutoCheckToggle.isEmpty)
+        #expect(!L10n.updateCheckNow.isEmpty)
+        #expect(!L10n.updateAutoDownloadToggle.isEmpty)
+        #expect(!L10n.updateLastChecked.isEmpty)
+    }
+
+    // MARK: - Locale-dependent display names (moved from SettingsStoreTests)
+
+    @Test("SpeedSource labels in Chinese")
+    func speedSourceLabels() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+
+        #expect(SpeedSource.cpu.label == "CPU")
+        #expect(SpeedSource.gpu.label == "GPU")
+        #expect(SpeedSource.memory.label == "内存")
+        #expect(SpeedSource.disk.label == "磁盘")
+    }
+
+    @Test("ThemeMode displayNames in Chinese")
+    func themeModeDisplayNames() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+
+        #expect(ThemeMode.system.displayName == "跟随系统")
+        #expect(ThemeMode.light.displayName == "浅色")
+        #expect(ThemeMode.dark.displayName == "深色")
+    }
+
+    @Test("ThemeMode emojis")
+    func themeModeEmojis() {
+        #expect(ThemeMode.system.emoji == "🌓")
+        #expect(ThemeMode.light.emoji == "☀️")
+        #expect(ThemeMode.dark.emoji == "🌙")
+    }
+
+    @Test("SampleInterval displayNames in Chinese")
+    func sampleIntervalDisplayNames() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+
+        #expect(SampleInterval.halfSec.displayName == "0.5 秒")
+        #expect(SampleInterval.oneSec.displayName == "1 秒")
+        #expect(SampleInterval.twoSec.displayName == "2 秒")
+        #expect(SampleInterval.threeSec.displayName == "3 秒")
+        #expect(SampleInterval.fiveSec.displayName == "5 秒")
+        #expect(SampleInterval.tenSec.displayName == "10 秒")
+    }
+
+    @Test("FPSLimit displayNames")
+    func fpsLimitDisplayNames() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+
+        #expect(FPSLimit.fps10.displayName == "10 FPS")
+        #expect(FPSLimit.fps20.displayName == "20 FPS")
+        #expect(FPSLimit.fps30.displayName == "30 FPS")
+        #expect(FPSLimit.fps40.displayName == "40 FPS")
+    }
 }
