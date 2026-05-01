@@ -96,3 +96,11 @@
 
 /* Window */
 "window.title" = "设置";
+
+/* Popover */
+"popover.historyFooter" = "30 分钟历史";
+"popover.metric.cpu" = "CPU";
+"popover.metric.ram" = "内存";
+"popover.metric.ssd" = "硬盘";
+"popover.metric.net" = "网络";
+"popover.metric.gpu" = "GPU";

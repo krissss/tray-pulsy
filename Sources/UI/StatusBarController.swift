@@ -4,9 +4,10 @@ import SwiftUI
 /// Owns NSStatusItem, wires SystemMonitor → Animator → icon.
 ///
 /// Interaction model:
-///   CLICK → Open native Settings window (Cmd+,)
+///   LEFT CLICK  → Toggle metrics popover
+///   RIGHT CLICK → Open native Settings window (Cmd+,)
 @MainActor
-final class StatusBarController: NSObject, NSWindowDelegate {
+final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let appState: AppState
     private var animator: TrayAnimator!
@@ -14,6 +15,19 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private var settingsWindow: NSWindow?
     private let statusBarView = StatusBarView()
     private var lastDisplayedMetricText: String = ""
+
+    private lazy var popover: NSPopover = {
+        let p = NSPopover()
+        p.contentSize = NSSize(width: 300, height: 380)
+        p.behavior = .transient
+        p.animates = true
+        p.delegate = self
+        return p
+    }()
+
+    /// Global mouse-move monitor for auto-hiding popover when mouse leaves.
+    private var globalMouseMonitor: Any?
+    private var autoHideTask: Task<Void, Never>?
 
     init(appState: AppState) {
         self.appState = appState
@@ -117,7 +131,94 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
     }
 
-    @objc private func statusItemClicked() { openSettings() }
+    @objc private func statusItemClicked() {
+        guard let event = NSApp.currentEvent else { return }
+        if event.type == .rightMouseUp {
+            openSettings()
+        } else {
+            togglePopover()
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - Popover
+    // ═════════════════════════════════════════════════════════
+
+    private func togglePopover() {
+        if popover.isShown {
+            popover.performClose(nil)
+        } else {
+            guard let button = statusItem.button else { return }
+            // Enable all metrics while popover is visible
+            monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
+            // Create fresh content each time to avoid holding SwiftUI tree in memory
+            popover.contentViewController = NSHostingController(
+                rootView: PopoverMetricsView(systemMonitor: monitor)
+            )
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+        }
+    }
+
+    // MARK: - NSPopoverDelegate
+
+    func popoverDidShow(_ notification: Notification) {
+        startMouseExitMonitor()
+    }
+
+    func popoverDidClose(_ notification: Notification) {
+        stopMouseExitMonitor()
+        // Release SwiftUI view tree to free memory
+        popover.contentViewController = nil
+        updateEnabledMetrics()
+    }
+
+    // MARK: - Mouse Exit Auto-Hide
+
+    private func startMouseExitMonitor() {
+        stopMouseExitMonitor()
+        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.handleGlobalMouseMoved()
+            }
+        }
+    }
+
+    private func stopMouseExitMonitor() {
+        if let monitor = globalMouseMonitor {
+            NSEvent.removeMonitor(monitor)
+            globalMouseMonitor = nil
+        }
+        autoHideTask?.cancel()
+        autoHideTask = nil
+    }
+
+    private func handleGlobalMouseMoved() {
+        guard popover.isShown else { return }
+        guard let window = popover.contentViewController?.view.window else { return }
+
+        let mouseLoc = NSEvent.mouseLocation
+        let popoverFrame = window.frame
+        // Give a small margin so the user can comfortably interact with the popover edges
+        let expandedFrame = popoverFrame.insetBy(dx: -4, dy: -4)
+
+        if !expandedFrame.contains(mouseLoc) {
+            autoHideTask?.cancel()
+            autoHideTask = Task { [weak self] in
+                try? await Task.sleep(for: .milliseconds(800))
+                guard let self, !Task.isCancelled else { return }
+                // Re-check before actually closing
+                guard let window = self.popover.contentViewController?.view.window else { return }
+                let loc = NSEvent.mouseLocation
+                if !window.frame.insetBy(dx: -4, dy: -4).contains(loc) {
+                    self.popover.performClose(nil)
+                }
+            }
+        } else {
+            // Mouse is back inside — cancel any pending close
+            autoHideTask?.cancel()
+            autoHideTask = nil
+        }
+    }
 
     /// Keep NSStatusItem.length in sync with StatusBarView's required width.
     /// Always called async to avoid layout recursion.
@@ -132,35 +233,28 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     private func openSettings() {
         NSApp.setActivationPolicy(.regular)
 
-        let targetWindow: NSWindow
+        let window: NSWindow
         if let existing = settingsWindow, existing.isVisible {
-            targetWindow = existing
+            window = existing
         } else {
-            let view = NSHostingView(rootView: SettingsView().environment(appState))
-            if let existing = settingsWindow {
-                existing.contentView = view
-                targetWindow = existing
-            } else {
-                let window = NSWindow(
-                    contentRect: NSRect(x: 0, y: 0, width: 820, height: 560),
-                    styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
-                    backing: .buffered,
-                    defer: false
-                )
-                window.contentView = view
-                window.isReleasedWhenClosed = false
-                window.center()
-                window.delegate = self
-                window.title = "\(AppConstants.appName) \(L10n.windowTitle)"
-                window.titlebarAppearsTransparent = true
-                settingsWindow = window
-                targetWindow = window
-            }
+            let w = NSWindow(
+                contentRect: NSRect(x: 0, y: 0, width: 820, height: 560),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
+                backing: .buffered,
+                defer: false
+            )
+            w.contentView = NSHostingView(rootView: SettingsView().environment(appState))
+            w.isReleasedWhenClosed = false
+            w.center()
+            w.delegate = self
+            w.title = "\(AppConstants.appName) \(L10n.windowTitle)"
+            w.titlebarAppearsTransparent = true
+            settingsWindow = w
+            window = w
             updateEnabledMetrics()
         }
 
-        targetWindow.makeKeyAndOrderFront(nil)
-        // Enable all metrics now that the window is visible
+        window.makeKeyAndOrderFront(nil)
         monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
@@ -169,9 +263,10 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         updateEnabledMetrics()
-        // Defer SwiftUI teardown to next run loop to avoid layout recursion
+        // Defer teardown to next run loop to avoid layout recursion
         DispatchQueue.main.async { [weak self] in
             self?.settingsWindow?.contentView = nil
+            self?.settingsWindow = nil
         }
     }
 

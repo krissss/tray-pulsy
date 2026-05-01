@@ -5,6 +5,7 @@ struct PerformanceDetail: View {
     @Default(.speedSource) private var speedSource
     @Default(.fpsLimit) private var fpsLimit
     @Default(.sampleInterval) private var sampleInterval
+    @Default(.historyDuration) private var historyDuration
 
     var body: some View {
         GlassEffectContainer {
@@ -43,6 +44,18 @@ struct PerformanceDetail: View {
                     Text(L10n.perfSampleHeader)
                 } footer: {
                     Text(L10n.perfSampleFooter)
+                }
+
+                Section {
+                    Picker(selection: $historyDuration, label: Label(L10n.perfHistoryLabel, systemImage: "chart.xyaxis.line")) {
+                        ForEach(HistoryDuration.allCases, id: \.rawValue) { dur in
+                            Text(dur.displayName).tag(dur)
+                        }
+                    }
+                } header: {
+                    Text(L10n.perfHistoryHeader)
+                } footer: {
+                    Text(L10n.perfHistoryFooter)
                 }
             }
             .formStyle(.grouped)

@@ -15,6 +15,9 @@ final class AppState {
     let skinManager: SkinManager
     let updateManager: AppUpdateManager
 
+    /// Ring buffer of metric snapshots for sparkline / trend charts.
+    var metricsHistory: MetricsHistory { systemMonitor.history }
+
     // Callbacks — registered by StatusBarController
     var onSkinChanged: (([NSImage]) -> Void)?
     var onFPSLimitChanged: ((FPSLimit) -> Void)?
@@ -73,7 +76,8 @@ final class AppState {
             Defaults.observe(.sampleInterval) { [weak self] change in
                 MainActor.assumeIsolated {
                     self?.onSampleIntervalChanged?(change.newValue)
-                    self?.systemMonitor.reconfigure(sampleInterval: change.newValue.seconds)
+                    let duration = Defaults[.historyDuration].seconds
+                    self?.systemMonitor.reconfigure(sampleInterval: change.newValue.seconds, maxDuration: duration)
                 }
             },
             Defaults.observe(.metricDisplayItems) { [weak self] _ in
@@ -91,6 +95,12 @@ final class AppState {
             Defaults.observe(.thresholds) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.onMetricsConfigChanged?()
+                }
+            },
+            Defaults.observe(.historyDuration) { [weak self] change in
+                MainActor.assumeIsolated {
+                    let interval = Defaults[.sampleInterval].seconds
+                    self?.systemMonitor.reconfigure(sampleInterval: interval, maxDuration: change.newValue.seconds)
                 }
             },
             Defaults.observe(.pulsyColorTheme) { [weak self] _ in

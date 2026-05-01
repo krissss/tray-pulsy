@@ -40,6 +40,9 @@ extension Defaults.Keys {
     // 采样间隔
     static let sampleInterval = Key<SampleInterval>("traypulsy_sampleInterval", default: .oneSec)
 
+    // 历史时长
+    static let historyDuration = Key<HistoryDuration>("traypulsy_historyDuration", default: .min30)
+
     // 外部皮肤目录
     static let externalSkinPath = Key<String>("traypulsy_externalSkinPath", default: "")
 
@@ -233,6 +236,38 @@ enum SampleInterval: String, CaseIterable, Defaults.Serializable {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// MARK: - History Duration (趋势图历史时长)
+// ═══════════════════════════════════════════════════════════════
+
+enum HistoryDuration: String, CaseIterable, Defaults.Serializable {
+    case min5   = "5min"
+    case min10  = "10min"
+    case min15  = "15min"
+    case min30  = "30min"
+    case min60  = "60min"
+
+    var seconds: TimeInterval {
+        switch self {
+        case .min5:  return 300
+        case .min10: return 600
+        case .min15: return 900
+        case .min30: return 1800
+        case .min60: return 3600
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .min5:  return L10n.historyDuration5
+        case .min10: return L10n.historyDuration10
+        case .min15: return L10n.historyDuration15
+        case .min30: return L10n.historyDuration30
+        case .min60: return L10n.historyDuration60
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
 // MARK: - Metric Display Items (菜单栏多指标显示)
 // ═══════════════════════════════════════════════════════════════
 
@@ -263,6 +298,18 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         }
     }
 
+    /// Chart row label — shared by both Popover and Overview.
+    var chartLabel: String {
+        switch self {
+        case .cpu:         L10n.metricOverviewCpu
+        case .gpu:         L10n.metricOverviewGpu
+        case .memory:      L10n.metricOverviewMemory
+        case .disk:        L10n.metricOverviewDisk
+        case .networkDown: L10n.overviewNetwork
+        case .networkUp:   L10n.overviewNetwork
+        }
+    }
+
     var overviewName: String {
         switch self {
         case .cpu:         L10n.metricOverviewCpu
@@ -274,6 +321,18 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         }
     }
 
+    /// Short label for popover metric rows.
+    var popoverLabel: String {
+        switch self {
+        case .cpu:         L10n.popoverMetricCpu
+        case .gpu:         L10n.popoverMetricGpu
+        case .memory:      L10n.popoverMetricRam
+        case .disk:        L10n.popoverMetricSsd
+        case .networkDown: L10n.popoverMetricNet
+        case .networkUp:   L10n.popoverMetricNet
+        }
+    }
+
     var icon: String {
         switch self {
         case .cpu:         "cpu"
@@ -282,6 +341,53 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         case .disk:        "internaldrive"
         case .networkDown: "arrow.down"
         case .networkUp:   "arrow.up"
+        }
+    }
+
+    /// Fixed semantic color for chart/row accent — consistent across Popover and Overview.
+    var accentColor: NSColor {
+        switch self {
+        case .cpu:         .systemBlue
+        case .gpu:         .systemPink
+        case .memory:      .systemOrange
+        case .disk:        .systemGreen
+        case .networkDown: .systemPurple
+        case .networkUp:   .systemPurple
+        }
+    }
+
+    /// Display order for all chart rows.
+    static let chartOrder: [MetricDisplayItem] = [.cpu, .gpu, .memory, .disk, .networkDown]
+
+    /// The history key path for this metric's chart data.
+    var historyKeyPath: KeyPath<MetricSnapshot, Double> {
+        switch self {
+        case .cpu:         return \.cpuUsage
+        case .gpu:         return \.gpuUsage
+        case .memory:      return \.memoryUsage
+        case .disk:        return \.diskUsage
+        case .networkDown: return \.netSpeedIn
+        case .networkUp:   return \.netSpeedOut
+        }
+    }
+
+    /// Icon for the full-row chart view (network gets a combined icon).
+    var chartIcon: String {
+        switch self {
+        case .networkDown, .networkUp: return "antenna.radiowaves.left.and.right"
+        default: return icon
+        }
+    }
+
+    /// Format a hover tooltip value for this metric.
+    func formatChartValue(_ v: Double) -> String {
+        switch self {
+        case .cpu, .gpu, .memory, .disk:
+            return String(format: "%.1f%%", v)
+        case .networkDown, .networkUp:
+            if v >= 1_000_000 { return String(format: "%.1f MB/s", v / 1_000_000) }
+            if v >= 1_000 { return String(format: "%.0f KB/s", v / 1_000) }
+            return String(format: "%.0f B/s", v)
         }
     }
 

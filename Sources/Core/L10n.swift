@@ -128,6 +128,16 @@ enum L10n {
             "performance.sample.header": "Data Sampling",
             "performance.sample.footer": "Shorter intervals make animation more responsive but slightly increase CPU usage.",
 
+            // History Duration
+            "performance.history.label": "History Duration",
+            "performance.history.header": "Chart History",
+            "performance.history.footer": "Time range shown in trend charts. Longer durations use more memory.",
+            "historyDuration.5": "5 min",
+            "historyDuration.10": "10 min",
+            "historyDuration.15": "15 min",
+            "historyDuration.30": "30 min",
+            "historyDuration.60": "60 min",
+
             // General Settings
             "general.startup.header": "Startup",
             "general.startup.toggle": "Launch at Login",
@@ -172,6 +182,14 @@ enum L10n {
 
             // Window
             "window.title": "Settings",
+
+            // Popover
+            "popover.historyFooter": "30-min history",
+            "popover.metric.cpu": "CPU",
+            "popover.metric.ram": "RAM",
+            "popover.metric.ssd": "SSD",
+            "popover.metric.net": "NET",
+            "popover.metric.gpu": "GPU",
 
             // Update
             "update.autoCheck.header": "Updates",
@@ -266,6 +284,16 @@ enum L10n {
             "performance.sample.header": "数据采样",
             "performance.sample.footer": "间隔越短，动画响应越快，但 CPU 占用略高。",
 
+            // History Duration
+            "performance.history.label": "历史时长",
+            "performance.history.header": "趋势图历史",
+            "performance.history.footer": "趋势图显示的时间范围。时长越长占用更多内存。",
+            "historyDuration.5": "5 分钟",
+            "historyDuration.10": "10 分钟",
+            "historyDuration.15": "15 分钟",
+            "historyDuration.30": "30 分钟",
+            "historyDuration.60": "60 分钟",
+
             // General Settings
             "general.startup.header": "启动",
             "general.startup.toggle": "开机自动启动",
@@ -287,6 +315,14 @@ enum L10n {
 
             // Window
             "window.title": "设置",
+
+            // Popover
+            "popover.historyFooter": "30 分钟历史",
+            "popover.metric.cpu": "CPU",
+            "popover.metric.ram": "内存",
+            "popover.metric.ssd": "硬盘",
+            "popover.metric.net": "网络",
+            "popover.metric.gpu": "GPU",
 
             // Update
             "update.autoCheck.header": "更新",
@@ -413,6 +449,17 @@ enum L10n {
     static var perfSampleHeader: String { tr("performance.sample.header", "数据采样") }
     static var perfSampleFooter: String { tr("performance.sample.footer", "间隔越短，动画响应越快，但 CPU 占用略高。") }
 
+    // MARK: - History Duration
+
+    static var perfHistoryLabel:   String { tr("performance.history.label", "历史时长") }
+    static var perfHistoryHeader:  String { tr("performance.history.header", "趋势图历史") }
+    static var perfHistoryFooter:  String { tr("performance.history.footer", "趋势图显示的时间范围。时长越长占用更多内存。") }
+    static var historyDuration5:   String { tr("historyDuration.5", "5 分钟") }
+    static var historyDuration10:  String { tr("historyDuration.10", "10 分钟") }
+    static var historyDuration15:  String { tr("historyDuration.15", "15 分钟") }
+    static var historyDuration30:  String { tr("historyDuration.30", "30 分钟") }
+    static var historyDuration60:  String { tr("historyDuration.60", "60 分钟") }
+
     // MARK: - General Settings
 
     static var generalStartupHeader: String { tr("general.startup.header", "启动") }
@@ -464,6 +511,17 @@ enum L10n {
     // MARK: - Window
 
     static var windowTitle: String { tr("window.title", "设置") }
+
+    // MARK: - Popover
+
+    static func popoverHistoryFooter(_ duration: String) -> String {
+        tr("popover.historyFooter", "%@ 历史").replacingOccurrences(of: "%@", with: duration)
+    }
+    static var popoverMetricCpu: String { tr("popover.metric.cpu", "CPU") }
+    static var popoverMetricRam: String { tr("popover.metric.ram", "内存") }
+    static var popoverMetricSsd: String { tr("popover.metric.ssd", "硬盘") }
+    static var popoverMetricNet: String { tr("popover.metric.net", "网络") }
+    static var popoverMetricGpu: String { tr("popover.metric.gpu", "GPU") }
 
     // MARK: - Update
 

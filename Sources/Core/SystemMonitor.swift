@@ -37,6 +37,9 @@ final class SystemMonitor: @unchecked Sendable {
 
     @ObservationIgnored var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
 
+    /// 30-min ring buffer of metric history for sparkline / trend charts.
+    @ObservationIgnored private(set) var history: MetricsHistory
+
     struct StorageInfo: Sendable {
         let usagePercent: Double, usedGB: Double, totalGB: Double
     }
@@ -71,6 +74,7 @@ final class SystemMonitor: @unchecked Sendable {
         host_page_size(mach_host_self(), &ps)
         self.pageSize = Double(ps > 0 ? ps : 4096)
         self.totalMemory = Double(ProcessInfo.processInfo.physicalMemory)
+        self.history = MetricsHistory(maxDuration: 1800, sampleInterval: interval)
     }
 
     func start() {
@@ -95,10 +99,11 @@ final class SystemMonitor: @unchecked Sendable {
     }
 
     /// Restart the timer with a new sample interval (for runtime config changes).
-    func reconfigure(sampleInterval: TimeInterval) {
+    func reconfigure(sampleInterval: TimeInterval, maxDuration: TimeInterval = 1800) {
         let wasRunning = timer != nil
         stop()
         interval = sampleInterval
+        history.reconfigure(maxDuration: maxDuration, sampleInterval: sampleInterval)
         if wasRunning { start() }
     }
 
@@ -144,8 +149,23 @@ final class SystemMonitor: @unchecked Sendable {
                 self.netSpeedOut = netOut
             }
             if metrics.contains(.gpu) { self.gpuUsage = gpu }
+            self.recordHistory(metrics: metrics)
             self.metricsContinuation?.yield()
         }
+    }
+
+    /// Record current metrics into history buffer. Carry forward last known values for disabled metrics.
+    private func recordHistory(metrics: Set<MetricKind>) {
+        let last = history.lastSnapshot
+        history.record(MetricSnapshot(
+            cpuUsage:     metrics.contains(.cpu)     ? cpuUsage     : (last?.cpuUsage     ?? 0),
+            gpuUsage:     metrics.contains(.gpu)     ? gpuUsage     : (last?.gpuUsage     ?? 0),
+            memoryUsage:  metrics.contains(.memory)  ? memoryUsage  : (last?.memoryUsage  ?? 0),
+            diskUsage:    metrics.contains(.disk)    ? diskUsage    : (last?.diskUsage    ?? 0),
+            netSpeedIn:   metrics.contains(.network) ? netSpeedIn   : (last?.netSpeedIn   ?? 0),
+            netSpeedOut:  metrics.contains(.network) ? netSpeedOut  : (last?.netSpeedOut  ?? 0),
+            timestamp:    Date()
+        ))
     }
 
     /// Returns the current value for a given speed source

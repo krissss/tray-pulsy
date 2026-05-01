@@ -88,10 +88,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        appState?.systemMonitor.history.flush()
         releaseInstanceLock()
     }
 
     @objc private func handleSleep() {
+        appState?.systemMonitor.history.flush()
         statusBarController?.pause()
     }
 

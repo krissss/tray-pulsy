@@ -88,6 +88,9 @@ struct L10nTests {
         #expect(!L10n.aboutInfoHeader.isEmpty)
         #expect(!L10n.accSkinPreview.isEmpty)
         #expect(!L10n.windowTitle.isEmpty)
+        #expect(!L10n.popoverHistoryFooter("30 min").isEmpty)
+        #expect(!L10n.popoverMetricCpu.isEmpty)
+        #expect(!L10n.popoverMetricRam.isEmpty)
     }
 
     /// Verify System language detection falls back to locale.
@@ -208,5 +211,18 @@ struct L10nTests {
         #expect(FPSLimit.fps20.displayName == "20 FPS")
         #expect(FPSLimit.fps30.displayName == "30 FPS")
         #expect(FPSLimit.fps40.displayName == "40 FPS")
+    }
+
+    @Test("HistoryDuration seconds and displayNames")
+    func historyDurationProperties() {
+        #expect(HistoryDuration.min5.seconds == 300)
+        #expect(HistoryDuration.min10.seconds == 600)
+        #expect(HistoryDuration.min15.seconds == 900)
+        #expect(HistoryDuration.min30.seconds == 1800)
+        #expect(HistoryDuration.min60.seconds == 3600)
+
+        for dur in HistoryDuration.allCases {
+            #expect(!dur.displayName.isEmpty)
+        }
     }
 }

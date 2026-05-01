@@ -101,87 +101,38 @@ private struct SkinPreviewSection: View {
     }
 }
 
-// MARK: - Metric Row View
-
-private struct OverviewMetricRow: View {
-    let item: MetricDisplayItem
-    let value: String
-    let color: NSColor
-    var detail: String? = nil
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: item.icon)
-                .font(.title3)
-                .foregroundStyle(.secondary)
-                .frame(width: 28, height: 28)
-                .glassEffect(.regular, in: .circle)
-                .accessibilityHidden(true)
-
-            Text(item.overviewName)
-                .foregroundStyle(.secondary)
-            Spacer()
-
-            if let detail {
-                Text(detail)
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-            }
-
-            Text(value)
-                .font(.system(.body, design: .rounded).monospacedDigit().bold())
-                .foregroundStyle(Color(color))
-        }
-        .padding(.vertical, 8)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(item.overviewName) \(value)")
-    }
-}
-
 // MARK: - Metrics Grid
 
 private struct MetricsGrid: View {
     @Environment(AppState.self) private var appState
     @Default(.thresholds) private var thresholds
+    @Default(.historyDuration) private var historyDuration
     @State private var tick = 0
 
     var body: some View {
         Group {
             let monitor = appState.systemMonitor
+            let snapshots = appState.metricsHistory.allSnapshots()
+            let timestamps = snapshots.map(\.timestamp)
+
             VStack(spacing: 0) {
-                ForEach(Array(percentItems.enumerated()), id: \.element) { index, item in
+                ForEach(Array(MetricDisplayItem.chartOrder.enumerated()), id: \.element) { index, item in
                     if index > 0 { Divider().padding(.leading, 40) }
-                    OverviewMetricRow(
-                        item: item,
-                        value: item.formatValue(from: monitor).trimmingCharacters(in: .whitespaces),
-                        color: item.color(forRawValue: item.rawValue(from: monitor), thresholds: thresholds),
-                        detail: item == .memory ? memoryDetail : nil
+                    MetricChartRow(
+                        icon: item.chartIcon,
+                        label: item.chartLabel,
+                        valueText: overviewValue(for: item, monitor: monitor),
+                        subtitle: item == .memory ? memoryDetail : nil,
+                        values: snapshots.map { $0[keyPath: item.historyKeyPath] },
+                        timestamps: timestamps,
+                        color: Color(item.accentColor),
+                        thresholds: thresholdZones(for: item),
+                        valueFormatter: item.formatChartValue,
+                        chartHeight: 64,
+                        timeSpan: historyDuration.seconds,
+                        showCurrentValue: false
                     )
                 }
-                Divider().padding(.leading, 40)
-
-                HStack(spacing: 8) {
-                    Image(systemName: "antenna.radiowaves.left.and.right")
-                        .font(.title3)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 28, height: 28)
-                        .glassEffect(.regular, in: .circle)
-                        .accessibilityHidden(true)
-                    Text(L10n.overviewNetwork)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    HStack(spacing: 16) {
-                        let downItem = MetricDisplayItem.networkDown
-                        let upItem = MetricDisplayItem.networkUp
-                        Label(downItem.formatValue(from: monitor).trimmingCharacters(in: .whitespaces) + "/s", systemImage: "arrow.down")
-                            .foregroundStyle(Color(downItem.color(forRawValue: downItem.rawValue(from: monitor), thresholds: thresholds)))
-                        Label(upItem.formatValue(from: monitor).trimmingCharacters(in: .whitespaces) + "/s", systemImage: "arrow.up")
-                            .foregroundStyle(Color(upItem.color(forRawValue: upItem.rawValue(from: monitor), thresholds: thresholds)))
-                    }
-                    .font(.system(.body, design: .rounded).monospacedDigit().bold())
-                }
-                .padding(.vertical, 8)
-                .accessibilityElement(children: .combine)
             }
         }
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
@@ -189,16 +140,33 @@ private struct MetricsGrid: View {
         }
     }
 
-    private var percentItems: [MetricDisplayItem] {
-        [.cpu, .gpu, .memory, .disk]
+    private func overviewValue(for item: MetricDisplayItem, monitor: SystemMonitor) -> String {
+        if item == .networkDown {
+            let down = MetricDisplayItem.networkDown.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+            let up = MetricDisplayItem.networkUp.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+            return "↓\(down)/s  ↑\(up)/s"
+        }
+        return item.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+    }
+
+    private func thresholdZones(for item: MetricDisplayItem) -> [(value: Double, color: Color)] {
+        let t: MetricThresholds
+        switch item {
+        case .cpu:         t = thresholds.cpu
+        case .gpu:         t = thresholds.gpu
+        case .memory:      t = thresholds.memory
+        case .disk:        t = thresholds.disk
+        case .networkDown: t = thresholds.networkDown
+        case .networkUp:   t = thresholds.networkUp
+        }
+        return [(value: t.critical, color: .red), (value: t.warning, color: .yellow)]
     }
 
     private var memoryDetail: String {
         let monitor = appState.systemMonitor
-        let formatter = ByteCountFormatter()
-        formatter.countStyle = .memory
-        let used = formatter.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))
-        let total = formatter.string(fromByteCount: Int64(monitor.memoryTotalGB * 1_073_741_824))
+        let f = ByteCountFormatter(); f.countStyle = .memory
+        let used = f.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))
+        let total = f.string(fromByteCount: Int64(monitor.memoryTotalGB * 1_073_741_824))
         return "\(used) / \(total)"
     }
 }
