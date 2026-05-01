@@ -145,10 +145,25 @@ final class AppState {
         return source.normalizeForAnimation(rawValue)
     }
 
+    // Pulsy frame cache — avoid regenerating 24 NSImage per tick
+    private var cachedPulsyFrames: [NSImage] = []
+    private var cachedPulsyValue: Double = -1
+    private var cachedPulsyConfig: PulsyConfig?
+
     /// Regenerate Pulsy frames with current config + value.
+    /// Caches frames and only regenerates when value crosses a 5% boundary or config changes.
     func regeneratePulsyFrames() -> [NSImage] {
         let config = SkinManager.currentPulsyConfig()
-        return PulsySkinRenderer.generateFrames(value: currentNormalizedValue(), config: config)
+        let value = currentNormalizedValue()
+        let discretized = (value / 5).rounded() * 5  // 5% increments
+        if discretized == cachedPulsyValue, config == cachedPulsyConfig, !cachedPulsyFrames.isEmpty {
+            return cachedPulsyFrames
+        }
+        let frames = PulsySkinRenderer.generateFrames(value: value, config: config)
+        cachedPulsyFrames = frames
+        cachedPulsyValue = discretized
+        cachedPulsyConfig = config
+        return frames
     }
 
     private func handlePulsyConfigChange() {

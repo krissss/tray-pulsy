@@ -565,7 +565,7 @@ enum PulsyWaveformStyle: String, CaseIterable, Defaults.Serializable {
     }
 }
 
-struct PulsyConfig: Sendable {
+struct PulsyConfig: Sendable, Equatable {
     let colorTheme: PulsyColorTheme
     let waveformStyle: PulsyWaveformStyle
     let lineWidth: CGFloat

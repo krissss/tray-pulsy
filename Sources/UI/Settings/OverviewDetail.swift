@@ -107,7 +107,6 @@ private struct MetricsGrid: View {
     @Environment(AppState.self) private var appState
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
-    @State private var tick = 0
 
     var body: some View {
         Group {
@@ -134,9 +133,6 @@ private struct MetricsGrid: View {
                     )
                 }
             }
-        }
-        .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
-            tick &+= 1
         }
     }
 }

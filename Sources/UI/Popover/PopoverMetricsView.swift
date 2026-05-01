@@ -6,14 +6,13 @@ import SwiftUI
 // ═══════════════════════════════════════════════════════════════
 
 /// Real-time metrics panel shown in the menu-bar popover.
+/// Re-renders are driven by SystemMonitor's @Observable properties (cpuUsage, memoryUsage, etc.)
+/// which update on the main thread every tick — no Timer needed.
 struct PopoverMetricsView: View {
     let systemMonitor: SystemMonitor
 
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
-    @State private var tick = 0
-
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 4) {
@@ -40,7 +39,6 @@ struct PopoverMetricsView: View {
         }
         .padding(14)
         .frame(width: 300)
-        .onReceive(timer) { _ in tick &+= 1 }
     }
 
 }
