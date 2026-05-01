@@ -24,8 +24,6 @@
 "metric.overview.gpu" = "GPU";
 "metric.overview.memory" = "Memory";
 "metric.overview.disk" = "Disk";
-"metric.overview.down" = "Down";
-"metric.overview.up" = "Up";
 
 /* FPS Limit */
 "fps.10" = "10 FPS";
@@ -99,8 +97,3 @@
 
 /* Popover */
 "popover.historyFooter" = "30-min history";
-"popover.metric.cpu" = "CPU";
-"popover.metric.ram" = "RAM";
-"popover.metric.ssd" = "SSD";
-"popover.metric.net" = "NET";
-"popover.metric.gpu" = "GPU";

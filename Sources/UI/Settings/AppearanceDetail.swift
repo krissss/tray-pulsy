@@ -71,9 +71,6 @@ struct SkinDetail: View {
             }
             .formStyle(.grouped)
         }
-        .onChange(of: externalSkinPath) {
-            // AppState already observes .externalSkinPath and calls skinManager.reload()
-        }
     }
 
     /// Show Pulsy config section when pulsy skin is selected.

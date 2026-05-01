@@ -24,8 +24,6 @@
 "metric.overview.gpu" = "GPU";
 "metric.overview.memory" = "内存";
 "metric.overview.disk" = "磁盘";
-"metric.overview.down" = "下行";
-"metric.overview.up" = "上行";
 
 /* FPS Limit */
 "fps.10" = "10 FPS";
@@ -99,8 +97,3 @@
 
 /* Popover */
 "popover.historyFooter" = "30 分钟历史";
-"popover.metric.cpu" = "CPU";
-"popover.metric.ram" = "内存";
-"popover.metric.ssd" = "硬盘";
-"popover.metric.net" = "网络";
-"popover.metric.gpu" = "GPU";

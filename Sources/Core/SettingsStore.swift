@@ -1,6 +1,7 @@
 import AppKit
 import Defaults
 import Foundation
+import SwiftUI
 
 // ═══════════════════════════════════════════════════════════════
 // MARK: - App Constants
@@ -160,14 +161,6 @@ enum ThemeMode: String, CaseIterable, Defaults.Serializable {
         }
     }
 
-    var emoji: String {
-        switch self {
-        case .system: return "🌓"
-        case .light:  return "☀️"
-        case .dark:   return "🌙"
-        }
-    }
-
     var isDarkOverride: Bool? {
         switch self {
         case .system: return nil
@@ -310,37 +303,14 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         }
     }
 
-    var overviewName: String {
+    /// Icon name for the full-row chart view (network gets a combined icon).
+    var chartIcon: String {
         switch self {
-        case .cpu:         L10n.metricOverviewCpu
-        case .gpu:         L10n.metricOverviewGpu
-        case .memory:      L10n.metricOverviewMemory
-        case .disk:        L10n.metricOverviewDisk
-        case .networkDown: L10n.metricOverviewDown
-        case .networkUp:   L10n.metricOverviewUp
-        }
-    }
-
-    /// Short label for popover metric rows.
-    var popoverLabel: String {
-        switch self {
-        case .cpu:         L10n.popoverMetricCpu
-        case .gpu:         L10n.popoverMetricGpu
-        case .memory:      L10n.popoverMetricRam
-        case .disk:        L10n.popoverMetricSsd
-        case .networkDown: L10n.popoverMetricNet
-        case .networkUp:   L10n.popoverMetricNet
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .cpu:         "cpu"
-        case .gpu:         "square.on.square"
-        case .memory:      "memorychip"
-        case .disk:        "internaldrive"
-        case .networkDown: "arrow.down"
-        case .networkUp:   "arrow.up"
+        case .networkDown, .networkUp: return "antenna.radiowaves.left.and.right"
+        case .cpu:    return "cpu"
+        case .gpu:    return "square.on.square"
+        case .memory: return "memorychip"
+        case .disk:   return "internaldrive"
         }
     }
 
@@ -368,14 +338,6 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         case .disk:        return \.diskUsage
         case .networkDown: return \.netSpeedIn
         case .networkUp:   return \.netSpeedOut
-        }
-    }
-
-    /// Icon for the full-row chart view (network gets a combined icon).
-    var chartIcon: String {
-        switch self {
-        case .networkDown, .networkUp: return "antenna.radiowaves.left.and.right"
-        default: return icon
         }
     }
 
@@ -473,6 +435,40 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         case .cpu, .gpu, .memory, .disk: return "%"
         case .networkDown, .networkUp:   return "B/s"
         }
+    }
+
+    // MARK: - Shared display helpers (Popover + Overview)
+
+    /// Formatted value string for chart rows. Network shows combined ↓/↑.
+    func formattedValue(from monitor: SystemMonitor) -> String {
+        if self == .networkDown {
+            let down = MetricDisplayItem.networkDown.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+            let up = MetricDisplayItem.networkUp.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+            return "↓\(down)/s  ↑\(up)/s"
+        }
+        return formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+    }
+
+    /// Memory used / total detail string (only meaningful for .memory).
+    static func memoryDetailText(from monitor: SystemMonitor) -> String {
+        let f = ByteCountFormatter(); f.countStyle = .memory
+        let used = f.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))
+        let total = f.string(fromByteCount: Int64(monitor.memoryTotalGB * 1_073_741_824))
+        return "\(used) / \(total)"
+    }
+
+    /// Threshold zones for chart annotation lines.
+    func thresholdZones(from config: ThresholdConfig) -> [(value: Double, color: Color)] {
+        let t: MetricThresholds
+        switch self {
+        case .cpu:         t = config.cpu
+        case .gpu:         t = config.gpu
+        case .memory:      t = config.memory
+        case .disk:        t = config.disk
+        case .networkDown: t = config.networkDown
+        case .networkUp:   t = config.networkUp
+        }
+        return [(value: t.critical, color: .red), (value: t.warning, color: .yellow)]
     }
 }
 

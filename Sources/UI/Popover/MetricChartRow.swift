@@ -25,7 +25,7 @@ struct MetricChartRow: View {
     var body: some View {
         VStack(spacing: 4) {
             // Label row
-            HStack(spacing: compact ? 8 : 8) {
+            HStack(spacing: 8) {
                 Image(systemName: icon)
                     .font(compact ? .body : .title3)
                     .foregroundStyle(color)

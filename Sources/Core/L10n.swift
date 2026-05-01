@@ -391,8 +391,6 @@ enum L10n {
     static var metricOverviewGpu:    String { tr("metric.overview.gpu", "GPU") }
     static var metricOverviewMemory: String { tr("metric.overview.memory", "内存") }
     static var metricOverviewDisk:   String { tr("metric.overview.disk", "磁盘") }
-    static var metricOverviewDown:   String { tr("metric.overview.down", "下行") }
-    static var metricOverviewUp:     String { tr("metric.overview.up", "上行") }
 
     // MARK: - FPS Limit
 
@@ -517,12 +515,6 @@ enum L10n {
     static func popoverHistoryFooter(_ duration: String) -> String {
         tr("popover.historyFooter", "%@ 历史").replacingOccurrences(of: "%@", with: duration)
     }
-    static var popoverMetricCpu: String { tr("popover.metric.cpu", "CPU") }
-    static var popoverMetricRam: String { tr("popover.metric.ram", "内存") }
-    static var popoverMetricSsd: String { tr("popover.metric.ssd", "硬盘") }
-    static var popoverMetricNet: String { tr("popover.metric.net", "网络") }
-    static var popoverMetricGpu: String { tr("popover.metric.gpu", "GPU") }
-
     // MARK: - Update
 
     static var updateAutoCheckHeader:  String { tr("update.autoCheck.header", "更新") }

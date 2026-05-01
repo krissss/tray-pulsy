@@ -45,7 +45,6 @@ final class StatusBarView: NSView {
         self.colors = colors
         recalculateLayout()
         rebuildAttributedStringCache()
-        updateStatusItemLength()
         needsDisplay = true
     }
 
@@ -69,7 +68,6 @@ final class StatusBarView: NSView {
         cachedLabelX = []
         cachedValues = []
         cachedValueX = []
-        updateStatusItemLength()
         needsDisplay = true
     }
 
@@ -127,11 +125,6 @@ final class StatusBarView: NSView {
         cachedLabelX = labelXs
         cachedValues = vals
         cachedValueX = valXs
-    }
-
-    private func updateStatusItemLength() {
-        // Width is communicated via `requiredWidth` computed property,
-        // called by StatusBarController.syncStatusItemLength().
     }
 
     /// Returns the required status item width.

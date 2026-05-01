@@ -89,8 +89,6 @@ struct L10nTests {
         #expect(!L10n.accSkinPreview.isEmpty)
         #expect(!L10n.windowTitle.isEmpty)
         #expect(!L10n.popoverHistoryFooter("30 min").isEmpty)
-        #expect(!L10n.popoverMetricCpu.isEmpty)
-        #expect(!L10n.popoverMetricRam.isEmpty)
     }
 
     /// Verify System language detection falls back to locale.
@@ -180,13 +178,6 @@ struct L10nTests {
         #expect(ThemeMode.system.displayName == "跟随系统")
         #expect(ThemeMode.light.displayName == "浅色")
         #expect(ThemeMode.dark.displayName == "深色")
-    }
-
-    @Test("ThemeMode emojis")
-    func themeModeEmojis() {
-        #expect(ThemeMode.system.emoji == "🌓")
-        #expect(ThemeMode.light.emoji == "☀️")
-        #expect(ThemeMode.dark.emoji == "🌙")
     }
 
     @Test("SampleInterval displayNames in Chinese")

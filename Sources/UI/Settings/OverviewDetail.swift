@@ -121,12 +121,12 @@ private struct MetricsGrid: View {
                     MetricChartRow(
                         icon: item.chartIcon,
                         label: item.chartLabel,
-                        valueText: overviewValue(for: item, monitor: monitor),
-                        subtitle: item == .memory ? memoryDetail : nil,
+                        valueText: item.formattedValue(from: monitor),
+                        subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: monitor) : nil,
                         values: snapshots.map { $0[keyPath: item.historyKeyPath] },
                         timestamps: timestamps,
                         color: Color(item.accentColor),
-                        thresholds: thresholdZones(for: item),
+                        thresholds: item.thresholdZones(from: thresholds),
                         valueFormatter: item.formatChartValue,
                         chartHeight: 64,
                         timeSpan: historyDuration.seconds,
@@ -138,35 +138,5 @@ private struct MetricsGrid: View {
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             tick &+= 1
         }
-    }
-
-    private func overviewValue(for item: MetricDisplayItem, monitor: SystemMonitor) -> String {
-        if item == .networkDown {
-            let down = MetricDisplayItem.networkDown.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
-            let up = MetricDisplayItem.networkUp.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
-            return "↓\(down)/s  ↑\(up)/s"
-        }
-        return item.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
-    }
-
-    private func thresholdZones(for item: MetricDisplayItem) -> [(value: Double, color: Color)] {
-        let t: MetricThresholds
-        switch item {
-        case .cpu:         t = thresholds.cpu
-        case .gpu:         t = thresholds.gpu
-        case .memory:      t = thresholds.memory
-        case .disk:        t = thresholds.disk
-        case .networkDown: t = thresholds.networkDown
-        case .networkUp:   t = thresholds.networkUp
-        }
-        return [(value: t.critical, color: .red), (value: t.warning, color: .yellow)]
-    }
-
-    private var memoryDetail: String {
-        let monitor = appState.systemMonitor
-        let f = ByteCountFormatter(); f.countStyle = .memory
-        let used = f.string(fromByteCount: Int64(monitor.memoryUsedGB * 1_073_741_824))
-        let total = f.string(fromByteCount: Int64(monitor.memoryTotalGB * 1_073_741_824))
-        return "\(used) / \(total)"
     }
 }
