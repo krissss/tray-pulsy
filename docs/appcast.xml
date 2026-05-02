@@ -74,5 +74,31 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.6</title>
+        <sparkle:version>1.0.6</sparkle:version>
+        <sparkle:shortVersionString>1.0.6</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sat, 02 May 2026 03:13:35 +0000</pubDate>
+        <description><![CDATA[<b>Added</b>
+<ul>
+<li>菜单栏 Popover 实时指标面板 + 历史趋势图</li>
+</ul>
+<b>Fixed</b>
+<ul>
+<li>修复测试稳定性：消除 Timer 竞态与跨框架 L10n 共享状态冲突</li>
+</ul>
+<b>Changed</b>
+<ul>
+<li>优化构建产物大小：14M → 4.5M (-68%)</li>
+<li>优化菜单栏视图性能：Pulsy 帧缓存 + 移除冗余 Timer</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.6/TrayPulsy-v1.0.6.zip"
+            sparkle:edSignature="4Y7JVJAUU7SQC76E7zZvQrXoZv5fx9T208udd7xf+jvBuPFbGNCRsEoVyb/7ftqNyJd8e4EAPPLAKspR8lc9Aw=="
+            length="3837845"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
