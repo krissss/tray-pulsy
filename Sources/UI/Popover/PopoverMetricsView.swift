@@ -36,6 +36,24 @@ struct PopoverMetricsView: View {
                     showCurrentValue: false
                 )
             }
+
+            Divider()
+                .padding(.top, 6)
+
+            Button {
+                NSApp.terminate(nil)
+            } label: {
+                Label(L10n.popoverQuit, systemImage: "power")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 5)
+                    .background {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(.quaternary)
+                    }
+            }
+            .buttonStyle(.plain)
         }
         .padding(14)
         .frame(width: 300)

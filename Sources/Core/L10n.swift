@@ -190,6 +190,7 @@ enum L10n {
             "popover.metric.ssd": "SSD",
             "popover.metric.net": "NET",
             "popover.metric.gpu": "GPU",
+            "popover.quit": "Quit",
 
             // Update
             "update.autoCheck.header": "Updates",
@@ -323,6 +324,7 @@ enum L10n {
             "popover.metric.ssd": "硬盘",
             "popover.metric.net": "网络",
             "popover.metric.gpu": "GPU",
+            "popover.quit": "退出",
 
             // Update
             "update.autoCheck.header": "更新",
@@ -515,6 +517,7 @@ enum L10n {
     static func popoverHistoryFooter(_ duration: String) -> String {
         tr("popover.historyFooter", "%@ 历史").replacingOccurrences(of: "%@", with: duration)
     }
+    static var popoverQuit: String { tr("popover.quit", "退出") }
     // MARK: - Update
 
     static var updateAutoCheckHeader:  String { tr("update.autoCheck.header", "更新") }
