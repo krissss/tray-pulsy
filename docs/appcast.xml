@@ -100,5 +100,22 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.7</title>
+        <sparkle:version>1.0.7</sparkle:version>
+        <sparkle:shortVersionString>1.0.7</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sat, 02 May 2026 07:20:23 +0000</pubDate>
+        <description><![CDATA[<b>Fixed</b>
+<ul>
+<li>修复 Sparkle 自动更新签名验证失败：轮换 EdDSA 密钥对</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.7/TrayPulsy-v1.0.7.zip"
+            sparkle:edSignature="QUtfhUjvEBBjN9wjkvDtD6tDr6GYF/VXZSJYfsNaxX5kyL/0Wbx2mX3n9k3cd4zXGuTLRZSV0HxjCIF3eR+dAg=="
+            length="3838050"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
