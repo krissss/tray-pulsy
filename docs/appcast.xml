@@ -134,5 +134,22 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.9</title>
+        <sparkle:version>1.0.9</sparkle:version>
+        <sparkle:shortVersionString>1.0.9</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sat, 02 May 2026 07:54:33 +0000</pubDate>
+        <description><![CDATA[<b>Fixed</b>
+<ul>
+<li>修复 CI 构建未签名导致 Sparkle 自动更新安装失败</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.9/TrayPulsy-v1.0.9.zip"
+            sparkle:edSignature="iRy15FJHIPvwOnkWxVB44iQkBN6IEsXVFoeB4yOnGq/yPK1gKb2Ah8ExxhsYAQeUC9EHMWblrmRQJFCTHMmUAw=="
+            length="3842414"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
