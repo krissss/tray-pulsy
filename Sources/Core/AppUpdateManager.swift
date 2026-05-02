@@ -96,7 +96,7 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
     }
 
     private func startUpdaterIfNeeded() {
-        guard !updaterStarted, Self.bundleHasIdentifier else { return }
+        guard !updaterStarted else { return }
         updaterStarted = true
         updaterController.startUpdater()
     }
@@ -122,6 +122,10 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
         DispatchQueue.main.async {
             NSApp.activate(ignoringOtherApps: true)
         }
+    }
+
+    nonisolated func updater(_: SPUUpdater, didAbortWithError error: Error) {
+        print("[Sparkle] didAbortWithError: \(error)")
     }
 
     // MARK: - SPUStandardUserDriverDelegate
