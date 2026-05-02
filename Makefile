@@ -36,6 +36,7 @@ app: $(BINARY)
 		lipo -info "$$f" 2>/dev/null | grep -q "are:" && lipo "$$f" -thin arm64 -output "$$f" || true; \
 	done
 	install_name_tool -add_rpath "@executable_path/../Frameworks" $(APP_BUNDLE)/Contents/MacOS/$(APP_NAME) 2>/dev/null || true
+	codesign --deep --force -s - $(APP_BUNDLE)
 	@echo "✅ $(APP_BUNDLE)"
 
 $(BINARY):
