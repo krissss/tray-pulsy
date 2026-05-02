@@ -111,8 +111,7 @@ private struct MetricsGrid: View {
     var body: some View {
         Group {
             let monitor = appState.systemMonitor
-            let snapshots = appState.metricsHistory.allSnapshots()
-            let timestamps = snapshots.map(\.timestamp)
+            let history = appState.metricsHistory
 
             VStack(spacing: 0) {
                 ForEach(Array(MetricDisplayItem.chartOrder.enumerated()), id: \.element) { index, item in
@@ -122,8 +121,8 @@ private struct MetricsGrid: View {
                         label: item.chartLabel,
                         valueText: item.formattedValue(from: monitor),
                         subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: monitor) : nil,
-                        values: snapshots.map { $0[keyPath: item.historyKeyPath] },
-                        timestamps: timestamps,
+                        values: history.cachedValues(for: item.historyKeyPath),
+                        timestamps: history.cachedTimestampArray(),
                         color: Color(item.accentColor),
                         thresholds: item.thresholdZones(from: thresholds),
                         valueFormatter: item.formatChartValue,

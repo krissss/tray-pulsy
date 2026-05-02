@@ -17,8 +17,7 @@ struct PopoverMetricsView: View {
     var body: some View {
         VStack(spacing: 4) {
             // Metrics grid — driven by MetricDisplayItem.chartOrder (same as Overview)
-            let snapshots = systemMonitor.history.allSnapshots()
-            let timestamps = snapshots.map(\.timestamp)
+            let history = systemMonitor.history
 
             ForEach(MetricDisplayItem.chartOrder, id: \.self) { item in
                 MetricChartRow(
@@ -26,8 +25,8 @@ struct PopoverMetricsView: View {
                     label: item.chartLabel,
                     valueText: item.formattedValue(from: systemMonitor),
                     subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: systemMonitor) : nil,
-                    values: snapshots.map { $0[keyPath: item.historyKeyPath] },
-                    timestamps: timestamps,
+                    values: history.cachedValues(for: item.historyKeyPath),
+                    timestamps: history.cachedTimestampArray(),
                     color: Color(item.accentColor),
                     thresholds: item.thresholdZones(from: thresholds),
                     valueFormatter: item.formatChartValue,

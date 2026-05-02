@@ -167,17 +167,42 @@ enum PulsySkinRenderer {
         let glowCol = gradientColor(at: midT, alpha: alpha * 0.2, theme: theme)
         strokePath(pts, in: ctx, color: glowCol, width: glowWidth)
 
-        // Main pass — per-segment gradient
+        // Main pass — pre-compute CGColor LUT, batch same-color segments
+        let lutSize = 32
+        var colorLUT = [CGColor]()
+        colorLUT.reserveCapacity(lutSize)
+        for i in 0..<lutSize {
+            colorLUT.append(gradientColor(at: CGFloat(i) / CGFloat(lutSize - 1), alpha: alpha, theme: theme).cgColor)
+        }
+
         ctx.setLineWidth(lineWidth)
         ctx.setLineCap(.round)
         ctx.setLineJoin(.round)
-        for i in 0..<(pts.count - 1) {
-            let t = pts[i].x / iconSize
-            ctx.setStrokeColor(gradientColor(at: t, alpha: alpha, theme: theme).cgColor)
-            ctx.move(to: pts[i])
-            ctx.addLine(to: pts[i + 1])
-            ctx.strokePath()
+        var currentLUT = lutIndex(for: pts[0].x / iconSize, count: lutSize)
+        ctx.setStrokeColor(colorLUT[currentLUT])
+        ctx.move(to: pts[0])
+
+        for i in 1..<(pts.count - 1) {
+            let nextLUT = lutIndex(for: pts[i].x / iconSize, count: lutSize)
+            if nextLUT != currentLUT {
+                // Flush the batch
+                ctx.addLine(to: pts[i])
+                ctx.strokePath()
+                ctx.setStrokeColor(colorLUT[nextLUT])
+                ctx.move(to: pts[i])
+                currentLUT = nextLUT
+            } else {
+                ctx.addLine(to: pts[i])
+            }
         }
+        // Flush remaining
+        ctx.addLine(to: pts[pts.count - 1])
+        ctx.strokePath()
+    }
+
+    /// Quantize normalised position to LUT index.
+    private static func lutIndex(for t: CGFloat, count: Int) -> Int {
+        min(count - 1, max(0, Int(t * CGFloat(count - 1) + 0.5)))
     }
 
     private static func strokePath(

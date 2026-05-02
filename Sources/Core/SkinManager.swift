@@ -30,7 +30,7 @@ final class SkinManager: @unchecked Sendable {
 
     private(set) var currentSkin: SkinInfo
     private var currentTheme: ThemeMode = .system
-    private var frameCache: [String: [NSImage]] = [:]
+    private let frameCache = NSCache<NSString, NSArray>()
     @ObservationIgnored private lazy var ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
     init() {
@@ -80,20 +80,20 @@ final class SkinManager: @unchecked Sendable {
         if s.id == "pulsy" {
             return loadFrames(for: s.id)
         }
-        let key = "\(s.id):\(themeHash)"
-        if let cached = frameCache[key] { return cached }
+        let key = "\(s.id):\(themeHash)" as NSString
+        if let cached = frameCache.object(forKey: key) { return cached as! [NSImage] }
         let base = loadFrames(for: s.id)
         guard !base.isEmpty else {
             // Skin frames not found — fall back to default
-            let catKey = "\(Self.defaultSkinID):\(themeHash)"
-            if let cached = frameCache[catKey] { return cached }
+            let catKey = "\(Self.defaultSkinID):\(themeHash)" as NSString
+            if let cached = frameCache.object(forKey: catKey) { return cached as! [NSImage] }
             let catFrames = loadFrames(for: Self.defaultSkinID)
             let themed = applyCurrentTheme(to: catFrames)
-            frameCache[catKey] = themed
+            frameCache.setObject(themed as NSArray, forKey: catKey)
             return themed
         }
         let themed = applyCurrentTheme(to: base)
-        frameCache[key] = themed
+        frameCache.setObject(themed as NSArray, forKey: key)
         return themed
     }
 
@@ -243,7 +243,7 @@ final class SkinManager: @unchecked Sendable {
         }
     }
 
-    private func clearCache() { frameCache.removeAll() }
+    private func clearCache() { frameCache.removeAllObjects() }
 
     private func applyCurrentTheme(to images: [NSImage]) -> [NSImage] {
         let isDark: Bool

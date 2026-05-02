@@ -27,6 +27,17 @@ final class MetricsHistory: @unchecked Sendable {
     /// Most recent snapshot (for carry-forward when a metric is disabled).
     private(set) var lastSnapshot: MetricSnapshot?
 
+    /// Cached result of `allSnapshots()`, invalidated on `record()` / `clear()`.
+    private var cachedSnapshots: [MetricSnapshot]?
+    /// Pre-extracted per-metric arrays, built once alongside cachedSnapshots.
+    private var cachedTimestamps: [Date] = []
+    private var cachedCPU: [Double] = []
+    private var cachedGPU: [Double] = []
+    private var cachedMemory: [Double] = []
+    private var cachedDisk: [Double] = []
+    private var cachedNetIn: [Double] = []
+    private var cachedNetOut: [Double] = []
+
     // MARK: - Persistence
 
     private let fileURL: URL
@@ -80,12 +91,15 @@ final class MetricsHistory: @unchecked Sendable {
         }
         writeIndex = (writeIndex + 1) % capacity
         if count < capacity { count += 1 }
+        cachedSnapshots = nil // invalidate cache
     }
 
     // MARK: - Query
 
     /// All snapshots within `maxDuration`, ordered oldest-to-newest.
+    /// Result is cached until the next `record()` or `clear()`.
     func allSnapshots() -> [MetricSnapshot] {
+        if let cached = cachedSnapshots { return cached }
         guard count > 0 else { return [] }
         let raw: [MetricSnapshot]
         if count < capacity {
@@ -94,12 +108,50 @@ final class MetricsHistory: @unchecked Sendable {
             raw = Array(buffer[writeIndex...]) + Array(buffer[..<writeIndex])
         }
         let cutoff = Date().addingTimeInterval(-maxDuration)
-        return raw.filter { $0.timestamp >= cutoff }
+        let result = raw.filter { $0.timestamp >= cutoff }
+        // Build pre-extracted per-metric arrays
+        cachedTimestamps = result.map(\.timestamp)
+        cachedCPU = result.map(\.cpuUsage)
+        cachedGPU = result.map(\.gpuUsage)
+        cachedMemory = result.map(\.memoryUsage)
+        cachedDisk = result.map(\.diskUsage)
+        cachedNetIn = result.map(\.netSpeedIn)
+        cachedNetOut = result.map(\.netSpeedOut)
+        cachedSnapshots = result
+        return result
     }
 
     /// Extract a single metric's values as Doubles, oldest-to-newest.
+    /// Uses pre-extracted cached arrays when available.
     func snapshots(for keyPath: KeyPath<MetricSnapshot, Double>) -> [Double] {
-        allSnapshots().map { $0[keyPath: keyPath] }
+        ensureCacheWarm()
+        return cachedValues(for: keyPath)
+    }
+
+    /// Return the pre-extracted cached array for a given metric keyPath.
+    /// Self-warming: populates cache on first call if needed.
+    func cachedValues(for keyPath: KeyPath<MetricSnapshot, Double>) -> [Double] {
+        ensureCacheWarm()
+        switch keyPath {
+        case \.cpuUsage:     return cachedCPU
+        case \.gpuUsage:     return cachedGPU
+        case \.memoryUsage:  return cachedMemory
+        case \.diskUsage:    return cachedDisk
+        case \.netSpeedIn:   return cachedNetIn
+        case \.netSpeedOut:  return cachedNetOut
+        default:             return []
+        }
+    }
+
+    /// Return the pre-extracted timestamps array. Self-warming.
+    func cachedTimestampArray() -> [Date] {
+        ensureCacheWarm()
+        return cachedTimestamps
+    }
+
+    /// Ensure the per-metric cache arrays are populated.
+    private func ensureCacheWarm() {
+        if cachedSnapshots == nil { _ = allSnapshots() }
     }
 
     // MARK: - Reconfigure
@@ -125,6 +177,14 @@ final class MetricsHistory: @unchecked Sendable {
         writeIndex = 0
         count = 0
         lastSnapshot = nil
+        cachedSnapshots = nil
+        cachedTimestamps = []
+        cachedCPU = []
+        cachedGPU = []
+        cachedMemory = []
+        cachedDisk = []
+        cachedNetIn = []
+        cachedNetOut = []
         try? FileManager.default.removeItem(at: fileURL)
     }
 
