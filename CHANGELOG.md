@@ -28,6 +28,21 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 
 ## [Unreleased]
 
+## [1.0.6] - 2026-05-02
+
+### Added
+
+- 菜单栏 Popover 实时指标面板 + 历史趋势图
+
+### Fixed
+
+- 修复测试稳定性：消除 Timer 竞态与跨框架 L10n 共享状态冲突
+
+### Changed
+
+- 优化构建产物大小：14M → 4.5M (-68%)
+- 优化菜单栏视图性能：Pulsy 帧缓存 + 移除冗余 Timer
+
 ## [1.0.5] - 2026-04-27
 
 ### Fixed
@@ -71,7 +86,8 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 - README 添加首次打开提示损坏的解决方法
 - AGENTS.md 添加 Sparkle 自动更新文档
 
-[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.0.5...HEAD
+[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.0.6...HEAD
+[1.0.6]: https://github.com/krissss/tray-pulsy/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/krissss/tray-pulsy/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/krissss/tray-pulsy/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/krissss/tray-pulsy/compare/v1.0.2...v1.0.3
