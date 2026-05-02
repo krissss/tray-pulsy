@@ -10,7 +10,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/sindresorhus/Defaults", from: "9.0.0"),
-        .package(url: "https://github.com/spacenation/swiftui-sliders", from: "2.1.0"),
+        .package(url: "https://github.com/buh/CompactSlider", from: "1.2.1"),
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0"),
     ],
     targets: [
@@ -18,7 +18,7 @@ let package = Package(
             name: "TrayPulsy",
             dependencies: [
                 .product(name: "Defaults", package: "Defaults"),
-                .product(name: "Sliders", package: "swiftui-sliders"),
+                .product(name: "CompactSlider", package: "CompactSlider"),
                 .product(name: "Sparkle", package: "Sparkle"),
             ],
             path: "Sources",

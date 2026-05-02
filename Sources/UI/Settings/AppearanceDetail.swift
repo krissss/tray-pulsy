@@ -1,5 +1,5 @@
+import CompactSlider
 import Defaults
-import Sliders
 import SwiftUI
 
 // ═══════════════════════════════════════════════════════════════
@@ -110,22 +110,8 @@ private extension SkinDetail {
                 // Line width slider
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.pulsySettingsLineWidth)
-                    ValueSlider(value: $pulsyLineWidth, in: 0.5...2.0, step: 0.1)
-                        .valueSliderStyle(
-                            HorizontalValueSliderStyle(
-                                track: HorizontalTrack(
-                                    view: Capsule().foregroundColor(.accentColor)
-                                )
-                                .background(Capsule().foregroundColor(.primary.opacity(0.15)))
-                                .frame(height: 2),
-                                thumb: Circle()
-                                    .foregroundColor(.accentColor)
-                                    .shadow(color: .black.opacity(0.15), radius: 1),
-                                thumbSize: CGSize(width: 12, height: 12),
-                                thumbInteractiveSize: CGSize(width: 24, height: 24),
-                                options: .interactiveTrack
-                            )
-                        )
+                    CompactSlider(value: $pulsyLineWidth, in: 0.5...2.0, step: 0.1) {}
+                        .compactSliderSecondaryColor(progressColor: .accentColor)
                     Text(String(format: "%.1f", pulsyLineWidth))
                         .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 }
@@ -133,22 +119,8 @@ private extension SkinDetail {
                 // Glow intensity slider
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.pulsySettingsGlowIntensity)
-                    ValueSlider(value: $pulsyGlowIntensity, in: 0...1.0, step: 0.1)
-                        .valueSliderStyle(
-                            HorizontalValueSliderStyle(
-                                track: HorizontalTrack(
-                                    view: Capsule().foregroundColor(.accentColor)
-                                )
-                                .background(Capsule().foregroundColor(.primary.opacity(0.15)))
-                                .frame(height: 2),
-                                thumb: Circle()
-                                    .foregroundColor(.accentColor)
-                                    .shadow(color: .black.opacity(0.15), radius: 1),
-                                thumbSize: CGSize(width: 12, height: 12),
-                                thumbInteractiveSize: CGSize(width: 24, height: 24),
-                                options: .interactiveTrack
-                            )
-                        )
+                    CompactSlider(value: $pulsyGlowIntensity, in: 0...1.0, step: 0.1) {}
+                        .compactSliderSecondaryColor(progressColor: .accentColor)
                     Text(String(format: "%.1f", pulsyGlowIntensity))
                         .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 }
@@ -156,22 +128,8 @@ private extension SkinDetail {
                 // Amplitude sensitivity slider
                 VStack(alignment: .leading, spacing: 4) {
                     Text(L10n.pulsySettingsAmplitudeSensitivity)
-                    ValueSlider(value: $pulsyAmplitudeSensitivity, in: 0.2...1.0, step: 0.05)
-                        .valueSliderStyle(
-                            HorizontalValueSliderStyle(
-                                track: HorizontalTrack(
-                                    view: Capsule().foregroundColor(.accentColor)
-                                )
-                                .background(Capsule().foregroundColor(.primary.opacity(0.15)))
-                                .frame(height: 2),
-                                thumb: Circle()
-                                    .foregroundColor(.accentColor)
-                                    .shadow(color: .black.opacity(0.15), radius: 1),
-                                thumbSize: CGSize(width: 12, height: 12),
-                                thumbInteractiveSize: CGSize(width: 24, height: 24),
-                                options: .interactiveTrack
-                            )
-                        )
+                    CompactSlider(value: $pulsyAmplitudeSensitivity, in: 0.2...1.0, step: 0.05) {}
+                        .compactSliderSecondaryColor(progressColor: .accentColor)
                     Text(String(format: "%.2f", pulsyAmplitudeSensitivity))
                         .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                 }
@@ -277,7 +235,7 @@ private struct MetricRowView: View {
 
 }
 
-// MARK: - Dual Threshold Slider (spacenation/swiftui-sliders)
+// MARK: - Dual Threshold Slider (CompactSlider)
 
 private struct DualThresholdSlider: View {
     @Binding var warning: Double
@@ -286,38 +244,10 @@ private struct DualThresholdSlider: View {
     let step: Double
     let formatLabel: (Double) -> String
 
-    private var rangeBinding: Binding<ClosedRange<Double>> {
-        Binding(
-            get: { warning...critical },
-            set: { r in
-                warning = r.lowerBound
-                critical = r.upperBound
-            }
-        )
-    }
-
     var body: some View {
         VStack(spacing: 4) {
-            RangeSlider(range: rangeBinding, in: range, step: step)
-                .rangeSliderStyle(
-                    HorizontalRangeSliderStyle(
-                        track: HorizontalRangeTrack(
-                            view: Capsule().foregroundColor(.yellow)
-                        )
-                        .background(Capsule().foregroundColor(.primary.opacity(0.15)))
-                        .frame(height: 2),
-                        lowerThumb: Circle()
-                            .foregroundColor(.yellow)
-                            .shadow(color: .black.opacity(0.15), radius: 1),
-                        upperThumb: Circle()
-                            .foregroundColor(.red)
-                            .shadow(color: .black.opacity(0.15), radius: 1),
-                        lowerThumbSize: CGSize(width: 10, height: 10),
-                        upperThumbSize: CGSize(width: 10, height: 10),
-                        lowerThumbInteractiveSize: CGSize(width: 20, height: 20),
-                        upperThumbInteractiveSize: CGSize(width: 20, height: 20)
-                    )
-                )
+            CompactSlider(from: $warning, to: $critical, in: range, step: step) {}
+                .compactSliderSecondaryColor(progressColor: .yellow)
 
             HStack {
                 Text(formatLabel(warning))
