@@ -55,11 +55,7 @@ struct SkinDetail: View {
                     }
                     if !externalSkinPath.isEmpty {
                         let expanded = (externalSkinPath as NSString).expandingTildeInPath
-                        if FileManager.default.fileExists(atPath: expanded) {
-                            Text(L10n.skinExtInfo)
-                                .font(.caption)
-                                .foregroundStyle(.tertiary)
-                        } else {
+                        if !FileManager.default.fileExists(atPath: expanded) {
                             Label(L10n.skinPathNotFound, systemImage: "exclamationmark.triangle.fill")
                                 .font(.caption)
                                 .foregroundStyle(.orange)
@@ -67,6 +63,8 @@ struct SkinDetail: View {
                     }
                 } header: {
                     Text(L10n.skinExtHeader)
+                } footer: {
+                    Text(L10n.skinExtInfo)
                 }
             }
             .formStyle(.grouped)

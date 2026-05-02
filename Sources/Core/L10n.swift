@@ -6,8 +6,6 @@ import Foundation
 /// across all build environments (Xcode, swift run, make app).
 ///
 /// To add/update translations: edit the `tables` dictionary below.
-/// The .strings files in Resources/lang/ are kept as the human-readable
-/// source of truth for translators but are NOT loaded at runtime.
 enum L10n {
 
     // MARK: - Core
@@ -110,7 +108,7 @@ enum L10n {
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "Browse",
             "settings.skin.extHeader": "External Skins",
-            "settings.skin.extInfo": "Skin folders in this directory are loaded automatically. Skins with the same name override built-in skins.",
+            "settings.skin.extInfo": "Each subfolder is one skin containing PNG frame sequences.\nFolder name = skin name (e.g. 01.cat → cat). Same name overrides built-in skins.",
             "settings.skin.pathNotFound": "Path not found",
 
             // Metrics Settings
@@ -267,7 +265,7 @@ enum L10n {
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "浏览",
             "settings.skin.extHeader": "外部皮肤",
-            "settings.skin.extInfo": "目录下的皮肤文件夹会自动加载，同名会覆盖内置皮肤",
+            "settings.skin.extInfo": "每个子文件夹为一个皮肤，内含 PNG 序列帧。\n文件夹名即皮肤名（如 01.cat → cat），同名会覆盖内置皮肤。",
             "settings.skin.pathNotFound": "路径不存在",
 
             // Metrics Settings
@@ -429,7 +427,7 @@ enum L10n {
     static var skinPathPrompt:   String { tr("settings.skin.pathPrompt", "~/skins") }
     static var skinBrowse:       String { tr("settings.skin.browse", "浏览") }
     static var skinExtHeader:    String { tr("settings.skin.extHeader", "外部皮肤") }
-    static var skinExtInfo:      String { tr("settings.skin.extInfo", "目录下的皮肤文件夹会自动加载，同名会覆盖内置皮肤") }
+    static var skinExtInfo:      String { tr("settings.skin.extInfo", "每个子文件夹为一个皮肤，内含 PNG 序列帧。\n文件夹名即皮肤名（如 01.cat → cat），同名会覆盖内置皮肤。") }
     static var skinPathNotFound: String { tr("settings.skin.pathNotFound", "路径不存在") }
 
     // MARK: - Metrics Settings
