@@ -168,5 +168,23 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.11</title>
+        <sparkle:version>1.0.11</sparkle:version>
+        <sparkle:shortVersionString>1.0.11</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Thu, 07 May 2026 14:22:37 +0000</pubDate>
+        <description><![CDATA[<b>Added</b>
+<ul>
+<li>添加进程资源监控</li>
+<li>popover: 添加打开主界面按钮</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.11/TrayPulsy-v1.0.11.zip"
+            sparkle:edSignature="0GyLmYycYvg3JZq0pyv0nbVRm8J3NpzLBYh+CcqDP1IdouPnmm1zqVywp46fyg3N3sZqTRGnAb0+BKAbGSmzBQ=="
+            length="3848382"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
