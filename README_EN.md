@@ -32,21 +32,31 @@ brew install --cask tray-pulsy
 
 | Feature | Description |
 |---------|-------------|
-| 🐱 **Multiple Skins** | Cat, Parrot, Horse, Mona, Dab and more, with custom skin support |
-| ⚡ **Speed Source** | Animation speed follows real-time system metrics |
-| 🎯 **Frame Rate Limit** | Multiple fps options to save battery |
-| 🌓 **Theme Adaptation** | Multiple theme modes with auto icon color switching |
-| 📊 **Real-time Metrics** | Overview panel for live system status |
-| 🔢 **Status Bar Values** | Display multiple system metrics beside the icon |
-| 🚀 **Launch at Login** | Auto-start on login via SMAppService |
-| 🔒 **Single Instance** | File lock prevents duplicate launches |
-| 😴 **Sleep Pause** | Auto-pause animation when display sleeps |
-| ♿ **Accessibility** | Full VoiceOver support |
-| 💾 **Persistent Settings** | All preferences saved via UserDefaults |
+| 🐱 **Multiple Skins** | Cat, Parrot, Horse, Mona, Dab, Pulsy waveform, and custom skin support |
+| ⚡ **Dynamic Speed** | Animation speed can follow CPU, GPU, memory, or disk activity |
+| 🔢 **Status Bar Metrics** | Choose which CPU, GPU, memory, disk, and network metrics appear beside the menu bar icon, with threshold colors |
+| 📊 **Live Monitoring** | Menu bar popover and Overview panel show live status and history charts |
+| 🧭 **Process Rankings** | Popover and Overview show top CPU, memory, and network processes with network sort modes |
+| 🎛️ **Customization** | Configure skins, themes, speed source, frame rate limit, status metrics, and launch at login |
+| 🔄 **Auto Update** | Sparkle 2 integration for checking, downloading, installing, and restarting into updates |
+| ♿ **Accessibility** | VoiceOver support with accessible status labels |
 
 ## 🎨 Skins
 
-> Want to add a new skin? Just drop PNG frames into a folder under `Sources/Resources/skins/` — zero code changes needed.
+- **Built-in skins**: Cat, Dab, Horse, Mario, Mona, Parrot, PartyBlobCat, Points, RunCat_U, plus the programmatic Pulsy waveform skin.
+- **Pulsy configuration**: Pulsy supports color themes, waveform styles, line width, glow intensity, and amplitude sensitivity.
+- **External skins**: choose an external skin directory in Settings; each subfolder is one PNG frame sequence, the folder name becomes the skin name, and matching names override built-in skins.
+
+## 📊 System Monitoring
+
+- **Menu bar popover**: left-click the menu bar icon to open live metrics with current values and history charts.
+- **Overview panel**: the main window shows system trend charts plus CPU, memory, and network process rankings.
+- **Process details**: CPU process usage is normalized to whole-machine scale, memory rows show both size and percentage, and network rows can sort by activity, download, upload, or total throughput.
+- **On-demand sampling**: process monitoring only runs while the popover is expanded or the Overview panel is visible, then stops and clears data when closed.
+
+## 🔄 Auto Update
+
+TrayPulsy uses Sparkle 2 for automatic updates. You can check for updates from the About page; new versions are published through GitHub Releases and appcast, with support for downloading, installing, and restarting into the latest build.
 
 ## 🙏 Acknowledgements
 
