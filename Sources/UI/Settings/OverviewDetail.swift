@@ -10,6 +10,8 @@ struct OverviewDetail: View {
                 }
                 Section {
                     MetricsGrid()
+                    Divider()
+                    OverviewProcessSection()
                 } header: {
                     HStack {
                         Text(L10n.overviewMonitorHeader)
@@ -133,5 +135,58 @@ private struct MetricsGrid: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Process Activity
+
+private struct OverviewProcessSection: View {
+    @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
+    @State private var memoryProcessMonitor = ProcessResourceMonitor(kind: .memory)
+    @State private var processNetworkMonitor = ProcessNetworkMonitor()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(L10n.overviewProcessHeader, systemImage: "list.bullet.rectangle")
+                .font(.headline)
+
+            VStack(spacing: 8) {
+                ProcessResourceListView(
+                    monitor: cpuProcessMonitor,
+                    kind: .cpu,
+                    header: L10n.popoverProcessCPUHeader,
+                    title: L10n.metricOverviewCpu
+                )
+                ProcessResourceListView(
+                    monitor: memoryProcessMonitor,
+                    kind: .memory,
+                    header: L10n.popoverProcessMemoryHeader,
+                    title: L10n.metricOverviewMemory
+                )
+                ProcessNetworkListView(
+                    monitor: processNetworkMonitor,
+                    title: L10n.overviewNetwork
+                )
+            }
+        }
+        .padding(.vertical, 6)
+        .onAppear {
+            startProcessMonitors()
+        }
+        .onDisappear {
+            stopProcessMonitors()
+        }
+    }
+
+    private func startProcessMonitors() {
+        cpuProcessMonitor.start(limit: 5)
+        memoryProcessMonitor.start(limit: 5)
+        processNetworkMonitor.start(limit: 5)
+    }
+
+    private func stopProcessMonitors() {
+        cpuProcessMonitor.stop()
+        memoryProcessMonitor.stop()
+        processNetworkMonitor.stop()
     }
 }

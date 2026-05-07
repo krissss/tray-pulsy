@@ -81,6 +81,7 @@ struct L10nTests {
         #expect(!L10n.interval1.isEmpty)
         #expect(!L10n.themeSystem.isEmpty)
         #expect(!L10n.overviewMonitorHeader.isEmpty)
+        #expect(!L10n.overviewProcessHeader.isEmpty)
         #expect(!L10n.skinHeader.isEmpty)
         #expect(!L10n.metricsHeader.isEmpty)
         #expect(!L10n.perfSourceLabel.isEmpty)
@@ -89,6 +90,15 @@ struct L10nTests {
         #expect(!L10n.accSkinPreview.isEmpty)
         #expect(!L10n.windowTitle.isEmpty)
         #expect(!L10n.popoverHistoryFooter("30 min").isEmpty)
+        #expect(!L10n.popoverProcessTopProcesses.isEmpty)
+        #expect(!L10n.popoverProcessSampling.isEmpty)
+        #expect(!L10n.popoverCPUProcessesToggle.isEmpty)
+        #expect(!L10n.popoverMemoryProcessesToggle.isEmpty)
+        #expect(!L10n.popoverNetworkTopProcesses.isEmpty)
+        #expect(!L10n.popoverNetworkProcessesToggle.isEmpty)
+        #expect(!L10n.popoverNetworkSortHelp("Active").isEmpty)
+        #expect(!L10n.popoverNetworkSortActivity.isEmpty)
+        #expect(!L10n.popoverNetworkSortDownloadShort.isEmpty)
     }
 
     /// Verify System language detection falls back to locale.

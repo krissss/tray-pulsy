@@ -101,6 +101,7 @@ enum L10n {
             "overview.monitorHeader": "System Monitor",
             "overview.activityMonitor": "Activity Monitor",
             "overview.network": "Network",
+            "overview.processHeader": "Processes",
 
             // Skin Settings
             "settings.skin.header": "Skins",
@@ -188,6 +189,27 @@ enum L10n {
             "popover.metric.ssd": "SSD",
             "popover.metric.net": "NET",
             "popover.metric.gpu": "GPU",
+            "popover.process.topProcesses": "Top Processes",
+            "popover.process.sampling": "Sampling process activity...",
+            "popover.process.noActivity": "No active processes",
+            "popover.process.showCPU": "Show CPU processes",
+            "popover.process.showMemory": "Show memory processes",
+            "popover.process.cpuHeader": "% CPU",
+            "popover.process.memoryHeader": "Memory / %",
+            "popover.network.topProcesses": "Top Processes",
+            "popover.network.processHeader": "Down / Up",
+            "popover.network.toggle": "Show network processes",
+            "popover.network.download": "download",
+            "popover.network.upload": "upload",
+            "popover.network.sortHelp": "Sort by %@",
+            "popover.network.sort.activity": "Activity",
+            "popover.network.sort.download": "Download",
+            "popover.network.sort.upload": "Upload",
+            "popover.network.sort.total": "Total",
+            "popover.network.sort.activityShort": "Active",
+            "popover.network.sort.downloadShort": "Down",
+            "popover.network.sort.uploadShort": "Up",
+            "popover.network.sort.totalShort": "Total",
             "popover.quit": "Quit",
 
             // Update
@@ -258,6 +280,7 @@ enum L10n {
             "overview.monitorHeader": "系统监控",
             "overview.activityMonitor": "活动监视器",
             "overview.network": "网络",
+            "overview.processHeader": "进程",
 
             // Skin Settings
             "settings.skin.header": "皮肤",
@@ -322,6 +345,27 @@ enum L10n {
             "popover.metric.ssd": "硬盘",
             "popover.metric.net": "网络",
             "popover.metric.gpu": "GPU",
+            "popover.process.topProcesses": "进程排行",
+            "popover.process.sampling": "正在采样进程活动...",
+            "popover.process.noActivity": "暂无活跃进程",
+            "popover.process.showCPU": "显示 CPU 进程",
+            "popover.process.showMemory": "显示内存进程",
+            "popover.process.cpuHeader": "% CPU",
+            "popover.process.memoryHeader": "内存 / %",
+            "popover.network.topProcesses": "进程排行",
+            "popover.network.processHeader": "下行 / 上行",
+            "popover.network.toggle": "显示网络进程",
+            "popover.network.download": "下行",
+            "popover.network.upload": "上行",
+            "popover.network.sortHelp": "按%@排序",
+            "popover.network.sort.activity": "活跃度",
+            "popover.network.sort.download": "下行",
+            "popover.network.sort.upload": "上行",
+            "popover.network.sort.total": "总量",
+            "popover.network.sort.activityShort": "活跃",
+            "popover.network.sort.downloadShort": "下行",
+            "popover.network.sort.uploadShort": "上行",
+            "popover.network.sort.totalShort": "总量",
             "popover.quit": "退出",
 
             // Update
@@ -419,6 +463,7 @@ enum L10n {
     static var overviewMonitorHeader:   String { tr("overview.monitorHeader", "系统监控") }
     static var overviewActivityMonitor: String { tr("overview.activityMonitor", "活动监视器") }
     static var overviewNetwork:         String { tr("overview.network", "网络") }
+    static var overviewProcessHeader:   String { tr("overview.processHeader", "进程") }
 
     // MARK: - Skin Settings
 
@@ -515,6 +560,29 @@ enum L10n {
     static func popoverHistoryFooter(_ duration: String) -> String {
         tr("popover.historyFooter", "%@ 历史").replacingOccurrences(of: "%@", with: duration)
     }
+    static var popoverProcessTopProcesses: String { tr("popover.process.topProcesses", "进程排行") }
+    static var popoverProcessSampling: String { tr("popover.process.sampling", "正在采样进程活动...") }
+    static var popoverProcessNoActivity: String { tr("popover.process.noActivity", "暂无活跃进程") }
+    static var popoverCPUProcessesToggle: String { tr("popover.process.showCPU", "显示 CPU 进程") }
+    static var popoverMemoryProcessesToggle: String { tr("popover.process.showMemory", "显示内存进程") }
+    static var popoverProcessCPUHeader: String { tr("popover.process.cpuHeader", "% CPU") }
+    static var popoverProcessMemoryHeader: String { tr("popover.process.memoryHeader", "内存 / %") }
+    static var popoverNetworkTopProcesses: String { tr("popover.network.topProcesses", "进程排行") }
+    static var popoverNetworkProcessHeader: String { tr("popover.network.processHeader", "下行 / 上行") }
+    static var popoverNetworkProcessesToggle: String { tr("popover.network.toggle", "显示网络进程") }
+    static var popoverNetworkDownload: String { tr("popover.network.download", "下行") }
+    static var popoverNetworkUpload: String { tr("popover.network.upload", "上行") }
+    static func popoverNetworkSortHelp(_ mode: String) -> String {
+        tr("popover.network.sortHelp", "按%@排序").replacingOccurrences(of: "%@", with: mode)
+    }
+    static var popoverNetworkSortActivity: String { tr("popover.network.sort.activity", "活跃度") }
+    static var popoverNetworkSortDownload: String { tr("popover.network.sort.download", "下行") }
+    static var popoverNetworkSortUpload: String { tr("popover.network.sort.upload", "上行") }
+    static var popoverNetworkSortTotal: String { tr("popover.network.sort.total", "总量") }
+    static var popoverNetworkSortActivityShort: String { tr("popover.network.sort.activityShort", "活跃") }
+    static var popoverNetworkSortDownloadShort: String { tr("popover.network.sort.downloadShort", "下行") }
+    static var popoverNetworkSortUploadShort: String { tr("popover.network.sort.uploadShort", "上行") }
+    static var popoverNetworkSortTotalShort: String { tr("popover.network.sort.totalShort", "总量") }
     static var popoverQuit: String { tr("popover.quit", "退出") }
     // MARK: - Update
 
