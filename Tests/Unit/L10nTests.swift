@@ -90,6 +90,7 @@ struct L10nTests {
         #expect(!L10n.accSkinPreview.isEmpty)
         #expect(!L10n.windowTitle.isEmpty)
         #expect(!L10n.popoverHistoryFooter("30 min").isEmpty)
+        #expect(!L10n.popoverOpenMainWindow.isEmpty)
         #expect(!L10n.popoverProcessTopProcesses.isEmpty)
         #expect(!L10n.popoverProcessSampling.isEmpty)
         #expect(!L10n.popoverCPUProcessesToggle.isEmpty)

@@ -189,6 +189,7 @@ enum L10n {
             "popover.metric.ssd": "SSD",
             "popover.metric.net": "NET",
             "popover.metric.gpu": "GPU",
+            "popover.openMainWindow": "Open Main Window",
             "popover.process.topProcesses": "Top Processes",
             "popover.process.sampling": "Sampling process activity...",
             "popover.process.noActivity": "No active processes",
@@ -345,6 +346,7 @@ enum L10n {
             "popover.metric.ssd": "硬盘",
             "popover.metric.net": "网络",
             "popover.metric.gpu": "GPU",
+            "popover.openMainWindow": "打开主界面",
             "popover.process.topProcesses": "进程排行",
             "popover.process.sampling": "正在采样进程活动...",
             "popover.process.noActivity": "暂无活跃进程",
@@ -560,6 +562,7 @@ enum L10n {
     static func popoverHistoryFooter(_ duration: String) -> String {
         tr("popover.historyFooter", "%@ 历史").replacingOccurrences(of: "%@", with: duration)
     }
+    static var popoverOpenMainWindow: String { tr("popover.openMainWindow", "打开主界面") }
     static var popoverProcessTopProcesses: String { tr("popover.process.topProcesses", "进程排行") }
     static var popoverProcessSampling: String { tr("popover.process.sampling", "正在采样进程活动...") }
     static var popoverProcessNoActivity: String { tr("popover.process.noActivity", "暂无活跃进程") }

@@ -10,6 +10,7 @@ import SwiftUI
 /// which update on the main thread every tick — no Timer needed.
 struct PopoverMetricsView: View {
     let systemMonitor: SystemMonitor
+    let openMainWindow: () -> Void
 
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
@@ -20,6 +21,25 @@ struct PopoverMetricsView: View {
 
     var body: some View {
         VStack(spacing: 4) {
+            Button {
+                openMainWindow()
+            } label: {
+                Label(L10n.popoverOpenMainWindow, systemImage: "macwindow")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 5)
+                    .background {
+                        RoundedRectangle(cornerRadius: 6, style: .continuous)
+                            .fill(.quaternary)
+                    }
+            }
+            .buttonStyle(.plain)
+            .help(L10n.popoverOpenMainWindow)
+
+            Divider()
+                .padding(.bottom, 6)
+
             // Metrics grid — driven by MetricDisplayItem.chartOrder (same as Overview)
             let history = systemMonitor.history
 

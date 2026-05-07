@@ -153,10 +153,20 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
             monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
             // Create fresh content each time to avoid holding SwiftUI tree in memory
             popover.contentViewController = NSHostingController(
-                rootView: PopoverMetricsView(systemMonitor: monitor)
+                rootView: PopoverMetricsView(
+                    systemMonitor: monitor,
+                    openMainWindow: { [weak self] in
+                        self?.openSettingsFromPopover()
+                    }
+                )
             )
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
         }
+    }
+
+    private func openSettingsFromPopover() {
+        popover.performClose(nil)
+        openSettings()
     }
 
     // MARK: - NSPopoverDelegate
