@@ -1,4 +1,5 @@
 import Foundation
+import Darwin
 import Observation
 
 // ═══════════════════════════════════════════════════════════════
@@ -40,7 +41,7 @@ enum ProcessNetworkSortMode: String, CaseIterable, Sendable {
 }
 
 enum ProcessNetworkReader {
-    static func readSamples() throws -> [RawProcessNetworkSample] {
+    static func readSamples(timeout: TimeInterval = 3) throws -> [RawProcessNetworkSample] {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/nettop")
         task.arguments = [
@@ -55,17 +56,38 @@ enum ProcessNetworkReader {
 
         let outputPipe = Pipe()
         let errorPipe = Pipe()
+        let inputPipe = Pipe()
+        let timeoutState = ProcessTimeoutState()
         task.standardOutput = outputPipe
         task.standardError = errorPipe
+        task.standardInput = inputPipe
 
         try task.run()
+        try? inputPipe.fileHandleForWriting.close()
+
+        let timeoutWork = DispatchWorkItem {
+            guard task.isRunning else { return }
+            timeoutState.markTimedOut()
+            task.terminate()
+            Thread.sleep(forTimeInterval: 0.2)
+            if task.isRunning {
+                kill(task.processIdentifier, SIGKILL)
+            }
+        }
+        DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + timeout, execute: timeoutWork)
 
         let outputData = outputPipe.fileHandleForReading.readDataToEndOfFile()
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
+        timeoutWork.cancel()
 
+        try? inputPipe.fileHandleForReading.close()
         try? outputPipe.fileHandleForReading.close()
         try? errorPipe.fileHandleForReading.close()
+
+        if timeoutState.didTimeOut {
+            throw ProcessNetworkReaderError.nettopTimedOut
+        }
 
         guard task.terminationStatus == 0 else {
             let errorText = String(data: errorData, encoding: .utf8) ?? ""
@@ -123,7 +145,7 @@ enum ProcessNetworkReader {
         elapsed: TimeInterval
     ) -> [ProcessNetworkUsage] {
         let elapsed = max(elapsed, 0.1)
-        return samples.compactMap { sample -> ProcessNetworkUsage? in
+        return aggregateSamplesByPID(samples).values.compactMap { sample -> ProcessNetworkUsage? in
             guard let previous = previousSamples[sample.pid] else { return nil }
             let downloadDelta = max(Int64(0), sample.downloadBytes - previous.downloadBytes)
             let uploadDelta = max(Int64(0), sample.uploadBytes - previous.uploadBytes)
@@ -196,16 +218,52 @@ enum ProcessNetworkReader {
         let name = rawName.isEmpty ? "\(pid)" : rawName
         return (pid, name)
     }
+
+    static func aggregateSamplesByPID(_ samples: [RawProcessNetworkSample]) -> [Int: RawProcessNetworkSample] {
+        samples.reduce(into: [:]) { result, sample in
+            guard let existing = result[sample.pid] else {
+                result[sample.pid] = sample
+                return
+            }
+
+            result[sample.pid] = RawProcessNetworkSample(
+                pid: sample.pid,
+                name: existing.name.isEmpty ? sample.name : existing.name,
+                downloadBytes: existing.downloadBytes + sample.downloadBytes,
+                uploadBytes: existing.uploadBytes + sample.uploadBytes
+            )
+        }
+    }
 }
 
 enum ProcessNetworkReaderError: LocalizedError {
     case nettopFailed(String)
+    case nettopTimedOut
 
     var errorDescription: String? {
         switch self {
         case .nettopFailed(let message):
             return message.isEmpty ? "nettop failed" : message
+        case .nettopTimedOut:
+            return "nettop timed out"
         }
+    }
+}
+
+private final class ProcessTimeoutState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var timedOut = false
+
+    var didTimeOut: Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return timedOut
+    }
+
+    func markTimedOut() {
+        lock.lock()
+        timedOut = true
+        lock.unlock()
     }
 }
 
@@ -224,6 +282,7 @@ final class ProcessNetworkMonitor {
     @ObservationIgnored private var previousSampleDate: Date?
     @ObservationIgnored private var activeProcesses: [ProcessNetworkUsage] = []
     @ObservationIgnored private var limit: Int = 8
+    @ObservationIgnored private var completedSampleCount = 0
 
     deinit {
         sampleTask?.cancel()
@@ -239,6 +298,7 @@ final class ProcessNetworkMonitor {
         activeProcesses = []
         previousSamples.removeAll()
         previousSampleDate = nil
+        completedSampleCount = 0
 
         sampleTask = Task { [weak self] in
             await self?.sampleOnce()
@@ -258,6 +318,7 @@ final class ProcessNetworkMonitor {
         activeProcesses = []
         previousSamples.removeAll()
         previousSampleDate = nil
+        completedSampleCount = 0
     }
 
     private func sampleOnce() async {
@@ -274,8 +335,13 @@ final class ProcessNetworkMonitor {
         switch result {
         case .success(let samples):
             errorMessage = nil
+            completedSampleCount += 1
             apply(samples)
+            if completedSampleCount >= 2 {
+                isSampling = false
+            }
         case .failure(let error):
+            isSampling = false
             errorMessage = error.localizedDescription
             processes = []
             activeProcesses = []
@@ -284,7 +350,7 @@ final class ProcessNetworkMonitor {
 
     private func apply(_ samples: [RawProcessNetworkSample]) {
         let now = Date()
-        let current = Dictionary(uniqueKeysWithValues: samples.map { ($0.pid, $0) })
+        let current = ProcessNetworkReader.aggregateSamplesByPID(samples)
         defer {
             previousSamples = current
             previousSampleDate = now

@@ -54,6 +54,28 @@ struct ProcessNetworkMonitorTests {
         #expect(active[1].uploadBytesPerSec == 0)
     }
 
+    @Test("duplicate pid rows are aggregated before diffing")
+    func duplicatePIDRows() {
+        let previous = [
+            42: RawProcessNetworkSample(pid: 42, name: "Browser", downloadBytes: 1_000, uploadBytes: 100),
+        ]
+        let current = [
+            RawProcessNetworkSample(pid: 42, name: "Browser", downloadBytes: 1_300, uploadBytes: 150),
+            RawProcessNetworkSample(pid: 42, name: "Browser", downloadBytes: 1_200, uploadBytes: 250),
+        ]
+
+        let active = ProcessNetworkReader.activeProcesses(
+            current: current,
+            previous: previous,
+            elapsed: 1
+        )
+
+        #expect(active.count == 1)
+        #expect(active[0].pid == 42)
+        #expect(active[0].downloadBytesPerSec == 1_500)
+        #expect(active[0].uploadBytesPerSec == 300)
+    }
+
     @Test("sort modes reorder by download, upload and total")
     func sortModes() {
         let processes = [
