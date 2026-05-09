@@ -25,14 +25,18 @@ struct SkinDetail: View {
                             Button {
                                 skin = s.id
                             } label: {
-                                SkinThumbnail(skin: s, isSelected: skin == s.id)
+                                SkinThumbnail(
+                                    skin: s,
+                                    isSelected: skin == s.id,
+                                    pulsyConfigToken: pulsyConfigToken
+                                )
                             }
                             .buttonStyle(.plain)
                         }
                     }
                     .padding(.vertical, 4)
                 } header: {
-                    Text(L10n.skinHeader)
+                    Text(L10n.skinLibraryHeader)
                 }
 
                 pulsyConfigSection()
@@ -73,6 +77,10 @@ struct SkinDetail: View {
 
     /// Show Pulsy config section when pulsy skin is selected.
     private var showPulsyConfig: Bool { skin == "pulsy" }
+
+    private var pulsyConfigToken: String {
+        "\(pulsyColorTheme.rawValue)-\(pulsyWaveformStyle.rawValue)-\(pulsyLineWidth)-\(pulsyGlowIntensity)-\(pulsyAmplitudeSensitivity)"
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -84,54 +92,108 @@ private extension SkinDetail {
     func pulsyConfigSection() -> some View {
         if showPulsyConfig {
             Section {
-                // Color theme picker
-                Picker(L10n.pulsySettingsColorTheme, selection: $pulsyColorTheme) {
-                    ForEach(PulsyColorTheme.allCases, id: \.self) { theme in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .fill(Color(nsColor: theme.iconColor))
-                                .frame(width: 10, height: 10)
-                            Text(theme.displayName)
+                VStack(alignment: .leading, spacing: 14) {
+                    HStack(spacing: 12) {
+                        PulsyThemeStrip(selectedTheme: pulsyColorTheme)
+                        VStack(alignment: .leading, spacing: 6) {
+                            Picker(L10n.pulsySettingsColorTheme, selection: $pulsyColorTheme) {
+                                ForEach(PulsyColorTheme.allCases, id: \.self) { theme in
+                                    HStack(spacing: 6) {
+                                        Circle()
+                                            .fill(Color(nsColor: theme.iconColor))
+                                            .frame(width: 10, height: 10)
+                                        Text(theme.displayName)
+                                    }
+                                    .tag(theme)
+                                }
+                            }
+
+                            Picker(L10n.pulsySettingsWaveform, selection: $pulsyWaveformStyle) {
+                                ForEach(PulsyWaveformStyle.allCases, id: \.self) { style in
+                                    Label(style.displayName, systemImage: style.systemImage)
+                                        .tag(style)
+                                }
+                            }
                         }
-                        .tag(theme)
+                    }
+
+                    Divider()
+
+                    PulsySliderRow(
+                        title: L10n.pulsySettingsLineWidth,
+                        systemImage: "lineweight",
+                        value: String(format: "%.1f", pulsyLineWidth)
+                    ) {
+                        CompactSlider(value: $pulsyLineWidth, in: 0.5...2.0, step: 0.1) {}
+                            .compactSliderSecondaryColor(progressColor: .accentColor)
+                    }
+
+                    PulsySliderRow(
+                        title: L10n.pulsySettingsGlowIntensity,
+                        systemImage: "sparkles",
+                        value: String(format: "%.1f", pulsyGlowIntensity)
+                    ) {
+                        CompactSlider(value: $pulsyGlowIntensity, in: 0...1.0, step: 0.1) {}
+                            .compactSliderSecondaryColor(progressColor: .accentColor)
+                    }
+
+                    PulsySliderRow(
+                        title: L10n.pulsySettingsAmplitudeSensitivity,
+                        systemImage: "waveform.path.ecg",
+                        value: String(format: "%.2f", pulsyAmplitudeSensitivity)
+                    ) {
+                        CompactSlider(value: $pulsyAmplitudeSensitivity, in: 0.2...1.0, step: 0.05) {}
+                            .compactSliderSecondaryColor(progressColor: .accentColor)
                     }
                 }
-
-                // Waveform style picker
-                Picker(L10n.pulsySettingsWaveform, selection: $pulsyWaveformStyle) {
-                    ForEach(PulsyWaveformStyle.allCases, id: \.self) { style in
-                        Label(style.displayName, systemImage: style.systemImage)
-                            .tag(style)
-                    }
-                }
-
-                // Line width slider
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.pulsySettingsLineWidth)
-                    CompactSlider(value: $pulsyLineWidth, in: 0.5...2.0, step: 0.1) {}
-                        .compactSliderSecondaryColor(progressColor: .accentColor)
-                    Text(String(format: "%.1f", pulsyLineWidth))
-                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                }
-
-                // Glow intensity slider
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.pulsySettingsGlowIntensity)
-                    CompactSlider(value: $pulsyGlowIntensity, in: 0...1.0, step: 0.1) {}
-                        .compactSliderSecondaryColor(progressColor: .accentColor)
-                    Text(String(format: "%.1f", pulsyGlowIntensity))
-                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                }
-
-                // Amplitude sensitivity slider
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L10n.pulsySettingsAmplitudeSensitivity)
-                    CompactSlider(value: $pulsyAmplitudeSensitivity, in: 0.2...1.0, step: 0.05) {}
-                        .compactSliderSecondaryColor(progressColor: .accentColor)
-                    Text(String(format: "%.2f", pulsyAmplitudeSensitivity))
-                        .font(.caption).monospacedDigit().foregroundStyle(.secondary)
-                }
+            } header: {
+                Text(L10n.pulsySettingsHeader)
             }
+        }
+    }
+}
+
+private struct PulsyThemeStrip: View {
+    let selectedTheme: PulsyColorTheme
+
+    var body: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(selectedTheme.gradientStops.enumerated()), id: \.offset) { _, color in
+                Rectangle()
+                    .fill(Color(nsColor: color))
+            }
+        }
+        .frame(width: 56, height: 38)
+        .clipShape(.rect(cornerRadius: 10, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .stroke(.white.opacity(0.25), lineWidth: 1)
+        }
+        .shadow(color: Color(nsColor: selectedTheme.iconColor).opacity(0.25), radius: 6, y: 2)
+        .accessibilityHidden(true)
+    }
+}
+
+private struct PulsySliderRow<Control: View>: View {
+    let title: String
+    let systemImage: String
+    let value: String
+    @ViewBuilder let control: () -> Control
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                Text(title)
+                Spacer()
+                Text(value)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            control()
         }
     }
 }
@@ -198,7 +260,7 @@ private struct MetricRowView: View {
                     step: sliderStep,
                     formatLabel: valueLabel
                 )
-                .padding(.leading, 20)
+                .padding(.leading, 28)
             }
         }
     }
@@ -243,17 +305,87 @@ private struct DualThresholdSlider: View {
     let formatLabel: (Double) -> String
 
     var body: some View {
-        VStack(spacing: 4) {
-            CompactSlider(from: $warning, to: $critical, in: range, step: step) {}
-                .compactSliderSecondaryColor(progressColor: .yellow)
+        VStack(spacing: 8) {
+            GeometryReader { proxy in
+                let width = max(proxy.size.width, 1)
+                let warningX = xPosition(for: warning, width: width)
+                let criticalX = xPosition(for: critical, width: width)
+
+                ZStack(alignment: .leading) {
+                    Capsule(style: .continuous)
+                        .fill(.quaternary)
+                        .frame(height: 7)
+
+                    Capsule(style: .continuous)
+                        .fill(.yellow.opacity(0.28))
+                        .frame(width: max(criticalX - warningX, 0), height: 7)
+                        .offset(x: warningX)
+
+                    Capsule(style: .continuous)
+                        .fill(.red.opacity(0.28))
+                        .frame(width: max(width - criticalX, 0), height: 7)
+                        .offset(x: criticalX)
+
+                    ThresholdHandle(color: .yellow)
+                        .position(x: warningX, y: 11)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { gesture in
+                                    warning = min(value(for: gesture.location.x, width: width), critical - step)
+                                }
+                        )
+
+                    ThresholdHandle(color: .red)
+                        .position(x: criticalX, y: 11)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { gesture in
+                                    critical = max(value(for: gesture.location.x, width: width), warning + step)
+                                }
+                        )
+                }
+                .frame(height: 22)
+                .contentShape(Rectangle())
+            }
+            .frame(height: 22)
 
             HStack {
                 Text(formatLabel(warning))
-                    .font(.caption).monospacedDigit().foregroundStyle(.yellow)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.yellow)
                 Spacer()
                 Text(formatLabel(critical))
-                    .font(.caption).monospacedDigit().foregroundStyle(.red)
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.red)
             }
         }
+    }
+
+    private func xPosition(for value: Double, width: CGFloat) -> CGFloat {
+        let fraction = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return width * min(max(fraction, 0), 1)
+    }
+
+    private func value(for x: CGFloat, width: CGFloat) -> Double {
+        let fraction = Double(min(max(x / max(width, 1), 0), 1))
+        let raw = range.lowerBound + fraction * (range.upperBound - range.lowerBound)
+        let stepped = (raw / step).rounded() * step
+        return min(max(stepped, range.lowerBound), range.upperBound)
+    }
+}
+
+private struct ThresholdHandle: View {
+    let color: Color
+
+    var body: some View {
+        Circle()
+            .fill(.background)
+            .frame(width: 16, height: 16)
+            .overlay {
+                Circle()
+                    .fill(color)
+                    .frame(width: 8, height: 8)
+            }
+            .shadow(color: .black.opacity(0.16), radius: 2, y: 1)
     }
 }

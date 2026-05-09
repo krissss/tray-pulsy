@@ -18,7 +18,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
 
     private lazy var popover: NSPopover = {
         let p = NSPopover()
-        p.contentSize = NSSize(width: 300, height: 380)
+        p.contentSize = NSSize(width: 336, height: 520)
         p.behavior = .transient
         p.animates = true
         p.delegate = self

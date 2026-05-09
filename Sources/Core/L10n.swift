@@ -105,6 +105,7 @@ enum L10n {
 
             // Skin Settings
             "settings.skin.header": "Skins",
+            "settings.skin.libraryHeader": "Skin Library",
             "settings.skin.pathLabel": "Path",
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "Browse",
@@ -171,6 +172,7 @@ enum L10n {
             "pulsy.wave.spike": "Spike",
 
             // Pulsy Settings
+            "pulsy.settings.header": "Pulsy Controls",
             "pulsy.settings.colorTheme": "Color Theme",
             "pulsy.settings.waveform": "Waveform Style",
             "pulsy.settings.lineWidth": "Line Width",
@@ -285,6 +287,7 @@ enum L10n {
 
             // Skin Settings
             "settings.skin.header": "皮肤",
+            "settings.skin.libraryHeader": "皮肤库",
             "settings.skin.pathLabel": "路径",
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "浏览",
@@ -299,7 +302,7 @@ enum L10n {
             // Performance Settings
             "performance.source.label": "动画驱动",
             "performance.source.header": "速度来源",
-            "performance.source.footer": "猫咪动画速度将跟随所选指标实时变化。",
+            "performance.source.footer": "动画速度将跟随所选指标实时变化。",
             "performance.fps.label": "最高帧率",
             "performance.fps.header": "帧率控制",
             "performance.fps.footer": "限制最高帧率以降低 CPU 占用。",
@@ -398,6 +401,7 @@ enum L10n {
             "pulsy.wave.spike": "尖峰",
 
             // Pulsy Settings
+            "pulsy.settings.header": "Pulsy 控制台",
             "pulsy.settings.colorTheme": "配色主题",
             "pulsy.settings.waveform": "波形样式",
             "pulsy.settings.lineWidth": "线条粗细",
@@ -470,6 +474,7 @@ enum L10n {
     // MARK: - Skin Settings
 
     static var skinHeader:       String { tr("settings.skin.header", "皮肤") }
+    static var skinLibraryHeader: String { tr("settings.skin.libraryHeader", "皮肤库") }
     static var skinPathLabel:    String { tr("settings.skin.pathLabel", "路径") }
     static var skinPathPrompt:   String { tr("settings.skin.pathPrompt", "~/skins") }
     static var skinBrowse:       String { tr("settings.skin.browse", "浏览") }
@@ -486,7 +491,7 @@ enum L10n {
 
     static var perfSourceLabel:  String { tr("performance.source.label", "动画驱动") }
     static var perfSourceHeader: String { tr("performance.source.header", "速度来源") }
-    static var perfSourceFooter: String { tr("performance.source.footer", "猫咪动画速度将跟随所选指标实时变化。") }
+    static var perfSourceFooter: String { tr("performance.source.footer", "动画速度将跟随所选指标实时变化。") }
     static var perfFpsLabel:     String { tr("performance.fps.label", "最高帧率") }
     static var perfFpsHeader:    String { tr("performance.fps.header", "帧率控制") }
     static var perfFpsFooter:    String { tr("performance.fps.footer", "限制最高帧率以降低 CPU 占用。") }
@@ -545,6 +550,7 @@ enum L10n {
 
     // MARK: - Pulsy Settings
 
+    static var pulsySettingsHeader:              String { tr("pulsy.settings.header", "Pulsy 控制台") }
     static var pulsySettingsColorTheme:          String { tr("pulsy.settings.colorTheme", "Color Theme") }
     static var pulsySettingsWaveform:            String { tr("pulsy.settings.waveform", "Waveform Style") }
     static var pulsySettingsLineWidth:           String { tr("pulsy.settings.lineWidth", "Line Width") }

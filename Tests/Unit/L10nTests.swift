@@ -37,7 +37,7 @@ struct L10nTests {
         #expect(L10n.tr("tab.skin", "") == "皮肤")
         #expect(L10n.tr("tab.general", "") == "通用")
         #expect(L10n.tr("about.quit", "") == "退出 %@")
-        #expect(L10n.tr("performance.source.footer", "") == "猫咪动画速度将跟随所选指标实时变化。")
+        #expect(L10n.tr("performance.source.footer", "") == "动画速度将跟随所选指标实时变化。")
 
         // Back to English
         Defaults[.language] = .en

@@ -53,11 +53,30 @@ struct SparklineChart: View {
                 tp + chartH - CGFloat((v - vMin) / range) * chartH
             }
 
+            // Quiet guide lines for scanability without turning the sparkline into a full chart.
+            if showAnnotations {
+                for fraction in [CGFloat(0.25), CGFloat(0.5), CGFloat(0.75)] {
+                    let y = tp + chartH * fraction
+                    let guide = Path { p in
+                        p.move(to: CGPoint(x: lp, y: y))
+                        p.addLine(to: CGPoint(x: lp + chartW, y: y))
+                    }
+                    context.stroke(guide, with: .color(.secondary.opacity(0.08)), lineWidth: 0.5)
+                }
+            }
+
             // Threshold zones
             for zone in thresholds {
                 let y = yFor(min(zone.value, vMax))
                 let rect = CGRect(x: lp, y: y, width: chartW, height: tp + chartH - y)
                 context.fill(Path(rect), with: .color(zone.color.opacity(0.08)))
+                if showAnnotations {
+                    let thresholdLine = Path { p in
+                        p.move(to: CGPoint(x: lp, y: y))
+                        p.addLine(to: CGPoint(x: lp + chartW, y: y))
+                    }
+                    context.stroke(thresholdLine, with: .color(zone.color.opacity(0.24)), lineWidth: 0.75)
+                }
             }
 
             let points = values.enumerated().map { i, v in
@@ -75,7 +94,12 @@ struct SparklineChart: View {
                     p.addLine(to: CGPoint(x: points[points.count - 1].x, y: tp + chartH))
                     p.closeSubpath()
                 }
-                context.fill(fillPath, with: .color(color.opacity(0.12)))
+                let gradient = GraphicsContext.Shading.linearGradient(
+                    Gradient(colors: [color.opacity(0.18), color.opacity(0.02)]),
+                    startPoint: CGPoint(x: lp, y: tp),
+                    endPoint: CGPoint(x: lp, y: tp + chartH)
+                )
+                context.fill(fillPath, with: gradient)
             }
 
             // Line
@@ -83,6 +107,7 @@ struct SparklineChart: View {
                 p.move(to: points[0])
                 for i in 1..<points.count { p.addLine(to: points[i]) }
             }
+            context.stroke(linePath, with: .color(color.opacity(0.18)), lineWidth: lineWidth + 2.5)
             context.stroke(linePath, with: .color(color), lineWidth: lineWidth)
 
             // Latest-value dot

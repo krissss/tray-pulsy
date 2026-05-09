@@ -182,23 +182,14 @@ private struct ProcessResourceRow: View {
     let kind: ProcessResourceKind
 
     var body: some View {
-        HStack(spacing: 8) {
-            ProcessIcon(pid: process.pid)
-
-            Text(process.name)
-                .font(.system(size: 11, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
-
-            Spacer(minLength: 8)
-
-            Text(valueText)
-                .font(.system(size: 10, design: .monospaced))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .frame(height: 20)
-        .accessibilityLabel("\(process.name), \(accessibilityValue)")
+        ProcessUsageRow(
+            pid: process.pid,
+            name: process.name,
+            valueText: valueText,
+            accent: accent,
+            fraction: fraction,
+            accessibilityValue: accessibilityValue
+        )
     }
 
     private var valueText: String {
@@ -207,6 +198,24 @@ private struct ProcessResourceRow: View {
             return String(format: "%.1f%%", process.cpuPercent)
         case .memory:
             return "\(memoryFormatter.string(fromByteCount: process.memoryBytes)) \(String(format: "%.1f%%", process.memoryPercent))"
+        }
+    }
+
+    private var fraction: Double {
+        switch kind {
+        case .cpu:
+            return min(max(process.cpuPercent / 100, 0), 1)
+        case .memory:
+            return min(max(process.memoryPercent / 100, 0), 1)
+        }
+    }
+
+    private var accent: Color {
+        switch kind {
+        case .cpu:
+            return .blue
+        case .memory:
+            return .orange
         }
     }
 
@@ -231,29 +240,69 @@ private struct ProcessNetworkRow: View {
     let process: ProcessNetworkUsage
 
     var body: some View {
-        HStack(spacing: 8) {
-            ProcessIcon(pid: process.pid)
+        ProcessUsageRow(
+            pid: process.pid,
+            name: process.name,
+            valueText: "↓\(formatSpeed(process.downloadBytesPerSec))  ↑\(formatSpeed(process.uploadBytesPerSec))",
+            accent: .purple,
+            fraction: activityFraction,
+            accessibilityValue: "\(L10n.popoverNetworkDownload) \(formatSpeed(process.downloadBytesPerSec)), \(L10n.popoverNetworkUpload) \(formatSpeed(process.uploadBytesPerSec))"
+        )
+    }
 
-            Text(process.name)
+    private var activityFraction: Double {
+        let total = Double(process.downloadBytesPerSec + process.uploadBytesPerSec)
+        guard total > 0 else { return 0 }
+        return min(log10(total + 1) / 7, 1)
+    }
+
+    private func formatSpeed(_ bytesPerSecond: Int64) -> String {
+        MetricDisplayItem.formatSpeed(Double(bytesPerSecond)).trimmingCharacters(in: .whitespaces) + "/s"
+    }
+}
+
+private struct ProcessUsageRow: View {
+    let pid: Int
+    let name: String
+    let valueText: String
+    let accent: Color
+    let fraction: Double
+    let accessibilityValue: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ProcessIcon(pid: pid)
+
+            Text(name)
                 .font(.system(size: 11, weight: .medium))
                 .lineLimit(1)
                 .truncationMode(.middle)
 
             Spacer(minLength: 8)
 
-            HStack(spacing: 8) {
-                Text("↓\(formatSpeed(process.downloadBytesPerSec))")
-                Text("↑\(formatSpeed(process.uploadBytesPerSec))")
-            }
-            .font(.system(size: 10, design: .monospaced))
-            .foregroundStyle(.secondary)
-        }
-        .frame(height: 20)
-        .accessibilityLabel("\(process.name), \(L10n.popoverNetworkDownload) \(formatSpeed(process.downloadBytesPerSec)), \(L10n.popoverNetworkUpload) \(formatSpeed(process.uploadBytesPerSec))")
-    }
+            VStack(alignment: .trailing, spacing: 3) {
+                Text(valueText)
+                    .font(.system(size: 10, design: .monospaced))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(minWidth: 72, alignment: .trailing)
 
-    private func formatSpeed(_ bytesPerSecond: Int64) -> String {
-        MetricDisplayItem.formatSpeed(Double(bytesPerSecond)).trimmingCharacters(in: .whitespaces) + "/s"
+                GeometryReader { proxy in
+                    Capsule(style: .continuous)
+                        .fill(.quaternary)
+                        .overlay(alignment: .leading) {
+                            Capsule(style: .continuous)
+                                .fill(accent.opacity(0.65))
+                                .frame(width: proxy.size.width * min(max(fraction, 0), 1))
+                        }
+                }
+                .frame(width: 72, height: 3)
+            }
+        }
+        .frame(height: 24)
+        .padding(.horizontal, 4)
+        .background(.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+        .accessibilityLabel("\(name), \(accessibilityValue)")
     }
 }
 

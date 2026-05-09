@@ -35,7 +35,7 @@ struct MetricChartRow: View {
 
                 Text(label)
                     .font(compact ? .caption : .subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(compact ? .primary : .secondary)
                 Spacer()
 
                 if let subtitle {
@@ -48,7 +48,17 @@ struct MetricChartRow: View {
                     .font(compact
                           ? .system(.caption, design: .monospaced).bold()
                           : .system(.body, design: .rounded).monospacedDigit().bold())
-                    .foregroundStyle(color)
+                    .foregroundStyle(compact ? .primary : color)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.78)
+                    .padding(.horizontal, compact ? 6 : 0)
+                    .padding(.vertical, compact ? 3 : 0)
+                    .background {
+                        if compact {
+                            Capsule(style: .continuous)
+                                .fill(color.opacity(0.12))
+                        }
+                    }
             }
 
             // Chart
@@ -67,7 +77,20 @@ struct MetricChartRow: View {
                 .padding(.leading, 0)
             }
         }
-        .padding(.vertical, compact ? 2 : 8)
+        .padding(.vertical, compact ? 7 : 8)
+        .padding(.horizontal, compact ? 8 : 0)
+        .background {
+            if compact {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(.quaternary.opacity(0.35))
+            }
+        }
+        .overlay {
+            if compact {
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .stroke(color.opacity(0.10), lineWidth: 1)
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label) \(valueText)")
     }

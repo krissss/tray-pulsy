@@ -12,6 +12,8 @@ struct PopoverMetricsView: View {
     let systemMonitor: SystemMonitor
     let openMainWindow: () -> Void
 
+    @Default(.speedSource) private var speedSource
+    @Default(.skin) private var skin
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
     @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
@@ -20,88 +22,63 @@ struct PopoverMetricsView: View {
     @State private var expandedProcessSection: ProcessSection?
 
     var body: some View {
-        VStack(spacing: 4) {
-            Button {
-                openMainWindow()
-            } label: {
-                Label(L10n.popoverOpenMainWindow, systemImage: "macwindow")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 5)
-                    .background {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(.quaternary)
-                    }
-            }
-            .buttonStyle(.plain)
-            .help(L10n.popoverOpenMainWindow)
-
-            Divider()
-                .padding(.bottom, 6)
-
+        VStack(spacing: 10) {
             // Metrics grid — driven by MetricDisplayItem.chartOrder (same as Overview)
             let history = systemMonitor.history
 
-            ForEach(MetricDisplayItem.chartOrder, id: \.self) { item in
-                switch item {
-                case .cpu:
-                    MetricDisclosureRow(
-                        row: metricRow(for: item, history: history),
-                        isExpanded: expansionBinding(for: .cpu),
-                        helpText: L10n.popoverCPUProcessesToggle
-                    ) {
-                        ProcessResourceListView(
-                            monitor: cpuProcessMonitor,
-                            kind: .cpu,
-                            header: L10n.popoverProcessCPUHeader
-                        )
+            PopoverHeader(
+                skinName: skinDisplayName,
+                speedSource: speedSource
+            )
+
+            VStack(spacing: 8) {
+                ForEach(MetricDisplayItem.chartOrder, id: \.self) { item in
+                    switch item {
+                    case .cpu:
+                        MetricDisclosureRow(
+                            row: metricRow(for: item, history: history),
+                            isExpanded: expansionBinding(for: .cpu),
+                            helpText: L10n.popoverCPUProcessesToggle
+                        ) {
+                            ProcessResourceListView(
+                                monitor: cpuProcessMonitor,
+                                kind: .cpu,
+                                header: L10n.popoverProcessCPUHeader
+                            )
+                        }
+                    case .memory:
+                        MetricDisclosureRow(
+                            row: metricRow(for: item, history: history),
+                            isExpanded: expansionBinding(for: .memory),
+                            helpText: L10n.popoverMemoryProcessesToggle
+                        ) {
+                            ProcessResourceListView(
+                                monitor: memoryProcessMonitor,
+                                kind: .memory,
+                                header: L10n.popoverProcessMemoryHeader
+                            )
+                        }
+                    case .networkDown:
+                        MetricDisclosureRow(
+                            row: metricRow(for: item, history: history),
+                            isExpanded: expansionBinding(for: .network),
+                            helpText: L10n.popoverNetworkProcessesToggle
+                        ) {
+                            ProcessNetworkListView(monitor: processNetworkMonitor)
+                        }
+                    default:
+                        MetricStaticRow(row: metricRow(for: item, history: history))
                     }
-                case .memory:
-                    MetricDisclosureRow(
-                        row: metricRow(for: item, history: history),
-                        isExpanded: expansionBinding(for: .memory),
-                        helpText: L10n.popoverMemoryProcessesToggle
-                    ) {
-                        ProcessResourceListView(
-                            monitor: memoryProcessMonitor,
-                            kind: .memory,
-                            header: L10n.popoverProcessMemoryHeader
-                        )
-                    }
-                case .networkDown:
-                    MetricDisclosureRow(
-                        row: metricRow(for: item, history: history),
-                        isExpanded: expansionBinding(for: .network),
-                        helpText: L10n.popoverNetworkProcessesToggle
-                    ) {
-                        ProcessNetworkListView(monitor: processNetworkMonitor)
-                    }
-                default:
-                    metricRow(for: item, history: history)
                 }
             }
 
-            Divider()
-                .padding(.top, 6)
-
-            Button {
-                NSApp.terminate(nil)
-            } label: {
-                Label(L10n.popoverQuit, systemImage: "power")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 5)
-                    .background {
-                        RoundedRectangle(cornerRadius: 6, style: .continuous)
-                            .fill(.quaternary)
-                    }
-            }
-            .buttonStyle(.plain)
+            PopoverActionBar(
+                openMainWindow: openMainWindow,
+                quit: { NSApp.terminate(nil) }
+            )
         }
-        .padding(14)
-        .frame(width: 320)
+        .padding(12)
+        .frame(width: 336)
         .onChange(of: expandedProcessSection) {
             updateProcessMonitors()
         }
@@ -114,17 +91,45 @@ struct PopoverMetricsView: View {
         MetricChartRow(
             icon: item.chartIcon,
             label: item.chartLabel,
-            valueText: item.formattedValue(from: systemMonitor),
+            valueText: metricValueText(for: item, history: history),
             subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: systemMonitor) : nil,
             values: history.cachedValues(for: item.historyKeyPath),
             timestamps: history.cachedTimestampArray(),
             color: Color(item.accentColor),
             thresholds: item.thresholdZones(from: thresholds),
             valueFormatter: item.formatChartValue,
-            chartHeight: 48, iconSize: 18, compact: true,
+            chartHeight: 52, iconSize: 18, compact: true,
             timeSpan: historyDuration.seconds,
             showCurrentValue: false
         )
+    }
+
+    private var skinDisplayName: String {
+        let trimmed = skin.split(separator: ".", maxSplits: 1).last.map(String.init) ?? skin
+        return trimmed.isEmpty ? AppConstants.appName : trimmed
+    }
+
+    private func metricValueText(for item: MetricDisplayItem, history: MetricsHistory) -> String {
+        guard let snapshot = history.lastSnapshot else {
+            return item.formattedValue(from: systemMonitor)
+        }
+
+        switch item {
+        case .cpu:
+            return String(format: "%.0f%%", snapshot.cpuUsage)
+        case .gpu:
+            return String(format: "%.0f%%", snapshot.gpuUsage)
+        case .memory:
+            return String(format: "%.0f%%", snapshot.memoryUsage)
+        case .disk:
+            return String(format: "%.0f%%", snapshot.diskUsage)
+        case .networkDown:
+            let down = MetricDisplayItem.formatSpeed(snapshot.netSpeedIn).trimmingCharacters(in: .whitespaces)
+            let up = MetricDisplayItem.formatSpeed(snapshot.netSpeedOut).trimmingCharacters(in: .whitespaces)
+            return "↓\(down)/s  ↑\(up)/s"
+        case .networkUp:
+            return MetricDisplayItem.formatSpeed(snapshot.netSpeedOut).trimmingCharacters(in: .whitespaces)
+        }
     }
 
     private func expansionBinding(for section: ProcessSection) -> Binding<Bool> {
@@ -161,6 +166,84 @@ private enum ProcessSection {
     case network
 }
 
+private struct PopoverHeader: View {
+    let skinName: String
+    let speedSource: SpeedSource
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: speedSource.systemImage)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundStyle(.tint)
+                .frame(width: 34, height: 34)
+                .glassEffect(.regular, in: .circle)
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(skinName)
+                    .font(.system(.headline, design: .rounded).weight(.semibold))
+                    .lineLimit(1)
+                Text("\(L10n.perfSourceLabel): \(speedSource.label)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            Text(AppConstants.appName)
+                .font(.caption2.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 7)
+                .padding(.vertical, 4)
+                .background(.quaternary, in: Capsule())
+        }
+        .padding(10)
+        .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct PopoverActionBar: View {
+    let openMainWindow: () -> Void
+    let quit: () -> Void
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Button(action: openMainWindow) {
+                Label(L10n.popoverOpenMainWindow, systemImage: "macwindow")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .controlSize(.small)
+            .frame(maxWidth: .infinity, minHeight: 28)
+            .help(L10n.popoverOpenMainWindow)
+
+            Button(action: quit) {
+                Label(L10n.popoverQuit, systemImage: "power")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.glass)
+            .controlSize(.small)
+            .frame(maxWidth: .infinity, minHeight: 28)
+            .foregroundStyle(.secondary)
+            .help(L10n.popoverQuit)
+        }
+    }
+}
+
+private struct MetricStaticRow<Row: View>: View {
+    let row: Row
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 6) {
+            row
+                .frame(maxWidth: .infinity)
+            Color.clear
+                .frame(width: 14, height: 22)
+                .padding(.top, 1)
+        }
+    }
+}
+
 private struct MetricDisclosureRow<Row: View, Detail: View>: View {
     let row: Row
     @Binding var isExpanded: Bool
@@ -174,6 +257,7 @@ private struct MetricDisclosureRow<Row: View, Detail: View>: View {
             } label: {
                 HStack(alignment: .top, spacing: 6) {
                     row
+                        .frame(maxWidth: .infinity)
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                         .font(.system(size: 10, weight: .semibold))
                         .foregroundStyle(.secondary)

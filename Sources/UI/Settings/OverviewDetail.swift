@@ -10,8 +10,6 @@ struct OverviewDetail: View {
                 }
                 Section {
                     MetricsGrid()
-                    Divider()
-                    OverviewProcessSection()
                 } header: {
                     HStack {
                         Text(L10n.overviewMonitorHeader)
@@ -110,71 +108,71 @@ private struct MetricsGrid: View {
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
 
-    var body: some View {
-        Group {
-            let monitor = appState.systemMonitor
-            let history = appState.metricsHistory
-
-            VStack(spacing: 0) {
-                ForEach(Array(MetricDisplayItem.chartOrder.enumerated()), id: \.element) { index, item in
-                    if index > 0 { Divider().padding(.leading, 40) }
-                    MetricChartRow(
-                        icon: item.chartIcon,
-                        label: item.chartLabel,
-                        valueText: item.formattedValue(from: monitor),
-                        subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: monitor) : nil,
-                        values: history.cachedValues(for: item.historyKeyPath),
-                        timestamps: history.cachedTimestampArray(),
-                        color: Color(item.accentColor),
-                        thresholds: item.thresholdZones(from: thresholds),
-                        valueFormatter: item.formatChartValue,
-                        chartHeight: 64,
-                        timeSpan: historyDuration.seconds,
-                        showCurrentValue: false
-                    )
-                }
-            }
-        }
-    }
-}
-
-// MARK: - Process Activity
-
-private struct OverviewProcessSection: View {
     @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
     @State private var memoryProcessMonitor = ProcessResourceMonitor(kind: .memory)
     @State private var processNetworkMonitor = ProcessNetworkMonitor()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label(L10n.overviewProcessHeader, systemImage: "list.bullet.rectangle")
-                .font(.headline)
+        Group {
+            let monitor = appState.systemMonitor
+            let history = appState.metricsHistory
 
             VStack(spacing: 8) {
-                ProcessResourceListView(
-                    monitor: cpuProcessMonitor,
-                    kind: .cpu,
-                    header: L10n.popoverProcessCPUHeader,
-                    title: L10n.metricOverviewCpu
-                )
-                ProcessResourceListView(
-                    monitor: memoryProcessMonitor,
-                    kind: .memory,
-                    header: L10n.popoverProcessMemoryHeader,
-                    title: L10n.metricOverviewMemory
-                )
-                ProcessNetworkListView(
-                    monitor: processNetworkMonitor,
-                    title: L10n.overviewNetwork
-                )
+                ForEach(Array(MetricDisplayItem.chartOrder.enumerated()), id: \.element) { index, item in
+                    if index > 0 { Divider().padding(.leading, 40) }
+                    VStack(spacing: 8) {
+                        MetricChartRow(
+                            icon: item.chartIcon,
+                            label: item.chartLabel,
+                            valueText: item.formattedValue(from: monitor),
+                            subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: monitor) : nil,
+                            values: history.cachedValues(for: item.historyKeyPath),
+                            timestamps: history.cachedTimestampArray(),
+                            color: Color(item.accentColor),
+                            thresholds: item.thresholdZones(from: thresholds),
+                            valueFormatter: item.formatChartValue,
+                            chartHeight: 64,
+                            timeSpan: historyDuration.seconds,
+                            showCurrentValue: false
+                        )
+
+                        processList(for: item)
+                    }
+                }
             }
         }
-        .padding(.vertical, 6)
         .onAppear {
             startProcessMonitors()
         }
         .onDisappear {
             stopProcessMonitors()
+        }
+    }
+
+    @ViewBuilder
+    private func processList(for item: MetricDisplayItem) -> some View {
+        switch item {
+        case .cpu:
+            ProcessResourceListView(
+                monitor: cpuProcessMonitor,
+                kind: .cpu,
+                header: L10n.popoverProcessCPUHeader,
+                title: L10n.popoverProcessTopProcesses
+            )
+        case .memory:
+            ProcessResourceListView(
+                monitor: memoryProcessMonitor,
+                kind: .memory,
+                header: L10n.popoverProcessMemoryHeader,
+                title: L10n.popoverProcessTopProcesses
+            )
+        case .networkDown:
+            ProcessNetworkListView(
+                monitor: processNetworkMonitor,
+                title: L10n.popoverNetworkTopProcesses
+            )
+        default:
+            EmptyView()
         }
     }
 
