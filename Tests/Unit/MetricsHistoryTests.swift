@@ -12,10 +12,14 @@ struct MetricsHistoryTests {
 
     private func makeSnapshot(cpu: Double = 0, gpu: Double = 0, memory: Double = 0,
                               disk: Double = 0, netIn: Double = 0, netOut: Double = 0,
-                              timestamp: Date = Date()) -> MetricSnapshot {
+                              timestamp: Date = Date(),
+                              recordedMetrics: Set<SystemMonitor.MetricKind> = Set(SystemMonitor.MetricKind.allCases),
+                              recordedMetricItems: Set<MetricDisplayItem>? = nil) -> MetricSnapshot {
         MetricSnapshot(cpuUsage: cpu, gpuUsage: gpu, memoryUsage: memory,
                        diskUsage: disk, netSpeedIn: netIn, netSpeedOut: netOut,
-                       timestamp: timestamp)
+                       timestamp: timestamp,
+                       recordedMetrics: recordedMetrics,
+                       recordedMetricItems: recordedMetricItems)
     }
 
     /// Each test gets its own temp file so no state leaks between tests.
@@ -112,6 +116,54 @@ struct MetricsHistoryTests {
 
         #expect(h.snapshots(for: \.cpuUsage) == [10, 20, 30])
         #expect(h.snapshots(for: \.gpuUsage) == [50, 60, 70])
+    }
+
+    @Test("cached metric values skip snapshots where that metric was not recorded")
+    func cachedValuesSkipUnrecordedMetrics() {
+        let url = tempURL(); defer { cleanup(url) }
+        let h = MetricsHistory(maxDuration: 1800, sampleInterval: 1.0, storageURL: url)
+        let t0 = Date()
+        h.record(makeSnapshot(cpu: 10, netIn: 100, timestamp: t0, recordedMetrics: [.cpu, .network]))
+        h.record(makeSnapshot(cpu: 10, netIn: 200, timestamp: t0.addingTimeInterval(1), recordedMetrics: [.network]))
+        h.record(makeSnapshot(cpu: 30, netIn: 300, timestamp: t0.addingTimeInterval(2), recordedMetrics: [.cpu]))
+
+        #expect(h.cachedValues(for: \.cpuUsage) == [10, 30])
+        #expect(h.cachedTimestampArray(for: \.cpuUsage) == [t0, t0.addingTimeInterval(2)])
+        #expect(h.cachedValues(for: \.netSpeedIn) == [100, 200])
+        #expect(h.cachedTimestampArray(for: \.netSpeedIn) == [t0, t0.addingTimeInterval(1)])
+    }
+
+    @Test("network upload and download history are filtered independently")
+    func networkDirectionsAreFilteredIndependently() {
+        let url = tempURL(); defer { cleanup(url) }
+        let h = MetricsHistory(maxDuration: 1800, sampleInterval: 1.0, storageURL: url)
+        let t0 = Date()
+        h.record(makeSnapshot(
+            netIn: 100,
+            netOut: 10,
+            timestamp: t0,
+            recordedMetrics: [.network],
+            recordedMetricItems: [.networkDown]
+        ))
+        h.record(makeSnapshot(
+            netIn: 200,
+            netOut: 20,
+            timestamp: t0.addingTimeInterval(1),
+            recordedMetrics: [.network],
+            recordedMetricItems: [.networkUp]
+        ))
+        h.record(makeSnapshot(
+            netIn: 300,
+            netOut: 30,
+            timestamp: t0.addingTimeInterval(2),
+            recordedMetrics: [],
+            recordedMetricItems: []
+        ))
+
+        #expect(h.cachedValues(for: \.netSpeedIn) == [100])
+        #expect(h.cachedTimestampArray(for: \.netSpeedIn) == [t0])
+        #expect(h.cachedValues(for: \.netSpeedOut) == [20])
+        #expect(h.cachedTimestampArray(for: \.netSpeedOut) == [t0.addingTimeInterval(1)])
     }
 
     // MARK: - reconfigure
@@ -291,5 +343,7 @@ struct MetricsHistoryTests {
         #expect(decoded[0].netSpeedIn == 1_500_000)
         #expect(decoded[0].netSpeedOut == 250_000)
         #expect(decoded[0].timestamp.timeIntervalSince1970 == 1_700_000_000)
+        #expect(decoded[0].recordedMetrics == Set(SystemMonitor.MetricKind.allCases))
+        #expect(decoded[0].recordedMetricItems == Set(MetricDisplayItem.allCases))
     }
 }

@@ -50,6 +50,45 @@ enum MetricSpikeKind: String, CaseIterable, Identifiable, Sendable {
         }
     }
 
+    var requiredMetric: SystemMonitor.MetricKind {
+        switch self {
+        case .cpu:         return .cpu
+        case .memory:      return .memory
+        case .networkDown,
+             .networkUp:   return .network
+        }
+    }
+
+    var requiredMetricItem: MetricDisplayItem {
+        switch self {
+        case .cpu:         return .cpu
+        case .memory:      return .memory
+        case .networkDown: return .networkDown
+        case .networkUp:   return .networkUp
+        }
+    }
+
+    func isMonitored(in metricItems: Set<MetricDisplayItem>) -> Bool {
+        metricItems.contains(requiredMetricItem)
+    }
+
+    static func kinds(for metricItems: Set<MetricDisplayItem>) -> Set<MetricSpikeKind> {
+        var kinds = Set<MetricSpikeKind>()
+        if metricItems.contains(.cpu) {
+            kinds.insert(.cpu)
+        }
+        if metricItems.contains(.memory) {
+            kinds.insert(.memory)
+        }
+        if metricItems.contains(.networkDown) {
+            kinds.insert(.networkDown)
+        }
+        if metricItems.contains(.networkUp) {
+            kinds.insert(.networkUp)
+        }
+        return kinds
+    }
+
     func thresholds(from config: ThresholdConfig) -> MetricThresholds {
         switch self {
         case .cpu:         return config.cpu
@@ -323,6 +362,7 @@ struct MetricSpikeDetector {
         thresholds: ThresholdConfig,
         spikeDeltas: SpikeDeltaConfig = .defaults,
         now: Date = Date(),
+        includedMetrics: Set<MetricSpikeKind> = Set(MetricSpikeKind.allCases),
         excludedMetrics: Set<MetricSpikeKind> = [],
         shouldRecordCooldown: Bool = true
     ) -> MetricSpikeCandidate? {
@@ -331,6 +371,7 @@ struct MetricSpikeDetector {
             thresholds: thresholds,
             spikeDeltas: spikeDeltas,
             now: now,
+            includedMetrics: includedMetrics,
             excludedMetrics: excludedMetrics,
             shouldRecordCooldown: false
         )
@@ -347,6 +388,7 @@ struct MetricSpikeDetector {
         thresholds: ThresholdConfig,
         spikeDeltas: SpikeDeltaConfig = .defaults,
         now: Date = Date(),
+        includedMetrics: Set<MetricSpikeKind> = Set(MetricSpikeKind.allCases),
         excludedMetrics: Set<MetricSpikeKind> = [],
         shouldRecordCooldown: Bool = true,
         preserveCandidateBaselines: Bool = false
@@ -357,8 +399,12 @@ struct MetricSpikeDetector {
         }
 
         let candidates = MetricSpikeKind.allCases.compactMap { kind -> MetricSpikeCandidate? in
+            guard includedMetrics.contains(kind) else { return nil }
             guard !excludedMetrics.contains(kind) else { return nil }
             guard canRecord(kind, at: now) else { return nil }
+            guard previousSnapshot.records(kind.requiredMetricItem), snapshot.records(kind.requiredMetricItem) else {
+                return nil
+            }
 
             let previousValue = kind.value(from: previousSnapshot)
             let currentValue = kind.value(from: snapshot)
@@ -409,8 +455,49 @@ struct MetricSpikeDetector {
             diskUsage: snapshot.diskUsage,
             netSpeedIn: preservedMetrics.contains(.networkDown) ? baseline.netSpeedIn : snapshot.netSpeedIn,
             netSpeedOut: preservedMetrics.contains(.networkUp) ? baseline.netSpeedOut : snapshot.netSpeedOut,
-            timestamp: snapshot.timestamp
+            timestamp: snapshot.timestamp,
+            recordedMetrics: recordedMetrics(
+                baseline: baseline,
+                snapshot: snapshot,
+                preserving: preservedMetrics
+            ),
+            recordedMetricItems: recordedMetricItems(
+                baseline: baseline,
+                snapshot: snapshot,
+                preserving: preservedMetrics
+            )
         )
+    }
+
+    private func recordedMetrics(
+        baseline: MetricSnapshot,
+        snapshot: MetricSnapshot,
+        preserving preservedMetrics: Set<MetricSpikeKind>
+    ) -> Set<SystemMonitor.MetricKind> {
+        var metrics = snapshot.recordedMetrics
+        if preservedMetrics.contains(.cpu), baseline.records(SystemMonitor.MetricKind.cpu) {
+            metrics.insert(.cpu)
+        }
+        if preservedMetrics.contains(.memory), baseline.records(SystemMonitor.MetricKind.memory) {
+            metrics.insert(.memory)
+        }
+        if (preservedMetrics.contains(.networkDown) || preservedMetrics.contains(.networkUp)),
+           baseline.records(.network) {
+            metrics.insert(.network)
+        }
+        return metrics
+    }
+
+    private func recordedMetricItems(
+        baseline: MetricSnapshot,
+        snapshot: MetricSnapshot,
+        preserving preservedMetrics: Set<MetricSpikeKind>
+    ) -> Set<MetricDisplayItem> {
+        var items = snapshot.recordedMetricItems
+        for metric in preservedMetrics where baseline.records(metric.requiredMetricItem) {
+            items.insert(metric.requiredMetricItem)
+        }
+        return items
     }
 
     mutating func reset() {

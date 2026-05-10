@@ -16,6 +16,7 @@ struct PopoverMetricsView: View {
     @Default(.skin) private var skin
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
+    @Default(.metricMonitorItems) private var metricMonitorItems
     @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
     @State private var memoryProcessMonitor = ProcessResourceMonitor(kind: .memory)
     @State private var processNetworkMonitor = ProcessNetworkMonitor()
@@ -23,8 +24,9 @@ struct PopoverMetricsView: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            // Metrics grid — driven by MetricDisplayItem.chartOrder (same as Overview)
+            // Metrics grid — driven by monitored chart items (same as Overview)
             let history = systemMonitor.history
+            let chartItems = MetricDisplayItem.monitoredChartItems(from: metricMonitorItems)
 
             PopoverHeader(
                 skinName: skinDisplayName,
@@ -32,7 +34,7 @@ struct PopoverMetricsView: View {
             )
 
             VStack(spacing: 8) {
-                ForEach(MetricDisplayItem.chartOrder, id: \.self) { item in
+                ForEach(chartItems, id: \.self) { item in
                     switch item {
                     case .cpu:
                         MetricDisclosureRow(
@@ -58,7 +60,7 @@ struct PopoverMetricsView: View {
                                 header: L10n.popoverProcessMemoryHeader
                             )
                         }
-                    case .networkDown:
+                    case .networkDown, .networkUp:
                         MetricDisclosureRow(
                             row: metricRow(for: item, history: history),
                             isExpanded: expansionBinding(for: .network),
@@ -82,6 +84,9 @@ struct PopoverMetricsView: View {
         .onChange(of: expandedProcessSection) {
             updateProcessMonitors()
         }
+        .onChange(of: metricMonitorItems) {
+            reconcileExpandedProcessSection()
+        }
         .onDisappear {
             stopProcessMonitors()
         }
@@ -94,7 +99,7 @@ struct PopoverMetricsView: View {
             valueText: metricValueText(for: item, history: history),
             subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: systemMonitor) : nil,
             values: history.cachedValues(for: item.historyKeyPath),
-            timestamps: history.cachedTimestampArray(),
+            timestamps: history.cachedTimestampArray(for: item.historyKeyPath),
             color: Color(item.accentColor),
             thresholds: item.thresholdZones(from: thresholds),
             valueFormatter: item.formatChartValue,
@@ -111,25 +116,13 @@ struct PopoverMetricsView: View {
 
     private func metricValueText(for item: MetricDisplayItem, history: MetricsHistory) -> String {
         guard let snapshot = history.lastSnapshot else {
-            return item.formattedValue(from: systemMonitor)
+            return item.formattedValue(from: systemMonitor, monitoredItems: metricMonitorItems)
         }
-
-        switch item {
-        case .cpu:
-            return String(format: "%.0f%%", snapshot.cpuUsage)
-        case .gpu:
-            return String(format: "%.0f%%", snapshot.gpuUsage)
-        case .memory:
-            return String(format: "%.0f%%", snapshot.memoryUsage)
-        case .disk:
-            return String(format: "%.0f%%", snapshot.diskUsage)
-        case .networkDown:
-            let down = MetricDisplayItem.formatSpeed(snapshot.netSpeedIn).trimmingCharacters(in: .whitespaces)
-            let up = MetricDisplayItem.formatSpeed(snapshot.netSpeedOut).trimmingCharacters(in: .whitespaces)
-            return "↓\(down)/s  ↑\(up)/s"
-        case .networkUp:
-            return MetricDisplayItem.formatSpeed(snapshot.netSpeedOut).trimmingCharacters(in: .whitespaces)
-        }
+        return item.formattedValue(
+            from: snapshot,
+            fallback: systemMonitor,
+            monitoredItems: metricMonitorItems
+        )
     }
 
     private func expansionBinding(for section: ProcessSection) -> Binding<Bool> {
@@ -157,6 +150,30 @@ struct PopoverMetricsView: View {
         cpuProcessMonitor.stop()
         memoryProcessMonitor.stop()
         processNetworkMonitor.stop()
+    }
+
+    private func reconcileExpandedProcessSection() {
+        guard let expandedProcessSection else {
+            stopProcessMonitors()
+            return
+        }
+        guard canShowProcessSection(expandedProcessSection) else {
+            stopProcessMonitors()
+            self.expandedProcessSection = nil
+            return
+        }
+        updateProcessMonitors()
+    }
+
+    private func canShowProcessSection(_ section: ProcessSection) -> Bool {
+        switch section {
+        case .cpu:
+            return metricMonitorItems.contains(.cpu)
+        case .memory:
+            return metricMonitorItems.contains(.memory)
+        case .network:
+            return metricMonitorItems.contains(.networkDown) || metricMonitorItems.contains(.networkUp)
+        }
     }
 }
 

@@ -9,6 +9,86 @@ struct MetricSnapshot: Codable {
     let netSpeedIn: Double
     let netSpeedOut: Double
     let timestamp: Date
+    let recordedMetrics: Set<SystemMonitor.MetricKind>
+    let recordedMetricItems: Set<MetricDisplayItem>
+
+    init(
+        cpuUsage: Double,
+        gpuUsage: Double,
+        memoryUsage: Double,
+        diskUsage: Double,
+        netSpeedIn: Double,
+        netSpeedOut: Double,
+        timestamp: Date,
+        recordedMetrics: Set<SystemMonitor.MetricKind> = Set(SystemMonitor.MetricKind.allCases),
+        recordedMetricItems: Set<MetricDisplayItem>? = nil
+    ) {
+        self.cpuUsage = cpuUsage
+        self.gpuUsage = gpuUsage
+        self.memoryUsage = memoryUsage
+        self.diskUsage = diskUsage
+        self.netSpeedIn = netSpeedIn
+        self.netSpeedOut = netSpeedOut
+        self.timestamp = timestamp
+        self.recordedMetrics = recordedMetrics
+        self.recordedMetricItems = recordedMetricItems ?? MetricDisplayItem.items(for: recordedMetrics)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case cpuUsage
+        case gpuUsage
+        case memoryUsage
+        case diskUsage
+        case netSpeedIn
+        case netSpeedOut
+        case timestamp
+        case recordedMetrics
+        case recordedMetricItems
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        cpuUsage = try container.decode(Double.self, forKey: .cpuUsage)
+        gpuUsage = try container.decode(Double.self, forKey: .gpuUsage)
+        memoryUsage = try container.decode(Double.self, forKey: .memoryUsage)
+        diskUsage = try container.decode(Double.self, forKey: .diskUsage)
+        netSpeedIn = try container.decode(Double.self, forKey: .netSpeedIn)
+        netSpeedOut = try container.decode(Double.self, forKey: .netSpeedOut)
+        timestamp = try container.decode(Date.self, forKey: .timestamp)
+        let decodedMetrics = try container.decodeIfPresent(
+            Set<SystemMonitor.MetricKind>.self,
+            forKey: .recordedMetrics
+        ) ?? Set(SystemMonitor.MetricKind.allCases)
+        recordedMetrics = decodedMetrics
+        let decodedItems = try container.decodeIfPresent(
+            Set<String>.self,
+            forKey: .recordedMetricItems
+        )
+        recordedMetricItems = decodedItems.map { rawItems in
+            Set(rawItems.compactMap(MetricDisplayItem.init(rawValue:)))
+        } ?? MetricDisplayItem.items(for: decodedMetrics)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(cpuUsage, forKey: .cpuUsage)
+        try container.encode(gpuUsage, forKey: .gpuUsage)
+        try container.encode(memoryUsage, forKey: .memoryUsage)
+        try container.encode(diskUsage, forKey: .diskUsage)
+        try container.encode(netSpeedIn, forKey: .netSpeedIn)
+        try container.encode(netSpeedOut, forKey: .netSpeedOut)
+        try container.encode(timestamp, forKey: .timestamp)
+        try container.encode(recordedMetrics, forKey: .recordedMetrics)
+        try container.encode(Set(recordedMetricItems.map(\.rawValue)), forKey: .recordedMetricItems)
+    }
+
+    func records(_ metric: SystemMonitor.MetricKind) -> Bool {
+        recordedMetrics.contains(metric)
+    }
+
+    func records(_ item: MetricDisplayItem) -> Bool {
+        recordedMetricItems.contains(item)
+    }
 }
 
 /// Fixed-capacity ring buffer that stores up to `maxDuration / sampleInterval` snapshots.
@@ -37,6 +117,12 @@ final class MetricsHistory: @unchecked Sendable {
     private var cachedDisk: [Double] = []
     private var cachedNetIn: [Double] = []
     private var cachedNetOut: [Double] = []
+    private var cachedCPUTimestamps: [Date] = []
+    private var cachedGPUTimestamps: [Date] = []
+    private var cachedMemoryTimestamps: [Date] = []
+    private var cachedDiskTimestamps: [Date] = []
+    private var cachedNetInTimestamps: [Date] = []
+    private var cachedNetOutTimestamps: [Date] = []
 
     // MARK: - Persistence
 
@@ -111,12 +197,25 @@ final class MetricsHistory: @unchecked Sendable {
         let result = raw.filter { $0.timestamp >= cutoff }
         // Build pre-extracted per-metric arrays
         cachedTimestamps = result.map(\.timestamp)
-        cachedCPU = result.map(\.cpuUsage)
-        cachedGPU = result.map(\.gpuUsage)
-        cachedMemory = result.map(\.memoryUsage)
-        cachedDisk = result.map(\.diskUsage)
-        cachedNetIn = result.map(\.netSpeedIn)
-        cachedNetOut = result.map(\.netSpeedOut)
+        let cpuSnapshots = result.filter { $0.records(MetricDisplayItem.cpu) }
+        let gpuSnapshots = result.filter { $0.records(MetricDisplayItem.gpu) }
+        let memorySnapshots = result.filter { $0.records(MetricDisplayItem.memory) }
+        let diskSnapshots = result.filter { $0.records(MetricDisplayItem.disk) }
+        let networkInSnapshots = result.filter { $0.records(MetricDisplayItem.networkDown) }
+        let networkOutSnapshots = result.filter { $0.records(MetricDisplayItem.networkUp) }
+
+        cachedCPU = cpuSnapshots.map(\.cpuUsage)
+        cachedGPU = gpuSnapshots.map(\.gpuUsage)
+        cachedMemory = memorySnapshots.map(\.memoryUsage)
+        cachedDisk = diskSnapshots.map(\.diskUsage)
+        cachedNetIn = networkInSnapshots.map(\.netSpeedIn)
+        cachedNetOut = networkOutSnapshots.map(\.netSpeedOut)
+        cachedCPUTimestamps = cpuSnapshots.map(\.timestamp)
+        cachedGPUTimestamps = gpuSnapshots.map(\.timestamp)
+        cachedMemoryTimestamps = memorySnapshots.map(\.timestamp)
+        cachedDiskTimestamps = diskSnapshots.map(\.timestamp)
+        cachedNetInTimestamps = networkInSnapshots.map(\.timestamp)
+        cachedNetOutTimestamps = networkOutSnapshots.map(\.timestamp)
         cachedSnapshots = result
         return result
     }
@@ -149,6 +248,19 @@ final class MetricsHistory: @unchecked Sendable {
         return cachedTimestamps
     }
 
+    func cachedTimestampArray(for keyPath: KeyPath<MetricSnapshot, Double>) -> [Date] {
+        ensureCacheWarm()
+        switch keyPath {
+        case \.cpuUsage:     return cachedCPUTimestamps
+        case \.gpuUsage:     return cachedGPUTimestamps
+        case \.memoryUsage:  return cachedMemoryTimestamps
+        case \.diskUsage:    return cachedDiskTimestamps
+        case \.netSpeedIn:   return cachedNetInTimestamps
+        case \.netSpeedOut:  return cachedNetOutTimestamps
+        default:             return []
+        }
+    }
+
     /// Ensure the per-metric cache arrays are populated.
     private func ensureCacheWarm() {
         if cachedSnapshots == nil { _ = allSnapshots() }
@@ -170,6 +282,7 @@ final class MetricsHistory: @unchecked Sendable {
         for s in keep { buffer.append(s) }
         writeIndex = buffer.count % newCap
         count = buffer.count
+        clearCaches()
     }
 
     func clear() {
@@ -177,6 +290,11 @@ final class MetricsHistory: @unchecked Sendable {
         writeIndex = 0
         count = 0
         lastSnapshot = nil
+        clearCaches()
+        try? FileManager.default.removeItem(at: fileURL)
+    }
+
+    private func clearCaches() {
         cachedSnapshots = nil
         cachedTimestamps = []
         cachedCPU = []
@@ -185,7 +303,12 @@ final class MetricsHistory: @unchecked Sendable {
         cachedDisk = []
         cachedNetIn = []
         cachedNetOut = []
-        try? FileManager.default.removeItem(at: fileURL)
+        cachedCPUTimestamps = []
+        cachedGPUTimestamps = []
+        cachedMemoryTimestamps = []
+        cachedDiskTimestamps = []
+        cachedNetInTimestamps = []
+        cachedNetOutTimestamps = []
     }
 
     /// Write data to disk. Call on app termination / sleep.

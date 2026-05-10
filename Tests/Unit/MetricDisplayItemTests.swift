@@ -108,6 +108,99 @@ final class MetricDisplayItemTests: XCTestCase {
         XCTAssertEqual(MetricDisplayItem.networkUp.requiredMetric, .network)
     }
 
+    func testSpikeKindsFromMetricItems() {
+        let kinds = MetricSpikeKind.kinds(for: [.cpu, .gpu, .memory, .networkDown])
+
+        XCTAssertEqual(kinds, [.cpu, .memory, .networkDown])
+    }
+
+    func testMonitoredChartItemsFiltersDisabledMetrics() {
+        let items = MetricDisplayItem.monitoredChartItems(from: [.cpu, .memory, .networkUp])
+
+        XCTAssertEqual(items, [.cpu, .memory, .networkUp])
+        XCTAssertFalse(items.contains(.gpu))
+    }
+
+    func testMonitoredChartItemsPrefersDownloadForCombinedNetworkRow() {
+        let items = MetricDisplayItem.monitoredChartItems(from: [.networkDown, .networkUp])
+
+        XCTAssertEqual(items, [.networkDown])
+    }
+
+    func testFormattedNetworkValueShowsOnlyMonitoredDirection() {
+        let monitor = SystemMonitor()
+
+        XCTAssertEqual(
+            MetricDisplayItem.networkDown.formattedValue(from: monitor, monitoredItems: [.networkDown]),
+            "↓0B/s"
+        )
+        XCTAssertEqual(
+            MetricDisplayItem.networkUp.formattedValue(from: monitor, monitoredItems: [.networkUp]),
+            "↑0B/s"
+        )
+    }
+
+    func testFormattedNetworkValueShowsBothDirectionsWhenBothMonitored() {
+        let monitor = SystemMonitor()
+
+        XCTAssertEqual(
+            MetricDisplayItem.networkDown.formattedValue(from: monitor, monitoredItems: [.networkDown, .networkUp]),
+            "↓0B/s  ↑0B/s"
+        )
+    }
+
+    func testFormattedValueFallsBackWhenSnapshotDidNotRecordMetric() {
+        let monitor = SystemMonitor()
+        let snapshot = MetricSnapshot(
+            cpuUsage: 88,
+            gpuUsage: 0,
+            memoryUsage: 0,
+            diskUsage: 0,
+            netSpeedIn: 1_200_000,
+            netSpeedOut: 900_000,
+            timestamp: Date(),
+            recordedMetrics: [],
+            recordedMetricItems: []
+        )
+
+        XCTAssertEqual(
+            MetricDisplayItem.cpu.formattedValue(from: snapshot, fallback: monitor, monitoredItems: [.cpu]),
+            "0%"
+        )
+        XCTAssertEqual(
+            MetricDisplayItem.networkDown.formattedValue(
+                from: snapshot,
+                fallback: monitor,
+                monitoredItems: [.networkDown, .networkUp]
+            ),
+            "↓0B/s  ↑0B/s"
+        )
+    }
+
+    func testFormattedValueUsesRecordedSnapshotDirectionsIndependently() {
+        let monitor = SystemMonitor()
+        let snapshot = MetricSnapshot(
+            cpuUsage: 0,
+            gpuUsage: 0,
+            memoryUsage: 0,
+            diskUsage: 0,
+            netSpeedIn: 1_200_000,
+            netSpeedOut: 900_000,
+            timestamp: Date(),
+            recordedMetrics: [.network],
+            recordedMetricItems: [.networkDown]
+        )
+
+        XCTAssertEqual(
+            MetricDisplayItem.networkDown.formattedValue(
+                from: snapshot,
+                fallback: monitor,
+                monitoredItems: [.networkDown, .networkUp]
+            ),
+            "↓1.2M/s  ↑0B/s"
+        )
+    }
+
     // MARK: - allCases
 
     func testAllCases() {

@@ -66,6 +66,7 @@ private struct SkinPreviewSection: View {
     @Default(.speedSource) private var speedSource
     @Default(.skin) private var skin
     @Default(.fpsLimit) private var fpsLimit
+    @Default(.metricMonitorItems) private var metricMonitorItems
 
     @State private var previewAnimator: TrayAnimator?
     @State private var currentFrame: NSImage?
@@ -93,7 +94,7 @@ private struct SkinPreviewSection: View {
                 Text(appState.skinManager.skin(for: skin).displayName)
                     .font(.headline)
                 HStack(spacing: 20) {
-                    Label("\(Int(appState.systemMonitor.valueForSource(speedSource)))%", systemImage: speedSource.systemImage)
+                    Label("\(Int(currentSourceValue))%", systemImage: speedSource.systemImage)
                     Label("\(Int(previewAnimator?.currentFPS ?? 0)) FPS", systemImage: "gauge.with.dots.needle.33percent")
                 }
                 .font(.subheadline)
@@ -107,6 +108,8 @@ private struct SkinPreviewSection: View {
         .onAppear { setupAnimator() }
         .onDisappear { previewAnimator?.stop() }
         .onChange(of: skin) { setupAnimator() }
+        .onChange(of: speedSource) { syncAnimatorValue() }
+        .onChange(of: metricMonitorItems) { syncAnimatorValue() }
         .onChange(of: fpsLimit) { previewAnimator?.setFPSLimit(fpsLimit) }
     }
 
@@ -121,10 +124,27 @@ private struct SkinPreviewSection: View {
             _ = animator
             MainActor.assumeIsolated { currentFrame = image }
         }
-        let source = speedSource
-        animator.updateValue(source.normalizeForAnimation(appState.systemMonitor.valueForSource(source)))
+        animator.updateValue(currentNormalizedValue)
         animator.start()
         previewAnimator = animator
+    }
+
+    private func syncAnimatorValue() {
+        previewAnimator?.updateValue(currentNormalizedValue)
+    }
+
+    private var currentSourceValue: Double {
+        guard isSpeedSourceMonitored else { return 0 }
+        return appState.systemMonitor.valueForSource(speedSource)
+    }
+
+    private var currentNormalizedValue: Double {
+        guard isSpeedSourceMonitored else { return 0 }
+        return speedSource.normalizeForAnimation(appState.systemMonitor.valueForSource(speedSource))
+    }
+
+    private var isSpeedSourceMonitored: Bool {
+        metricMonitorItems.contains { $0.requiredMetric == speedSource.requiredMetric }
     }
 }
 
@@ -232,6 +252,7 @@ private struct MetricsGrid: View {
     @Environment(AppState.self) private var appState
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
+    @Default(.metricMonitorItems) private var metricMonitorItems
 
     @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
     @State private var memoryProcessMonitor = ProcessResourceMonitor(kind: .memory)
@@ -242,18 +263,19 @@ private struct MetricsGrid: View {
         Group {
             let monitor = appState.systemMonitor
             let history = appState.metricsHistory
+            let chartItems = MetricDisplayItem.monitoredChartItems(from: metricMonitorItems)
 
             VStack(spacing: 8) {
-                ForEach(Array(MetricDisplayItem.chartOrder.enumerated()), id: \.element) { index, item in
+                ForEach(Array(chartItems.enumerated()), id: \.element) { index, item in
                     if index > 0 { Divider().padding(.leading, 40) }
                     VStack(spacing: 8) {
                         MetricChartRow(
                             icon: item.chartIcon,
                             label: item.chartLabel,
-                            valueText: item.formattedValue(from: monitor),
+                            valueText: item.formattedValue(from: monitor, monitoredItems: metricMonitorItems),
                             subtitle: item == .memory ? MetricDisplayItem.memoryDetailText(from: monitor) : nil,
                             values: history.cachedValues(for: item.historyKeyPath),
-                            timestamps: history.cachedTimestampArray(),
+                            timestamps: history.cachedTimestampArray(for: item.historyKeyPath),
                             color: Color(item.accentColor),
                             thresholds: item.thresholdZones(from: thresholds),
                             valueFormatter: item.formatChartValue,
@@ -278,6 +300,9 @@ private struct MetricsGrid: View {
         .onChange(of: expandedProcessSection) {
             updateProcessMonitors()
         }
+        .onChange(of: metricMonitorItems) {
+            reconcileExpandedProcessSection()
+        }
         .onDisappear {
             stopProcessMonitors()
         }
@@ -300,7 +325,7 @@ private struct MetricsGrid: View {
                 header: L10n.popoverProcessMemoryHeader,
                 title: L10n.popoverProcessTopProcesses
             )
-        case .networkDown:
+        case .networkDown, .networkUp:
             ProcessNetworkListView(
                 monitor: processNetworkMonitor,
                 title: L10n.popoverNetworkTopProcesses
@@ -316,7 +341,7 @@ private struct MetricsGrid: View {
             return .cpu
         case .memory:
             return .memory
-        case .networkDown:
+        case .networkDown, .networkUp:
             return .network
         default:
             return nil
@@ -348,6 +373,30 @@ private struct MetricsGrid: View {
         cpuProcessMonitor.stop()
         memoryProcessMonitor.stop()
         processNetworkMonitor.stop()
+    }
+
+    private func reconcileExpandedProcessSection() {
+        guard let expandedProcessSection else {
+            stopProcessMonitors()
+            return
+        }
+        guard canShowProcessSection(expandedProcessSection) else {
+            stopProcessMonitors()
+            self.expandedProcessSection = nil
+            return
+        }
+        updateProcessMonitors()
+    }
+
+    private func canShowProcessSection(_ section: OverviewProcessSection) -> Bool {
+        switch section {
+        case .cpu:
+            return metricMonitorItems.contains(.cpu)
+        case .memory:
+            return metricMonitorItems.contains(.memory)
+        case .network:
+            return metricMonitorItems.contains(.networkDown) || metricMonitorItems.contains(.networkUp)
+        }
     }
 }
 
@@ -395,7 +444,7 @@ private struct MetricProcessDisclosure<Detail: View>: View {
 
     private var canShowProcesses: Bool {
         switch item {
-        case .cpu, .memory, .networkDown:
+        case .cpu, .memory, .networkDown, .networkUp:
             return true
         default:
             return false
@@ -404,7 +453,7 @@ private struct MetricProcessDisclosure<Detail: View>: View {
 
     private var title: String {
         switch item {
-        case .networkDown:
+        case .networkDown, .networkUp:
             return L10n.popoverNetworkTopProcesses
         default:
             return L10n.popoverProcessTopProcesses

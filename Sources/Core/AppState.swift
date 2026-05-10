@@ -31,6 +31,7 @@ final class AppState {
     private var spikeDetector = MetricSpikeDetector()
     private let spikeHistory: MetricSpikeHistory
     private var spikeSampleTasks: [UUID: Task<Void, Never>] = [:]
+    private var spikeSampleTaskMetrics: [UUID: MetricSpikeKind] = [:]
     private var pendingSpikeTaskIDs: Set<UUID> = []
     private var pendingSpikeMetrics: Set<MetricSpikeKind> = []
 
@@ -56,6 +57,7 @@ final class AppState {
         defaultsObservers.removeAll()
         spikeSampleTasks.values.forEach { $0.cancel() }
         spikeSampleTasks.removeAll()
+        spikeSampleTaskMetrics.removeAll()
         pendingSpikeTaskIDs.removeAll()
         pendingSpikeMetrics.removeAll()
     }
@@ -92,6 +94,11 @@ final class AppState {
                 }
             },
             Defaults.observe(.metricDisplayItems) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onMetricsConfigChanged?()
+                }
+            },
+            Defaults.observe(.metricMonitorItems) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.onMetricsConfigChanged?()
                 }
@@ -144,21 +151,34 @@ final class AppState {
 
     /// Only read the metrics we actually need.
     func updateEnabledMetrics(settingsOpen: Bool) {
-        if settingsOpen {
-            systemMonitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
-        } else {
-            var needed = Set([Defaults[.speedSource].requiredMetric])
-            needed.formUnion([.cpu, .memory, .network])
-            if !Defaults[.metricDisplayItems].isEmpty {
-                needed.formUnion(Defaults[.metricDisplayItems].map(\.requiredMetric))
-            }
-            systemMonitor.enabledMetrics = needed
+        let monitoredItems = Defaults[.metricMonitorItems]
+        normalizeSpeedSource(for: monitoredItems)
+        cancelPendingSpikeSamples(forUnmonitoredItems: monitoredItems)
+        let monitored = Set(monitoredItems.map(\.requiredMetric))
+        systemMonitor.configureMetrics(
+            enabledMetrics: monitored,
+            recordedMetrics: monitored,
+            recordedMetricItems: monitoredItems
+        )
+    }
+
+    private func normalizeSpeedSource(for monitoredItems: Set<MetricDisplayItem>) {
+        guard !monitoredItems.isEmpty else { return }
+        let source = Defaults[.speedSource]
+        let sourceIsMonitored = monitoredItems.contains { item in
+            item.requiredMetric == source.requiredMetric
+        }
+        if !sourceIsMonitored, let nextSource = SpeedSource.firstAvailable(in: monitoredItems) {
+            Defaults[.speedSource] = nextSource
         }
     }
 
     /// Current normalized value for the active speed source.
     func currentNormalizedValue() -> Double {
         let source = Defaults[.speedSource]
+        guard systemMonitor.enabledMetrics.contains(source.requiredMetric) else {
+            return 0
+        }
         let rawValue = systemMonitor.valueForSource(source)
         return source.normalizeForAnimation(rawValue)
     }
@@ -170,6 +190,7 @@ final class AppState {
             snapshot: snapshot,
             thresholds: Defaults[.thresholds],
             spikeDeltas: Defaults[.spikeDeltas],
+            includedMetrics: MetricSpikeKind.kinds(for: Defaults[.metricMonitorItems]),
             excludedMetrics: pendingSpikeMetrics,
             shouldRecordCooldown: false,
             preserveCandidateBaselines: true
@@ -186,6 +207,7 @@ final class AppState {
         let spikeDeltas = Defaults[.spikeDeltas]
         pendingSpikeTaskIDs.insert(eventID)
         pendingSpikeMetrics.insert(candidate.metric)
+        spikeSampleTaskMetrics[eventID] = candidate.metric
         spikeSampleTasks[eventID] = Task { [weak self] in
             let result = await MetricSpikeProcessSampler.confirmSpike(
                 candidate: candidate,
@@ -195,12 +217,14 @@ final class AppState {
             guard let self, !Task.isCancelled else { return }
             defer {
                 self.pendingSpikeTaskIDs.remove(eventID)
-                self.pendingSpikeMetrics.remove(candidate.metric)
                 self.spikeSampleTasks.removeValue(forKey: eventID)
+                self.spikeSampleTaskMetrics.removeValue(forKey: eventID)
+                self.refreshPendingSpikeMetrics()
             }
 
             switch result {
             case .success(.some(let confirmation)):
+                guard confirmation.candidate.metric.isMonitored(in: Defaults[.metricMonitorItems]) else { return }
                 self.spikeDetector.recordCooldown(for: confirmation.candidate.metric)
                 let status: SpikeProcessSampleStatus = confirmation.processes.isEmpty ? .unavailable : .ready
                 let event = MetricSpikeEvent(
@@ -224,6 +248,7 @@ final class AppState {
     func clearSpikeEvents() {
         spikeSampleTasks.values.forEach { $0.cancel() }
         spikeSampleTasks.removeAll()
+        spikeSampleTaskMetrics.removeAll()
         pendingSpikeTaskIDs.removeAll()
         pendingSpikeMetrics.removeAll()
         spikeHistory.clear()
@@ -268,6 +293,24 @@ final class AppState {
         for id in removedIDs {
             spikeSampleTasks[id]?.cancel()
             spikeSampleTasks.removeValue(forKey: id)
+            spikeSampleTaskMetrics.removeValue(forKey: id)
         }
+    }
+
+    private func cancelPendingSpikeSamples(forUnmonitoredItems monitoredItems: Set<MetricDisplayItem>) {
+        let removedIDs = spikeSampleTaskMetrics.compactMap { id, metric in
+            metric.isMonitored(in: monitoredItems) ? nil : id
+        }
+        for id in removedIDs {
+            spikeSampleTasks[id]?.cancel()
+            spikeSampleTasks.removeValue(forKey: id)
+            spikeSampleTaskMetrics.removeValue(forKey: id)
+            pendingSpikeTaskIDs.remove(id)
+        }
+        refreshPendingSpikeMetrics()
+    }
+
+    private func refreshPendingSpikeMetrics() {
+        pendingSpikeMetrics = Set(pendingSpikeTaskIDs.compactMap { spikeSampleTaskMetrics[$0] })
     }
 }

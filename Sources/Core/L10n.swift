@@ -124,9 +124,19 @@ enum L10n {
             "settings.skin.pathNotFound": "Path not found",
 
             // Metrics Settings
-            "settings.metrics.header": "Menu Bar Metrics",
-            "settings.metrics.footer": "Select metrics to display next to the menu bar icon. Color thresholds control warning colors; spike jump is the minimum increase between samples required to record a diagnostic event.",
-            "settings.metrics.spikeDelta": "Spike jump",
+            "settings.metrics.header": "Metrics",
+            "settings.metrics.footer": "Off stops sampling and hides the metric. Monitor keeps history, charts, and spike diagnostics. Menu Bar also shows it next to the icon.",
+            "settings.metrics.mode.picker": "Mode",
+            "settings.metrics.mode.off": "Off",
+            "settings.metrics.mode.monitorOnly": "Monitor",
+            "settings.metrics.mode.menuBar": "Menu Bar",
+            "settings.metrics.advanced": "Advanced",
+            "settings.metrics.colorThreshold": "Color threshold",
+            "settings.metrics.colorThreshold.description": "Turns the metric yellow or red after it reaches these values.",
+            "settings.metrics.warningThreshold": "Yellow %@",
+            "settings.metrics.criticalThreshold": "Red %@",
+            "settings.metrics.spikeDelta": "Spike trigger",
+            "settings.metrics.spikeDelta.description": "Records a spike only when the confirmed jump is at least this large.",
 
             // Performance Settings
             "performance.source.label": "Animation Drive",
@@ -325,9 +335,19 @@ enum L10n {
             "settings.skin.pathNotFound": "路径不存在",
 
             // Metrics Settings
-            "settings.metrics.header": "菜单栏指标",
-            "settings.metrics.footer": "勾选要在菜单栏图标旁显示的指标；颜色阈值决定标黄/标红，尖峰跳升是记录诊断事件所需的相邻采样最小增量。",
-            "settings.metrics.spikeDelta": "尖峰跳升",
+            "settings.metrics.header": "指标",
+            "settings.metrics.footer": "关闭会停止采样并隐藏指标；仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。",
+            "settings.metrics.mode.picker": "模式",
+            "settings.metrics.mode.off": "关闭",
+            "settings.metrics.mode.monitorOnly": "仅监控",
+            "settings.metrics.mode.menuBar": "菜单栏",
+            "settings.metrics.advanced": "高级设置",
+            "settings.metrics.colorThreshold": "颜色阈值",
+            "settings.metrics.colorThreshold.description": "指标达到这些值后，会在菜单栏和图表里标黄或标红。",
+            "settings.metrics.warningThreshold": "黄色 %@",
+            "settings.metrics.criticalThreshold": "红色 %@",
+            "settings.metrics.spikeDelta": "尖峰判定",
+            "settings.metrics.spikeDelta.description": "二次确认后的跳升至少达到这个值，才会记录一次尖峰。",
 
             // Performance Settings
             "performance.source.label": "动画驱动",
@@ -535,9 +555,19 @@ enum L10n {
 
     // MARK: - Metrics Settings
 
-    static var metricsHeader: String { tr("settings.metrics.header", "菜单栏指标") }
-    static var metricsFooter: String { tr("settings.metrics.footer", "勾选要在菜单栏图标旁显示的指标；颜色阈值决定标黄/标红，尖峰跳升是记录诊断事件所需的相邻采样最小增量。") }
-    static var metricsSpikeDeltaLabel: String { tr("settings.metrics.spikeDelta", "尖峰跳升") }
+    static var metricsHeader: String { tr("settings.metrics.header", "指标") }
+    static var metricsFooter: String { tr("settings.metrics.footer", "关闭会停止采样并隐藏指标；仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。") }
+    static var metricsModePickerLabel: String { tr("settings.metrics.mode.picker", "模式") }
+    static var metricsModeOff: String { tr("settings.metrics.mode.off", "关闭") }
+    static var metricsModeMonitorOnly: String { tr("settings.metrics.mode.monitorOnly", "仅监控") }
+    static var metricsModeMenuBar: String { tr("settings.metrics.mode.menuBar", "菜单栏") }
+    static var metricsAdvancedSettings: String { tr("settings.metrics.advanced", "高级设置") }
+    static var metricsColorThresholdLabel: String { tr("settings.metrics.colorThreshold", "颜色阈值") }
+    static var metricsColorThresholdDescription: String { tr("settings.metrics.colorThreshold.description", "指标达到这些值后，会在菜单栏和图表里标黄或标红。") }
+    static var metricsSpikeDeltaLabel: String { tr("settings.metrics.spikeDelta", "尖峰判定") }
+    static var metricsSpikeDeltaDescription: String { tr("settings.metrics.spikeDelta.description", "二次确认后的跳升至少达到这个值，才会记录一次尖峰。") }
+    static func metricsWarningThreshold(_ value: String) -> String { String(format: tr("settings.metrics.warningThreshold", "黄色 %@"), value) }
+    static func metricsCriticalThreshold(_ value: String) -> String { String(format: tr("settings.metrics.criticalThreshold", "红色 %@"), value) }
 
     // MARK: - Performance Settings
 

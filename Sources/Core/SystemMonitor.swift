@@ -35,7 +35,42 @@ final class SystemMonitor: @unchecked Sendable {
     @ObservationIgnored private let pageSize: Double  // cached at init, never changes at runtime
     @ObservationIgnored private let totalMemory: Double  // cached at init — physicalMemory never changes
 
-    @ObservationIgnored var enabledMetrics: Set<MetricKind> = Set(MetricKind.allCases)
+    @ObservationIgnored var enabledMetrics: Set<MetricKind> {
+        get {
+            metricStateLock.withLock { enabledMetricsStorage }
+        }
+        set {
+            configureMetrics(
+                enabledMetrics: newValue,
+                recordedMetrics: recordedMetrics,
+                recordedMetricItems: recordedMetricItems
+            )
+        }
+    }
+    @ObservationIgnored var recordedMetrics: Set<MetricKind> {
+        get {
+            metricStateLock.withLock { recordedMetricsStorage }
+        }
+        set {
+            configureMetrics(
+                enabledMetrics: enabledMetrics,
+                recordedMetrics: newValue,
+                recordedMetricItems: recordedMetricItems
+            )
+        }
+    }
+    @ObservationIgnored var recordedMetricItems: Set<MetricDisplayItem> {
+        get {
+            metricStateLock.withLock { recordedMetricItemsStorage }
+        }
+        set {
+            configureMetrics(
+                enabledMetrics: enabledMetrics,
+                recordedMetrics: recordedMetrics,
+                recordedMetricItems: newValue
+            )
+        }
+    }
 
     /// 30-min ring buffer of metric history for sparkline / trend charts.
     @ObservationIgnored private(set) var history: MetricsHistory
@@ -44,7 +79,7 @@ final class SystemMonitor: @unchecked Sendable {
         let usagePercent: Double, usedGB: Double, totalGB: Double
     }
 
-    enum MetricKind: CaseIterable {
+    enum MetricKind: CaseIterable, Codable, Sendable {
         case cpu, memory, disk, network, gpu
     }
 
@@ -58,6 +93,14 @@ final class SystemMonitor: @unchecked Sendable {
     @ObservationIgnored private var prevNetInBytes: UInt64 = 0
     @ObservationIgnored private var prevNetOutBytes: UInt64 = 0
     @ObservationIgnored private var netInitialized: Bool = false
+    @ObservationIgnored private let metricStateLock = NSLock()
+    @ObservationIgnored private var enabledMetricsStorage = Set(MetricKind.allCases)
+    @ObservationIgnored private var recordedMetricsStorage = Set(MetricKind.allCases)
+    @ObservationIgnored private var recordedMetricItemsStorage = Set(MetricDisplayItem.allCases)
+    @ObservationIgnored private var previousTickMetrics: Set<MetricKind> = []
+    @ObservationIgnored private var hasPreviousTickMetrics = false
+    @ObservationIgnored private var metricsDisabledSinceLastTick: Set<MetricKind> = []
+    @ObservationIgnored private var metricConfigGeneration: UInt64 = 0
 
     // Disk throttling — capacity changes slowly, re-read every ~30s
     @ObservationIgnored private var lastDiskResult = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
@@ -95,6 +138,12 @@ final class SystemMonitor: @unchecked Sendable {
         timer?.cancel(); timer = nil
         metricsContinuation?.finish()
         metricsContinuation = nil
+        metricStateLock.lock()
+        previousTickMetrics.removeAll()
+        hasPreviousTickMetrics = false
+        metricsDisabledSinceLastTick.removeAll()
+        metricConfigGeneration &+= 1
+        metricStateLock.unlock()
         releaseGPUService()
     }
 
@@ -107,18 +156,92 @@ final class SystemMonitor: @unchecked Sendable {
         if wasRunning { start() }
     }
 
+    func configureMetrics(
+        enabledMetrics newEnabledMetrics: Set<MetricKind>,
+        recordedMetrics newRecordedMetrics: Set<MetricKind>,
+        recordedMetricItems newRecordedMetricItems: Set<MetricDisplayItem>
+    ) {
+        let liveMetricsToClear = metricStateLock.withLock {
+            let oldEnabledMetrics = enabledMetricsStorage
+            let oldRecordedMetrics = recordedMetricsStorage
+            let oldRecordedMetricItems = recordedMetricItemsStorage
+            guard Self.metricConfigurationChanged(
+                oldEnabledMetrics: oldEnabledMetrics,
+                newEnabledMetrics: newEnabledMetrics,
+                oldRecordedMetrics: oldRecordedMetrics,
+                newRecordedMetrics: newRecordedMetrics,
+                oldRecordedMetricItems: oldRecordedMetricItems,
+                newRecordedMetricItems: newRecordedMetricItems
+            ) else {
+                return Set<MetricKind>()
+            }
+
+            enabledMetricsStorage = newEnabledMetrics
+            recordedMetricsStorage = newRecordedMetrics
+            recordedMetricItemsStorage = newRecordedMetricItems
+            metricsDisabledSinceLastTick.formUnion(oldEnabledMetrics.subtracting(newEnabledMetrics))
+            metricConfigGeneration &+= 1
+            return Self.liveMetricsToClearAfterEnabledMetricsChange(
+                oldEnabledMetrics: oldEnabledMetrics,
+                newEnabledMetrics: newEnabledMetrics,
+                metricsDisabledSinceLastTick: metricsDisabledSinceLastTick
+            )
+        }
+        if liveMetricsToClear.contains(.cpu) {
+            cpuUsage = 0
+        }
+        if liveMetricsToClear.contains(.network) {
+            netSpeedIn = 0
+            netSpeedOut = 0
+        }
+    }
+
     // MARK: - Tick (only read enabled metrics)
 
     private func tick() {
         // Snapshot which metrics to read (set only mutates on main thread)
-        let metrics = enabledMetrics
+        let tickState = metricStateLock.withLock {
+            let metrics = enabledMetricsStorage
+            let resetMetrics = Self.metricsNeedingBaselineReset(
+                enabledMetrics: metrics,
+                previousTickMetrics: previousTickMetrics,
+                hasPreviousTickMetrics: hasPreviousTickMetrics,
+                metricsDisabledSinceLastTick: metricsDisabledSinceLastTick
+            )
+            let recordingScope = Self.historyRecordingScope(
+                enabledMetrics: metrics,
+                recordedMetrics: recordedMetricsStorage,
+                recordedMetricItems: recordedMetricItemsStorage,
+                resetMetrics: resetMetrics
+            )
+            previousTickMetrics = metrics
+            hasPreviousTickMetrics = true
+            metricsDisabledSinceLastTick.subtract(metrics)
+            return TickState(
+                metrics: metrics,
+                resetMetrics: resetMetrics,
+                recordingScope: recordingScope,
+                generation: metricConfigGeneration
+            )
+        }
+        let metrics = tickState.metrics
+        let cpuNeedsBaselineReset = tickState.resetMetrics.contains(.cpu)
+        let networkNeedsBaselineReset = tickState.resetMetrics.contains(.network)
+        let recordingScope = tickState.recordingScope
+        let configGeneration = tickState.generation
         var cpu: Double = 0
         var mem = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
         var disk = StorageInfo(usagePercent: 0, usedGB: 0, totalGB: 0)
         var netIn: Double = 0, netOut: Double = 0
         var gpu: Double = 0
 
-        if metrics.contains(.cpu)    { cpu = readCPUPercent() }
+        if metrics.contains(.cpu) {
+            if cpuNeedsBaselineReset {
+                _ = readCPUPercent()
+            } else {
+                cpu = readCPUPercent()
+            }
+        }
         if metrics.contains(.memory) { mem = readMemoryStats() }
         if metrics.contains(.disk) {
             lastDiskTick += 1
@@ -128,12 +251,21 @@ final class SystemMonitor: @unchecked Sendable {
             }
             disk = lastDiskResult
         }
-        if metrics.contains(.network) { (netIn, netOut) = readNetSpeed() }
+        if metrics.contains(.network) { (netIn, netOut) = readNetSpeed(resetBaseline: networkNeedsBaselineReset) }
         if metrics.contains(.gpu)    { gpu = readGPUUtilization() }
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
-            if metrics.contains(.cpu)    { self.cpuUsage = cpu }
+            let shouldPublish = self.metricStateLock.withLock {
+                Self.shouldPublishTick(
+                sampleGeneration: configGeneration,
+                currentGeneration: self.metricConfigGeneration
+                )
+            }
+            guard shouldPublish else { return }
+            if metrics.contains(.cpu) {
+                self.cpuUsage = Self.publishedCPUUsage(sampledValue: cpu, needsBaselineReset: cpuNeedsBaselineReset)
+            }
             if metrics.contains(.memory) {
                 self.memoryUsage = mem.usagePercent
                 self.memoryUsedGB = mem.usedGB
@@ -149,22 +281,109 @@ final class SystemMonitor: @unchecked Sendable {
                 self.netSpeedOut = netOut
             }
             if metrics.contains(.gpu) { self.gpuUsage = gpu }
-            self.recordHistory(metrics: metrics)
+            self.recordHistory(metrics: recordingScope.metrics, metricItems: recordingScope.metricItems)
             self.metricsContinuation?.yield()
         }
     }
 
+    private struct TickState {
+        let metrics: Set<MetricKind>
+        let resetMetrics: Set<MetricKind>
+        let recordingScope: (metrics: Set<MetricKind>, metricItems: Set<MetricDisplayItem>)
+        let generation: UInt64
+    }
+
+    static func historyRecordingScope(
+        enabledMetrics: Set<MetricKind>,
+        recordedMetrics: Set<MetricKind>,
+        recordedMetricItems: Set<MetricDisplayItem>,
+        resetMetrics: Set<MetricKind>
+    ) -> (metrics: Set<MetricKind>, metricItems: Set<MetricDisplayItem>) {
+        var metrics = recordedMetrics
+        var items = recordedMetricItems
+        if enabledMetrics.contains(.cpu), resetMetrics.contains(.cpu) {
+            metrics.remove(.cpu)
+            items.remove(.cpu)
+        }
+        if enabledMetrics.contains(.network), resetMetrics.contains(.network) {
+            metrics.remove(.network)
+            items.remove(.networkDown)
+            items.remove(.networkUp)
+        }
+        return (metrics, items)
+    }
+
+    static func metricsNeedingBaselineReset(
+        enabledMetrics: Set<MetricKind>,
+        previousTickMetrics: Set<MetricKind>,
+        hasPreviousTickMetrics: Bool,
+        metricsDisabledSinceLastTick: Set<MetricKind>
+    ) -> Set<MetricKind> {
+        var metrics: Set<MetricKind> = []
+        if enabledMetrics.contains(.cpu),
+           metricsDisabledSinceLastTick.contains(.cpu)
+            || (hasPreviousTickMetrics && !previousTickMetrics.contains(.cpu)) {
+            metrics.insert(.cpu)
+        }
+        if enabledMetrics.contains(.network),
+           metricsDisabledSinceLastTick.contains(.network) || !previousTickMetrics.contains(.network) {
+            metrics.insert(.network)
+        }
+        return metrics
+    }
+
+    static func liveMetricsToClearAfterEnabledMetricsChange(
+        oldEnabledMetrics: Set<MetricKind>,
+        newEnabledMetrics: Set<MetricKind>,
+        metricsDisabledSinceLastTick: Set<MetricKind>
+    ) -> Set<MetricKind> {
+        let disabledMetrics = oldEnabledMetrics.subtracting(newEnabledMetrics)
+        var metrics: Set<MetricKind> = []
+        if disabledMetrics.contains(.cpu)
+            || (newEnabledMetrics.contains(.cpu) && metricsDisabledSinceLastTick.contains(.cpu)) {
+            metrics.insert(.cpu)
+        }
+        if disabledMetrics.contains(.network)
+            || (newEnabledMetrics.contains(.network) && metricsDisabledSinceLastTick.contains(.network)) {
+            metrics.insert(.network)
+        }
+        return metrics
+    }
+
+    static func metricConfigurationChanged(
+        oldEnabledMetrics: Set<MetricKind>,
+        newEnabledMetrics: Set<MetricKind>,
+        oldRecordedMetrics: Set<MetricKind>,
+        newRecordedMetrics: Set<MetricKind>,
+        oldRecordedMetricItems: Set<MetricDisplayItem>,
+        newRecordedMetricItems: Set<MetricDisplayItem>
+    ) -> Bool {
+        oldEnabledMetrics != newEnabledMetrics
+            || oldRecordedMetrics != newRecordedMetrics
+            || oldRecordedMetricItems != newRecordedMetricItems
+    }
+
+    static func shouldPublishTick(sampleGeneration: UInt64, currentGeneration: UInt64) -> Bool {
+        sampleGeneration == currentGeneration
+    }
+
+    static func publishedCPUUsage(sampledValue: Double, needsBaselineReset: Bool) -> Double {
+        needsBaselineReset ? 0 : sampledValue
+    }
+
     /// Record current metrics into history buffer. Carry forward last known values for disabled metrics.
-    private func recordHistory(metrics: Set<MetricKind>) {
+    private func recordHistory(metrics: Set<MetricKind>, metricItems: Set<MetricDisplayItem>) {
         let last = history.lastSnapshot
         history.record(MetricSnapshot(
             cpuUsage:     metrics.contains(.cpu)     ? cpuUsage     : (last?.cpuUsage     ?? 0),
             gpuUsage:     metrics.contains(.gpu)     ? gpuUsage     : (last?.gpuUsage     ?? 0),
             memoryUsage:  metrics.contains(.memory)  ? memoryUsage  : (last?.memoryUsage  ?? 0),
             diskUsage:    metrics.contains(.disk)    ? diskUsage    : (last?.diskUsage    ?? 0),
-            netSpeedIn:   metrics.contains(.network) ? netSpeedIn   : (last?.netSpeedIn   ?? 0),
-            netSpeedOut:  metrics.contains(.network) ? netSpeedOut  : (last?.netSpeedOut  ?? 0),
-            timestamp:    Date()
+            netSpeedIn:   metricItems.contains(.networkDown) ? netSpeedIn   : (last?.netSpeedIn   ?? 0),
+            netSpeedOut:  metricItems.contains(.networkUp)   ? netSpeedOut  : (last?.netSpeedOut  ?? 0),
+            timestamp:    Date(),
+            recordedMetrics: metrics,
+            recordedMetricItems: metricItems
         ))
     }
 
@@ -295,10 +514,10 @@ final class SystemMonitor: @unchecked Sendable {
         return (totalIn, totalOut)
     }
 
-    func readNetSpeed() -> (inBytesPerSec: Double, outBytesPerSec: Double) {
+    func readNetSpeed(resetBaseline: Bool = false) -> (inBytesPerSec: Double, outBytesPerSec: Double) {
         let (curIn, curOut) = readNetBytes()
 
-        guard netInitialized else {
+        guard netInitialized, !resetBaseline else {
             prevNetInBytes = curIn
             prevNetOutBytes = curOut
             netInitialized = true

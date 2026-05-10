@@ -203,7 +203,6 @@ private struct PulsySliderRow<Control: View>: View {
 // ═══════════════════════════════════════════════════════════════
 
 struct MetricsDetail: View {
-    @Default(.metricDisplayItems) private var metricDisplayItems
     @Default(.thresholds) private var thresholds
 
     var body: some View {
@@ -228,53 +227,119 @@ struct MetricsDetail: View {
 
 private struct MetricRowView: View {
     let item: MetricDisplayItem
+    @Default(.speedSource) private var speedSource
+    @Default(.metricMonitorItems) private var metricMonitorItems
     @Default(.metricDisplayItems) private var metricDisplayItems
     @Default(.thresholds) private var thresholds
     @Default(.spikeDeltas) private var spikeDeltas
+    @State private var isAdvancedExpanded = false
 
-    private var isEnabled: Bool {
-        metricDisplayItems.contains(item)
+    private var isMonitored: Bool {
+        metricMonitorItems.contains(item)
+    }
+
+    private var mode: MetricManagementMode {
+        if metricDisplayItems.contains(item) {
+            return .menuBar
+        }
+        if metricMonitorItems.contains(item) {
+            return .monitorOnly
+        }
+        return .off
+    }
+
+    private var modeBinding: Binding<MetricManagementMode> {
+        Binding(
+            get: { mode },
+            set: { newMode in
+                switch newMode {
+                case .off:
+                    metricMonitorItems.remove(item)
+                    metricDisplayItems.remove(item)
+                    if item.requiredMetric == speedSource.requiredMetric,
+                       let nextSource = SpeedSource.firstAvailable(in: metricMonitorItems) {
+                        speedSource = nextSource
+                    }
+                    isAdvancedExpanded = false
+                case .monitorOnly:
+                    metricMonitorItems.insert(item)
+                    metricDisplayItems.remove(item)
+                case .menuBar:
+                    metricMonitorItems.insert(item)
+                    metricDisplayItems.insert(item)
+                }
+            }
+        )
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Toggle(isOn: Binding(
-                get: { isEnabled },
-                set: { on in
-                    if on { metricDisplayItems.insert(item) }
-                    else  { metricDisplayItems.remove(item) }
-                }
-            )) {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 12) {
                 Text(item.displayName)
+                Spacer(minLength: 16)
+                Picker(L10n.metricsModePickerLabel, selection: modeBinding) {
+                    ForEach(MetricManagementMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .controlSize(.small)
+                .frame(width: 220)
             }
-            if isEnabled {
-                DualThresholdSlider(
-                    warning: Binding(
-                        get: { thresholds[keyPath: item.thresholdKeyPath].warning },
-                        set: { thresholds[keyPath: item.thresholdKeyPath].warning = $0 }
-                    ),
-                    critical: Binding(
-                        get: { thresholds[keyPath: item.thresholdKeyPath].critical },
-                        set: { thresholds[keyPath: item.thresholdKeyPath].critical = $0 }
-                    ),
-                    range: sliderRange,
-                    step: sliderStep,
-                    formatLabel: valueLabel
-                )
-                .padding(.leading, 28)
-            }
-            if item.supportsSpikeDiagnostics, let deltaKeyPath = item.spikeDeltaKeyPath {
-                SingleThresholdSlider(
-                    label: L10n.metricsSpikeDeltaLabel,
-                    value: Binding(
-                        get: { spikeDeltas[keyPath: deltaKeyPath] },
-                        set: { spikeDeltas[keyPath: deltaKeyPath] = $0 }
-                    ),
-                    range: spikeDeltaRange,
-                    step: spikeDeltaStep,
-                    formatLabel: valueLabel
-                )
-                .padding(.leading, 28)
+            if isMonitored {
+                Button {
+                    isAdvancedExpanded.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chevron.right")
+                            .font(.caption2.weight(.semibold))
+                            .rotationEffect(.degrees(isAdvancedExpanded ? 90 : 0))
+                        Label(L10n.metricsAdvancedSettings, systemImage: "slider.horizontal.3")
+                            .labelStyle(.titleAndIcon)
+                        Spacer()
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 2)
+
+                if isAdvancedExpanded {
+                    VStack(spacing: 10) {
+                        DualThresholdSlider(
+                            title: L10n.metricsColorThresholdLabel,
+                            description: L10n.metricsColorThresholdDescription,
+                            warning: Binding(
+                                get: { thresholds[keyPath: item.thresholdKeyPath].warning },
+                                set: { thresholds[keyPath: item.thresholdKeyPath].warning = $0 }
+                            ),
+                            critical: Binding(
+                                get: { thresholds[keyPath: item.thresholdKeyPath].critical },
+                                set: { thresholds[keyPath: item.thresholdKeyPath].critical = $0 }
+                            ),
+                            range: sliderRange,
+                            step: sliderStep,
+                            formatLabel: valueLabel
+                        )
+                        if item.supportsSpikeDiagnostics, let deltaKeyPath = item.spikeDeltaKeyPath {
+                            SingleThresholdSlider(
+                                label: L10n.metricsSpikeDeltaLabel,
+                                description: L10n.metricsSpikeDeltaDescription,
+                                value: Binding(
+                                    get: { spikeDeltas[keyPath: deltaKeyPath] },
+                                    set: { spikeDeltas[keyPath: deltaKeyPath] = $0 }
+                                ),
+                                range: spikeDeltaRange,
+                                step: spikeDeltaStep,
+                                formatLabel: valueLabel
+                            )
+                        }
+                    }
+                    .padding(.leading, 18)
+                    .padding(.top, 2)
+                }
             }
         }
     }
@@ -317,9 +382,27 @@ private struct MetricRowView: View {
 
 }
 
+private enum MetricManagementMode: String, CaseIterable, Identifiable {
+    case off
+    case monitorOnly
+    case menuBar
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .off:         return L10n.metricsModeOff
+        case .monitorOnly: return L10n.metricsModeMonitorOnly
+        case .menuBar:     return L10n.metricsModeMenuBar
+        }
+    }
+}
+
 // MARK: - Threshold Sliders
 
 private struct DualThresholdSlider: View {
+    let title: String
+    let description: String
     @Binding var warning: Double
     @Binding var critical: Double
     let range: ClosedRange<Double>
@@ -328,6 +411,16 @@ private struct DualThresholdSlider: View {
 
     var body: some View {
         VStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.caption)
+                    .foregroundStyle(.primary)
+                Text(description)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             GeometryReader { proxy in
                 let width = max(proxy.size.width, 1)
                 let warningX = xPosition(for: warning, width: width)
@@ -372,11 +465,11 @@ private struct DualThresholdSlider: View {
             .frame(height: 22)
 
             HStack {
-                Text(formatLabel(warning))
+                Text(L10n.metricsWarningThreshold(formatLabel(warning)))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.yellow)
                 Spacer()
-                Text(formatLabel(critical))
+                Text(L10n.metricsCriticalThreshold(formatLabel(critical)))
                     .font(.caption.monospacedDigit())
                     .foregroundStyle(.red)
             }
@@ -398,6 +491,7 @@ private struct DualThresholdSlider: View {
 
 private struct SingleThresholdSlider: View {
     let label: String
+    let description: String
     @Binding var value: Double
     let range: ClosedRange<Double>
     let step: Double
@@ -433,9 +527,14 @@ private struct SingleThresholdSlider: View {
             .frame(height: 22)
 
             HStack {
-                Text(label)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .font(.caption)
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Text("+\(formatLabel(value))")
                     .font(.caption.monospacedDigit())

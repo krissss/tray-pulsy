@@ -45,6 +45,16 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(SpeedSource.disk.normalizeForAnimation(30), 0, accuracy: 0.01)
     }
 
+    func testSpeedSourceFirstAvailableUsesFirstMonitoredSourceOrder() {
+        XCTAssertEqual(SpeedSource.firstAvailable(in: [.memory, .disk]), .memory)
+        XCTAssertEqual(SpeedSource.firstAvailable(in: [.gpu, .disk]), .gpu)
+    }
+
+    func testSpeedSourceFirstAvailableReturnsNilWithoutAnimatableMetrics() {
+        XCTAssertNil(SpeedSource.firstAvailable(in: []))
+        XCTAssertNil(SpeedSource.firstAvailable(in: [.networkDown, .networkUp]))
+    }
+
     // MARK: - FPSLimit.rateMultiplier
 
     func testFPSLimit_rateMultipliers() {

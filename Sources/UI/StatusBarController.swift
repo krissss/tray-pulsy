@@ -62,7 +62,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         // 6. Start animator and update loop
         animator.start()
         startUpdateLoop()
-        appState.updateEnabledMetrics(settingsOpen: false)
+        updateEnabledMetrics()
 
         // 7. Register callbacks from AppState
         appState.onSkinChanged = { [weak self] frames in
@@ -149,8 +149,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
             popover.performClose(nil)
         } else {
             guard let button = statusItem.button else { return }
-            // Enable all metrics while popover is visible
-            monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
+            updateEnabledMetrics()
             // Create fresh content each time to avoid holding SwiftUI tree in memory
             popover.contentViewController = NSHostingController(
                 rootView: PopoverMetricsView(
@@ -265,7 +264,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         }
 
         window.makeKeyAndOrderFront(nil)
-        monitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
+        updateEnabledMetrics()
         NSApp.setActivationPolicy(.regular)
         DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
     }

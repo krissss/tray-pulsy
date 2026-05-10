@@ -11,7 +11,9 @@ struct SpikeDiagnosticsTests {
         memory: Double = 0,
         netIn: Double = 0,
         netOut: Double = 0,
-        timestamp: Date = Date()
+        timestamp: Date = Date(),
+        recordedMetrics: Set<SystemMonitor.MetricKind> = Set(SystemMonitor.MetricKind.allCases),
+        recordedMetricItems: Set<MetricDisplayItem>? = nil
     ) -> MetricSnapshot {
         MetricSnapshot(
             cpuUsage: cpu,
@@ -20,7 +22,9 @@ struct SpikeDiagnosticsTests {
             diskUsage: 0,
             netSpeedIn: netIn,
             netSpeedOut: netOut,
-            timestamp: timestamp
+            timestamp: timestamp,
+            recordedMetrics: recordedMetrics,
+            recordedMetricItems: recordedMetricItems
         )
     }
 
@@ -264,6 +268,92 @@ struct SpikeDiagnosticsTests {
         )
 
         #expect(Set(candidates.map(\.metric)) == [.cpu, .memory, .networkDown])
+    }
+
+    @Test("detector limits candidates to monitored metrics")
+    func detectorLimitsCandidatesToIncludedMetrics() {
+        var detector = MetricSpikeDetector()
+        detector.cooldown = 30
+        let now = Date()
+
+        _ = detector.detectCandidates(
+            snapshot: snapshot(cpu: 30, memory: 40, netIn: 0, timestamp: now),
+            thresholds: ThresholdConfig.defaults,
+            now: now
+        )
+        let candidates = detector.detectCandidates(
+            snapshot: snapshot(cpu: 90, memory: 90, netIn: 1_200_000, timestamp: now.addingTimeInterval(1)),
+            thresholds: ThresholdConfig.defaults,
+            now: now.addingTimeInterval(1),
+            includedMetrics: [.memory],
+            shouldRecordCooldown: false
+        )
+
+        #expect(candidates.map(\.metric) == [.memory])
+    }
+
+    @Test("spike kind monitoring follows direction-level metric items")
+    func spikeKindMonitoringFollowsDirectionLevelMetricItems() {
+        #expect(MetricSpikeKind.cpu.isMonitored(in: [.cpu]))
+        #expect(MetricSpikeKind.networkDown.isMonitored(in: [.networkDown]))
+        #expect(!MetricSpikeKind.networkDown.isMonitored(in: [.networkUp]))
+        #expect(!MetricSpikeKind.networkUp.isMonitored(in: [.networkDown]))
+    }
+
+    @Test("detector ignores stale carry-forward baselines for re-enabled metrics")
+    func detectorIgnoresUnrecordedBaselines() {
+        var detector = MetricSpikeDetector()
+        detector.cooldown = 30
+        let now = Date()
+
+        _ = detector.detectCandidates(
+            snapshot: snapshot(cpu: 20, timestamp: now, recordedMetrics: []),
+            thresholds: ThresholdConfig.defaults,
+            now: now
+        )
+        let candidates = detector.detectCandidates(
+            snapshot: snapshot(cpu: 90, timestamp: now.addingTimeInterval(1), recordedMetrics: [.cpu]),
+            thresholds: ThresholdConfig.defaults,
+            now: now.addingTimeInterval(1),
+            includedMetrics: [.cpu],
+            shouldRecordCooldown: false
+        )
+
+        #expect(candidates.isEmpty)
+    }
+
+    @Test("detector ignores unrecorded network direction baselines")
+    func detectorIgnoresUnrecordedNetworkDirectionBaselines() {
+        var detector = MetricSpikeDetector()
+        detector.cooldown = 30
+        let now = Date()
+
+        _ = detector.detectCandidates(
+            snapshot: snapshot(
+                netIn: 0,
+                netOut: 0,
+                timestamp: now,
+                recordedMetrics: [],
+                recordedMetricItems: []
+            ),
+            thresholds: ThresholdConfig.defaults,
+            now: now
+        )
+        let candidates = detector.detectCandidates(
+            snapshot: snapshot(
+                netIn: 1_200_000,
+                netOut: 500_000,
+                timestamp: now.addingTimeInterval(1),
+                recordedMetrics: [.network],
+                recordedMetricItems: [.networkDown, .networkUp]
+            ),
+            thresholds: ThresholdConfig.defaults,
+            now: now.addingTimeInterval(1),
+            includedMetrics: [.networkDown, .networkUp],
+            shouldRecordCooldown: false
+        )
+
+        #expect(candidates.isEmpty)
     }
 
     @Test("memory jump emits without requiring menu bar metric selection")

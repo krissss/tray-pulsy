@@ -35,6 +35,12 @@ extension Defaults.Keys {
     // 主题
     static let theme = Key<ThemeMode>("traypulsy_theme", default: .system)
 
+    // 后台监控哪些指标（影响历史记录与尖峰诊断）
+    static let metricMonitorItems = Key<Set<MetricDisplayItem>>(
+        "traypulsy_metricMonitorItems",
+        default: Set(MetricDisplayItem.allCases)
+    )
+
     // 菜单栏显示哪些指标（空 = 关闭）
     static let metricDisplayItems = Key<Set<MetricDisplayItem>>("traypulsy_metricDisplayItems", default: [])
 
@@ -146,6 +152,14 @@ enum SpeedSource: String, CaseIterable, Defaults.Serializable {
         case .disk:
             // 磁盘 idle ≈ 60%
             return max(0, rawValue - 60.0) / (100.0 - 60.0) * 100.0
+        }
+    }
+
+    static func firstAvailable(in monitoredItems: Set<MetricDisplayItem>) -> SpeedSource? {
+        allCases.first { source in
+            monitoredItems.contains { item in
+                item.requiredMetric == source.requiredMetric
+            }
         }
     }
 }
@@ -367,6 +381,45 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
     /// Display order for all chart rows.
     static let chartOrder: [MetricDisplayItem] = [.cpu, .gpu, .memory, .disk, .networkDown]
 
+    static func monitoredChartItems(from monitoredItems: Set<MetricDisplayItem>) -> [MetricDisplayItem] {
+        chartOrder.filter { item in
+            switch item {
+            case .networkDown:
+                return monitoredItems.contains(.networkDown)
+                    || (!monitoredItems.contains(.networkDown) && monitoredItems.contains(.networkUp))
+            default:
+                return monitoredItems.contains(item)
+            }
+        }
+        .map { item in
+            if item == .networkDown, !monitoredItems.contains(.networkDown), monitoredItems.contains(.networkUp) {
+                return .networkUp
+            }
+            return item
+        }
+    }
+
+    static func items(for metrics: Set<SystemMonitor.MetricKind>) -> Set<MetricDisplayItem> {
+        var items = Set<MetricDisplayItem>()
+        if metrics.contains(.cpu) {
+            items.insert(.cpu)
+        }
+        if metrics.contains(.gpu) {
+            items.insert(.gpu)
+        }
+        if metrics.contains(.memory) {
+            items.insert(.memory)
+        }
+        if metrics.contains(.disk) {
+            items.insert(.disk)
+        }
+        if metrics.contains(.network) {
+            items.insert(.networkDown)
+            items.insert(.networkUp)
+        }
+        return items
+    }
+
     /// The history key path for this metric's chart data.
     var historyKeyPath: KeyPath<MetricSnapshot, Double> {
         switch self {
@@ -479,12 +532,82 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
 
     /// Formatted value string for chart rows. Network shows combined ↓/↑.
     func formattedValue(from monitor: SystemMonitor) -> String {
-        if self == .networkDown {
+        formattedValue(from: monitor, monitoredItems: Set(MetricDisplayItem.allCases))
+    }
+
+    func formattedValue(from monitor: SystemMonitor, monitoredItems: Set<MetricDisplayItem>) -> String {
+        if self == .networkDown, monitoredItems.contains(.networkUp) {
             let down = MetricDisplayItem.networkDown.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
             let up = MetricDisplayItem.networkUp.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
             return "↓\(down)/s  ↑\(up)/s"
         }
+        if self == .networkDown {
+            let down = MetricDisplayItem.networkDown.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+            return "↓\(down)/s"
+        }
+        if self == .networkUp {
+            let up = MetricDisplayItem.networkUp.formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+            return "↑\(up)/s"
+        }
         return formatValue(from: monitor).trimmingCharacters(in: .whitespaces)
+    }
+
+    func formattedValue(
+        from snapshot: MetricSnapshot,
+        fallback monitor: SystemMonitor,
+        monitoredItems: Set<MetricDisplayItem>
+    ) -> String {
+        switch self {
+        case .cpu:
+            guard snapshot.records(MetricDisplayItem.cpu) else {
+                return formattedValue(from: monitor, monitoredItems: monitoredItems)
+            }
+            return String(format: "%.0f%%", snapshot.cpuUsage)
+        case .gpu:
+            guard snapshot.records(MetricDisplayItem.gpu) else {
+                return formattedValue(from: monitor, monitoredItems: monitoredItems)
+            }
+            return String(format: "%.0f%%", snapshot.gpuUsage)
+        case .memory:
+            guard snapshot.records(MetricDisplayItem.memory) else {
+                return formattedValue(from: monitor, monitoredItems: monitoredItems)
+            }
+            return String(format: "%.0f%%", snapshot.memoryUsage)
+        case .disk:
+            guard snapshot.records(MetricDisplayItem.disk) else {
+                return formattedValue(from: monitor, monitoredItems: monitoredItems)
+            }
+            return String(format: "%.0f%%", snapshot.diskUsage)
+        case .networkDown, .networkUp:
+            return networkValueText(from: snapshot, fallback: monitor, monitoredItems: monitoredItems)
+        }
+    }
+
+    private func networkValueText(
+        from snapshot: MetricSnapshot,
+        fallback monitor: SystemMonitor,
+        monitoredItems: Set<MetricDisplayItem>
+    ) -> String {
+        func speedText(for item: MetricDisplayItem) -> String {
+            let value: Double
+            switch item {
+            case .networkDown:
+                value = snapshot.records(MetricDisplayItem.networkDown) ? snapshot.netSpeedIn : monitor.netSpeedIn
+            case .networkUp:
+                value = snapshot.records(MetricDisplayItem.networkUp) ? snapshot.netSpeedOut : monitor.netSpeedOut
+            default:
+                value = 0
+            }
+            return MetricDisplayItem.formatSpeed(value).trimmingCharacters(in: .whitespaces)
+        }
+
+        if self == .networkDown, monitoredItems.contains(.networkUp) {
+            return "↓\(speedText(for: .networkDown))/s  ↑\(speedText(for: .networkUp))/s"
+        }
+        if self == .networkDown {
+            return "↓\(speedText(for: .networkDown))/s"
+        }
+        return "↑\(speedText(for: .networkUp))/s"
     }
 
     /// Memory used / total detail string (only meaningful for .memory).
