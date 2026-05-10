@@ -203,5 +203,27 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.0.13</title>
+        <sparkle:version>1.0.13</sparkle:version>
+        <sparkle:shortVersionString>1.0.13</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Sun, 10 May 2026 16:36:02 +0000</pubDate>
+        <description><![CDATA[<b>Added</b>
+<ul>
+<li>添加尖峰诊断记录</li>
+<li>优化指标监控与尖峰记录</li>
+</ul>
+<b>Fixed</b>
+<ul>
+<li>ui: 优化监控面板展示层级</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.0.13/TrayPulsy-v1.0.13.zip"
+            sparkle:edSignature="1wUc6RFuuKLndUMiXytJs9JoNwz6gRxnzZtgoQ4D1vS06+8OcgDLHkXULW8dPsTeQYYv+tZjPhANQiwi4eRlAg=="
+            length="4004670"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
