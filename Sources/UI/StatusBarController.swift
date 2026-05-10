@@ -302,6 +302,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
                 }
 
                 // Update metric text & accessibility (only when values change)
+                self.appState.detectMetricSpikeIfNeeded()
                 let selected = Defaults[.metricDisplayItems]
                 if selected.isEmpty {
                     if !self.lastDisplayedMetricText.isEmpty {

@@ -84,7 +84,10 @@ struct L10nTests {
         #expect(!L10n.overviewProcessHeader.isEmpty)
         #expect(!L10n.skinHeader.isEmpty)
         #expect(!L10n.metricsHeader.isEmpty)
+        #expect(!L10n.metricsSpikeDeltaLabel.isEmpty)
         #expect(!L10n.perfSourceLabel.isEmpty)
+        #expect(!L10n.perfSpikeLimitLabel.isEmpty)
+        #expect(!L10n.spikeEventLimit12.isEmpty)
         #expect(!L10n.generalStartupHeader.isEmpty)
         #expect(!L10n.aboutInfoHeader.isEmpty)
         #expect(!L10n.accSkinPreview.isEmpty)
@@ -225,6 +228,10 @@ struct L10nTests {
 
         for dur in HistoryDuration.allCases {
             #expect(!dur.displayName.isEmpty)
+        }
+
+        for limit in SpikeEventLimit.allCases {
+            #expect(!limit.displayName.isEmpty)
         }
     }
 }

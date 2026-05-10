@@ -73,6 +73,14 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(SampleInterval.allCases.count, 6)
     }
 
+    func testSpikeEventLimit_counts() {
+        XCTAssertEqual(SpikeEventLimit.events4.count, 4)
+        XCTAssertEqual(SpikeEventLimit.events8.count, 8)
+        XCTAssertEqual(SpikeEventLimit.events12.count, 12)
+        XCTAssertEqual(SpikeEventLimit.events24.count, 24)
+        XCTAssertEqual(SpikeEventLimit.events48.count, 48)
+    }
+
     // MARK: - ThemeMode.isDarkOverride
 
     func testThemeMode_isDarkOverride() {

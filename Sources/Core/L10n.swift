@@ -102,6 +102,16 @@ enum L10n {
             "overview.activityMonitor": "Activity Monitor",
             "overview.network": "Network",
             "overview.processHeader": "Processes",
+            "spike.section.header": "Spike Diagnostics",
+            "spike.section.footer": "Captures sudden metric jumps and samples top processes only when a spike is detected.",
+            "spike.clear": "Clear",
+            "spike.empty.title": "No spikes captured",
+            "spike.empty.description": "Recent CPU, memory, and network jumps will appear here with process context.",
+            "spike.jump.format": "%@ → %@",
+            "spike.processes.title": "At Spike",
+            "spike.processes.header": "Top",
+            "spike.processes.sampling": "Capturing top processes...",
+            "spike.processes.unavailable": "No process sample available",
 
             // Skin Settings
             "settings.skin.header": "Skins",
@@ -115,7 +125,8 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "Menu Bar Metrics",
-            "settings.metrics.footer": "Select metrics to display next to the menu bar icon. Drag the sliders to set color thresholds.",
+            "settings.metrics.footer": "Select metrics to display next to the menu bar icon. Color thresholds control warning colors; spike jump is the minimum increase between samples required to record a diagnostic event.",
+            "settings.metrics.spikeDelta": "Spike jump",
 
             // Performance Settings
             "performance.source.label": "Animation Drive",
@@ -127,6 +138,9 @@ enum L10n {
             "performance.sample.label": "Sample Interval",
             "performance.sample.header": "Data Sampling",
             "performance.sample.footer": "Shorter intervals make animation more responsive but slightly increase CPU usage.",
+            "performance.spikeLimit.label": "Spike Events",
+            "performance.spikeLimit.header": "Spike Diagnostics",
+            "performance.spikeLimit.footer": "Number of recent spike diagnostic events kept in memory and restored after restart. Saved on app exit or sleep.",
 
             // History Duration
             "performance.history.label": "History Duration",
@@ -137,6 +151,11 @@ enum L10n {
             "historyDuration.15": "15 min",
             "historyDuration.30": "30 min",
             "historyDuration.60": "60 min",
+            "spikeEventLimit.4": "4 events",
+            "spikeEventLimit.8": "8 events",
+            "spikeEventLimit.12": "12 events",
+            "spikeEventLimit.24": "24 events",
+            "spikeEventLimit.48": "48 events",
 
             // General Settings
             "general.startup.header": "Startup",
@@ -284,6 +303,16 @@ enum L10n {
             "overview.activityMonitor": "活动监视器",
             "overview.network": "网络",
             "overview.processHeader": "进程",
+            "spike.section.header": "尖峰诊断",
+            "spike.section.footer": "当指标突然跳高时才抓取 Top 进程，不增加常驻采样负担。",
+            "spike.clear": "清空",
+            "spike.empty.title": "暂无尖峰记录",
+            "spike.empty.description": "CPU、内存和网络突增时，会在这里显示当时的进程上下文。",
+            "spike.jump.format": "%@ → %@",
+            "spike.processes.title": "尖峰时刻",
+            "spike.processes.header": "Top",
+            "spike.processes.sampling": "正在抓取进程...",
+            "spike.processes.unavailable": "暂无进程样本",
 
             // Skin Settings
             "settings.skin.header": "皮肤",
@@ -297,7 +326,8 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "菜单栏指标",
-            "settings.metrics.footer": "勾选要在菜单栏图标旁显示的指标，拖动滑块设置颜色阈值。",
+            "settings.metrics.footer": "勾选要在菜单栏图标旁显示的指标；颜色阈值决定标黄/标红，尖峰跳升是记录诊断事件所需的相邻采样最小增量。",
+            "settings.metrics.spikeDelta": "尖峰跳升",
 
             // Performance Settings
             "performance.source.label": "动画驱动",
@@ -309,6 +339,9 @@ enum L10n {
             "performance.sample.label": "采样频率",
             "performance.sample.header": "数据采样",
             "performance.sample.footer": "间隔越短，动画响应越快，但 CPU 占用略高。",
+            "performance.spikeLimit.label": "尖峰记录数",
+            "performance.spikeLimit.header": "尖峰诊断",
+            "performance.spikeLimit.footer": "保留最近多少条尖峰诊断事件；运行中有内存上限，退出或睡眠时保存，重启后恢复。",
 
             // History Duration
             "performance.history.label": "历史时长",
@@ -319,6 +352,11 @@ enum L10n {
             "historyDuration.15": "15 分钟",
             "historyDuration.30": "30 分钟",
             "historyDuration.60": "60 分钟",
+            "spikeEventLimit.4": "4 条",
+            "spikeEventLimit.8": "8 条",
+            "spikeEventLimit.12": "12 条",
+            "spikeEventLimit.24": "24 条",
+            "spikeEventLimit.48": "48 条",
 
             // General Settings
             "general.startup.header": "启动",
@@ -471,6 +509,19 @@ enum L10n {
     static var overviewNetwork:         String { tr("overview.network", "网络") }
     static var overviewProcessHeader:   String { tr("overview.processHeader", "进程") }
 
+    // MARK: - Spike Diagnostics
+
+    static var spikeSectionHeader:       String { tr("spike.section.header", "尖峰诊断") }
+    static var spikeSectionFooter:       String { tr("spike.section.footer", "当指标突然跳高时才抓取 Top 进程，不增加常驻采样负担。") }
+    static var spikeClear:               String { tr("spike.clear", "清空") }
+    static var spikeEmptyTitle:          String { tr("spike.empty.title", "暂无尖峰记录") }
+    static var spikeEmptyDescription:    String { tr("spike.empty.description", "CPU、内存和网络突增时，会在这里显示当时的进程上下文。") }
+    static var spikeJumpFormat:          String { tr("spike.jump.format", "%@ → %@") }
+    static var spikeProcessesTitle:      String { tr("spike.processes.title", "尖峰时刻") }
+    static var spikeProcessesHeader:     String { tr("spike.processes.header", "Top") }
+    static var spikeProcessesSampling:   String { tr("spike.processes.sampling", "正在抓取进程...") }
+    static var spikeProcessesUnavailable: String { tr("spike.processes.unavailable", "暂无进程样本") }
+
     // MARK: - Skin Settings
 
     static var skinHeader:       String { tr("settings.skin.header", "皮肤") }
@@ -485,7 +536,8 @@ enum L10n {
     // MARK: - Metrics Settings
 
     static var metricsHeader: String { tr("settings.metrics.header", "菜单栏指标") }
-    static var metricsFooter: String { tr("settings.metrics.footer", "勾选要在菜单栏图标旁显示的指标，拖动滑块设置颜色阈值。") }
+    static var metricsFooter: String { tr("settings.metrics.footer", "勾选要在菜单栏图标旁显示的指标；颜色阈值决定标黄/标红，尖峰跳升是记录诊断事件所需的相邻采样最小增量。") }
+    static var metricsSpikeDeltaLabel: String { tr("settings.metrics.spikeDelta", "尖峰跳升") }
 
     // MARK: - Performance Settings
 
@@ -498,6 +550,9 @@ enum L10n {
     static var perfSampleLabel:  String { tr("performance.sample.label", "采样频率") }
     static var perfSampleHeader: String { tr("performance.sample.header", "数据采样") }
     static var perfSampleFooter: String { tr("performance.sample.footer", "间隔越短，动画响应越快，但 CPU 占用略高。") }
+    static var perfSpikeLimitLabel: String { tr("performance.spikeLimit.label", "尖峰记录数") }
+    static var perfSpikeLimitHeader: String { tr("performance.spikeLimit.header", "尖峰诊断") }
+    static var perfSpikeLimitFooter: String { tr("performance.spikeLimit.footer", "保留最近多少条尖峰诊断事件；运行中有内存上限，退出或睡眠时保存，重启后恢复。") }
 
     // MARK: - History Duration
 
@@ -509,6 +564,11 @@ enum L10n {
     static var historyDuration15:  String { tr("historyDuration.15", "15 分钟") }
     static var historyDuration30:  String { tr("historyDuration.30", "30 分钟") }
     static var historyDuration60:  String { tr("historyDuration.60", "60 分钟") }
+    static var spikeEventLimit4:    String { tr("spikeEventLimit.4", "4 条") }
+    static var spikeEventLimit8:    String { tr("spikeEventLimit.8", "8 条") }
+    static var spikeEventLimit12:   String { tr("spikeEventLimit.12", "12 条") }
+    static var spikeEventLimit24:   String { tr("spikeEventLimit.24", "24 条") }
+    static var spikeEventLimit48:   String { tr("spikeEventLimit.48", "48 条") }
 
     // MARK: - General Settings
 

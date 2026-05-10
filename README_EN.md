@@ -37,6 +37,7 @@ brew install --cask tray-pulsy
 | 🔢 **Status Bar Metrics** | Choose which CPU, GPU, memory, disk, and network metrics appear beside the menu bar icon, with threshold colors |
 | 📊 **Live Monitoring** | Menu bar popover and Overview panel show live status and history charts |
 | 🧭 **Process Rankings** | Popover and Overview show top CPU, memory, and network processes with network sort modes |
+| 🩺 **Spike Diagnostics** | Automatically records sudden CPU, memory, or network jumps and samples top processes on demand |
 | 🎛️ **Customization** | Configure skins, themes, speed source, frame rate limit, status metrics, and launch at login |
 | 🔄 **Auto Update** | Sparkle 2 integration for checking, downloading, installing, and restarting into updates |
 | ♿ **Accessibility** | VoiceOver support with accessible status labels |
@@ -52,6 +53,7 @@ brew install --cask tray-pulsy
 - **Menu bar popover**: left-click the menu bar icon to open live metrics with current values and history charts.
 - **Overview panel**: the main window shows system trend charts plus CPU, memory, and network process rankings.
 - **Process details**: CPU process usage is normalized to whole-machine scale, memory rows show both size and percentage, and network rows can sort by activity, download, upload, or total throughput.
+- **Spike diagnostics**: when CPU, memory, or network metrics jump suddenly, the Overview panel records the spike time, delta, and top processes at that moment.
 - **On-demand sampling**: process monitoring only runs while the popover is expanded or the Overview panel is visible, then stops and clears data when closed.
 
 ## 🔄 Auto Update

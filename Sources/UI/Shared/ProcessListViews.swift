@@ -59,11 +59,56 @@ struct ProcessNetworkListView: View {
     }
 }
 
+struct SpikeProcessListView: View {
+    let processes: [SpikeProcessSnapshot]
+    let status: SpikeProcessSampleStatus
+    let title: String
+
+    init(
+        processes: [SpikeProcessSnapshot],
+        status: SpikeProcessSampleStatus,
+        title: String = L10n.spikeProcessesTitle
+    ) {
+        self.processes = processes
+        self.status = status
+        self.title = title
+    }
+
+    var body: some View {
+        ProcessListPanel(
+            title: title,
+            header: L10n.spikeProcessesHeader,
+            isSampling: status.isSampling,
+            errorMessage: status.errorMessage,
+            samplingText: L10n.spikeProcessesSampling,
+            emptyText: emptyText,
+            isEmpty: processes.isEmpty
+        ) {
+            ForEach(processes) { process in
+                SpikeProcessRow(process: process)
+            }
+        }
+    }
+
+    private var emptyText: String {
+        switch status {
+        case .sampling:
+            return L10n.spikeProcessesSampling
+        case .unavailable:
+            return L10n.spikeProcessesUnavailable
+        case .ready, .failed:
+            return L10n.popoverProcessNoActivity
+        }
+    }
+}
+
 private struct ProcessListPanel<Rows: View, TrailingHeader: View>: View {
     let title: String
     let header: String
     let isSampling: Bool
     let errorMessage: String?
+    let samplingText: String
+    let emptyText: String
     let isEmpty: Bool
     @ViewBuilder let rows: () -> Rows
     @ViewBuilder var trailingHeader: () -> TrailingHeader
@@ -73,6 +118,8 @@ private struct ProcessListPanel<Rows: View, TrailingHeader: View>: View {
         header: String,
         isSampling: Bool,
         errorMessage: String?,
+        samplingText: String = L10n.popoverProcessSampling,
+        emptyText: String = L10n.popoverProcessNoActivity,
         isEmpty: Bool,
         @ViewBuilder rows: @escaping () -> Rows,
         @ViewBuilder trailingHeader: @escaping () -> TrailingHeader
@@ -81,6 +128,8 @@ private struct ProcessListPanel<Rows: View, TrailingHeader: View>: View {
         self.header = header
         self.isSampling = isSampling
         self.errorMessage = errorMessage
+        self.samplingText = samplingText
+        self.emptyText = emptyText
         self.isEmpty = isEmpty
         self.rows = rows
         self.trailingHeader = trailingHeader
@@ -111,7 +160,7 @@ private struct ProcessListPanel<Rows: View, TrailingHeader: View>: View {
                         ProgressView()
                             .controlSize(.small)
                     }
-                    Text(isSampling ? L10n.popoverProcessSampling : L10n.popoverProcessNoActivity)
+                    Text(isSampling ? samplingText : emptyText)
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                     Spacer()
@@ -136,6 +185,8 @@ private extension ProcessListPanel where TrailingHeader == EmptyView {
         header: String,
         isSampling: Bool,
         errorMessage: String?,
+        samplingText: String = L10n.popoverProcessSampling,
+        emptyText: String = L10n.popoverProcessNoActivity,
         isEmpty: Bool,
         @ViewBuilder rows: @escaping () -> Rows
     ) {
@@ -144,6 +195,8 @@ private extension ProcessListPanel where TrailingHeader == EmptyView {
             header: header,
             isSampling: isSampling,
             errorMessage: errorMessage,
+            samplingText: samplingText,
+            emptyText: emptyText,
             isEmpty: isEmpty,
             rows: rows,
             trailingHeader: { EmptyView() }
@@ -258,6 +311,32 @@ private struct ProcessNetworkRow: View {
 
     private func formatSpeed(_ bytesPerSecond: Int64) -> String {
         MetricDisplayItem.formatSpeed(Double(bytesPerSecond)).trimmingCharacters(in: .whitespaces) + "/s"
+    }
+}
+
+private struct SpikeProcessRow: View {
+    let process: SpikeProcessSnapshot
+
+    var body: some View {
+        ProcessUsageRow(
+            pid: process.pid,
+            name: process.name,
+            valueText: process.valueText,
+            accent: accent,
+            fraction: process.fraction,
+            accessibilityValue: process.valueText
+        )
+    }
+
+    private var accent: Color {
+        switch process.metric {
+        case .cpu:
+            return .blue
+        case .memory:
+            return .orange
+        case .network:
+            return .purple
+        }
     }
 }
 

@@ -44,6 +44,9 @@ extension Defaults.Keys {
     // 历史时长
     static let historyDuration = Key<HistoryDuration>("traypulsy_historyDuration", default: .min30)
 
+    // 尖峰诊断保留条数
+    static let spikeEventLimit = Key<SpikeEventLimit>("traypulsy_spikeEventLimit", default: .events12)
+
     // 外部皮肤目录
     static let externalSkinPath = Key<String>("traypulsy_externalSkinPath", default: "")
 
@@ -52,6 +55,9 @@ extension Defaults.Keys {
 
     // 颜色阈值
     static let thresholds = Key<ThresholdConfig>("traypulsy_thresholds", default: .defaults)
+
+    // 尖峰诊断跳升阈值
+    static let spikeDeltas = Key<SpikeDeltaConfig>("traypulsy_spikeDeltas", default: .defaults)
 
     // Pulsy 波形配置
     static let pulsyColorTheme            = Key<PulsyColorTheme>("traypulsy_pulsyColorTheme", default: .fire)
@@ -256,6 +262,38 @@ enum HistoryDuration: String, CaseIterable, Defaults.Serializable {
         case .min15: return L10n.historyDuration15
         case .min30: return L10n.historyDuration30
         case .min60: return L10n.historyDuration60
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Spike Event Limit (尖峰诊断保留条数)
+// ═══════════════════════════════════════════════════════════════
+
+enum SpikeEventLimit: String, CaseIterable, Defaults.Serializable {
+    case events4 = "4"
+    case events8 = "8"
+    case events12 = "12"
+    case events24 = "24"
+    case events48 = "48"
+
+    var count: Int {
+        switch self {
+        case .events4:  return 4
+        case .events8:  return 8
+        case .events12: return 12
+        case .events24: return 24
+        case .events48: return 48
+        }
+    }
+
+    var displayName: String {
+        switch self {
+        case .events4:  return L10n.spikeEventLimit4
+        case .events8:  return L10n.spikeEventLimit8
+        case .events12: return L10n.spikeEventLimit12
+        case .events24: return L10n.spikeEventLimit24
+        case .events48: return L10n.spikeEventLimit48
         }
     }
 }
@@ -470,6 +508,27 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         }
         return [(value: t.critical, color: .red), (value: t.warning, color: .yellow)]
     }
+
+    /// Whether this metric participates in spike diagnostics.
+    var supportsSpikeDiagnostics: Bool {
+        switch self {
+        case .cpu, .memory, .networkDown, .networkUp:
+            return true
+        case .gpu, .disk:
+            return false
+        }
+    }
+
+    /// Key path for accessing this metric's spike jump threshold.
+    var spikeDeltaKeyPath: WritableKeyPath<SpikeDeltaConfig, Double>? {
+        switch self {
+        case .cpu:         return \.cpu
+        case .memory:      return \.memory
+        case .networkDown: return \.networkDown
+        case .networkUp:   return \.networkUp
+        case .gpu, .disk:  return nil
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -496,6 +555,20 @@ struct ThresholdConfig: Codable, Defaults.Serializable, Sendable {
         disk: .init(warning: 80, critical: 95),
         networkDown: .init(warning: 1_000_000, critical: 10_000_000),
         networkUp: .init(warning: 500_000, critical: 5_000_000)
+    )
+}
+
+struct SpikeDeltaConfig: Codable, Defaults.Serializable, Sendable {
+    var cpu: Double
+    var memory: Double
+    var networkDown: Double
+    var networkUp: Double
+
+    static let defaults = SpikeDeltaConfig(
+        cpu: 25,
+        memory: 8,
+        networkDown: 500_000,
+        networkUp: 250_000
     )
 }
 

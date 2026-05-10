@@ -24,6 +24,21 @@ struct RawProcessNetworkSample: Equatable, Sendable {
     let uploadBytes: Int64
 }
 
+struct ProcessNetworkSampleFrame: Equatable, Sendable {
+    let samplesByPID: [Int: RawProcessNetworkSample]
+    let timestamp: Date
+
+    init(samples: [RawProcessNetworkSample], timestamp: Date = Date()) {
+        self.samplesByPID = ProcessNetworkReader.aggregateSamplesByPID(samples)
+        self.timestamp = timestamp
+    }
+
+    func isFresh(at date: Date = Date(), maxAge: TimeInterval) -> Bool {
+        let age = date.timeIntervalSince(timestamp)
+        return age >= 0 && age <= maxAge
+    }
+}
+
 enum ProcessNetworkSortMode: String, CaseIterable, Sendable {
     case activity
     case download
@@ -41,7 +56,11 @@ enum ProcessNetworkSortMode: String, CaseIterable, Sendable {
 }
 
 enum ProcessNetworkReader {
-    static func readSamples(timeout: TimeInterval = 3) throws -> [RawProcessNetworkSample] {
+    static func readSamples(
+        timeout: TimeInterval = 3,
+        cancellationContext: ProcessCancellationContext? = nil
+    ) throws -> [RawProcessNetworkSample] {
+        try cancellationContext?.checkCancellation()
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/nettop")
         task.arguments = [
@@ -63,6 +82,8 @@ enum ProcessNetworkReader {
         task.standardInput = inputPipe
 
         try task.run()
+        try cancellationContext?.register(task)
+        defer { cancellationContext?.unregister(task) }
         try? inputPipe.fileHandleForWriting.close()
 
         let timeoutWork = DispatchWorkItem {
@@ -80,6 +101,7 @@ enum ProcessNetworkReader {
         let errorData = errorPipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         timeoutWork.cancel()
+        try cancellationContext?.checkCancellation()
 
         try? inputPipe.fileHandleForReading.close()
         try? outputPipe.fileHandleForReading.close()
@@ -98,6 +120,14 @@ enum ProcessNetworkReader {
             return []
         }
         return parseNettopOutput(output)
+    }
+
+    static func readSampleFrame(
+        timeout: TimeInterval = 3,
+        cancellationContext: ProcessCancellationContext? = nil
+    ) throws -> ProcessNetworkSampleFrame {
+        let samples = try readSamples(timeout: timeout, cancellationContext: cancellationContext)
+        return ProcessNetworkSampleFrame(samples: samples)
     }
 
     static func parseNettopOutput(_ output: String) -> [RawProcessNetworkSample] {
@@ -283,9 +313,11 @@ final class ProcessNetworkMonitor {
     @ObservationIgnored private var activeProcesses: [ProcessNetworkUsage] = []
     @ObservationIgnored private var limit: Int = 8
     @ObservationIgnored private var completedSampleCount = 0
+    @ObservationIgnored private var cancellationContext: ProcessCancellationContext?
 
     deinit {
         sampleTask?.cancel()
+        cancellationContext?.cancel()
     }
 
     func start(limit: Int = 8, sampleInterval: TimeInterval = 1) {
@@ -300,11 +332,14 @@ final class ProcessNetworkMonitor {
         previousSampleDate = nil
         completedSampleCount = 0
 
+        let context = ProcessCancellationContext()
+        cancellationContext = context
         sampleTask = Task { [weak self] in
-            await self?.sampleOnce()
+            await self?.sampleOnce(cancellationContext: context)
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(sampleInterval))
-                await self?.sampleOnce()
+                guard !Task.isCancelled else { break }
+                await self?.sampleOnce(cancellationContext: context)
             }
         }
     }
@@ -312,6 +347,8 @@ final class ProcessNetworkMonitor {
     func stop() {
         sampleTask?.cancel()
         sampleTask = nil
+        cancellationContext?.cancel()
+        cancellationContext = nil
         isSampling = false
         errorMessage = nil
         processes = []
@@ -321,10 +358,12 @@ final class ProcessNetworkMonitor {
         completedSampleCount = 0
     }
 
-    private func sampleOnce() async {
+    private func sampleOnce(cancellationContext: ProcessCancellationContext) async {
         let result = await Task.detached(priority: .utility) {
             do {
-                return Result<[RawProcessNetworkSample], Error>.success(try ProcessNetworkReader.readSamples())
+                return Result<[RawProcessNetworkSample], Error>.success(
+                    try ProcessNetworkReader.readSamples(cancellationContext: cancellationContext)
+                )
             } catch {
                 return Result<[RawProcessNetworkSample], Error>.failure(error)
             }

@@ -42,6 +42,14 @@ final class ThresholdTests: XCTestCase {
         XCTAssertEqual(t.networkUp.critical, 5_000_000)
     }
 
+    func testDefaultSpikeDeltas() {
+        let deltas = SpikeDeltaConfig.defaults
+        XCTAssertEqual(deltas.cpu, 25)
+        XCTAssertEqual(deltas.memory, 8)
+        XCTAssertEqual(deltas.networkDown, 500_000)
+        XCTAssertEqual(deltas.networkUp, 250_000)
+    }
+
     // MARK: - color(forRawValue:thresholds:) — CPU
 
     func testColor_belowWarning_textColor() {
@@ -127,6 +135,21 @@ final class ThresholdTests: XCTestCase {
             XCTAssertEqual(config[keyPath: item.thresholdKeyPath].warning, 42)
             XCTAssertEqual(config[keyPath: item.thresholdKeyPath].critical, 84)
         }
+    }
+
+    func testSpikeDeltaKeyPath_roundTrip() {
+        var config = SpikeDeltaConfig.defaults
+        for item in MetricDisplayItem.allCases where item.supportsSpikeDiagnostics {
+            guard let keyPath = item.spikeDeltaKeyPath else {
+                XCTFail("\(item.rawValue) should expose a spike delta key path")
+                continue
+            }
+            config[keyPath: keyPath] = 12
+            XCTAssertEqual(config[keyPath: keyPath], 12)
+        }
+
+        XCTAssertNil(MetricDisplayItem.gpu.spikeDeltaKeyPath)
+        XCTAssertNil(MetricDisplayItem.disk.spikeDeltaKeyPath)
     }
 
     // MARK: - unitLabel

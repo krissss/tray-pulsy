@@ -230,6 +230,7 @@ private struct MetricRowView: View {
     let item: MetricDisplayItem
     @Default(.metricDisplayItems) private var metricDisplayItems
     @Default(.thresholds) private var thresholds
+    @Default(.spikeDeltas) private var spikeDeltas
 
     private var isEnabled: Bool {
         metricDisplayItems.contains(item)
@@ -262,6 +263,19 @@ private struct MetricRowView: View {
                 )
                 .padding(.leading, 28)
             }
+            if item.supportsSpikeDiagnostics, let deltaKeyPath = item.spikeDeltaKeyPath {
+                SingleThresholdSlider(
+                    label: L10n.metricsSpikeDeltaLabel,
+                    value: Binding(
+                        get: { spikeDeltas[keyPath: deltaKeyPath] },
+                        set: { spikeDeltas[keyPath: deltaKeyPath] = $0 }
+                    ),
+                    range: spikeDeltaRange,
+                    step: spikeDeltaStep,
+                    formatLabel: valueLabel
+                )
+                .padding(.leading, 28)
+            }
         }
     }
 
@@ -282,6 +296,14 @@ private struct MetricRowView: View {
         isPercent ? 5 : 1_000_000
     }
 
+    private var spikeDeltaRange: ClosedRange<Double> {
+        isPercent ? 0...50 : 0...10_000_000
+    }
+
+    private var spikeDeltaStep: Double {
+        isPercent ? 1 : 250_000
+    }
+
     private func valueLabel(for bytesOrPercent: Double) -> String {
         if isPercent {
             return "\(Int(bytesOrPercent))%"
@@ -295,7 +317,7 @@ private struct MetricRowView: View {
 
 }
 
-// MARK: - Dual Threshold Slider (CompactSlider)
+// MARK: - Threshold Sliders
 
 private struct DualThresholdSlider: View {
     @Binding var warning: Double
@@ -367,6 +389,67 @@ private struct DualThresholdSlider: View {
     }
 
     private func value(for x: CGFloat, width: CGFloat) -> Double {
+        let fraction = Double(min(max(x / max(width, 1), 0), 1))
+        let raw = range.lowerBound + fraction * (range.upperBound - range.lowerBound)
+        let stepped = (raw / step).rounded() * step
+        return min(max(stepped, range.lowerBound), range.upperBound)
+    }
+}
+
+private struct SingleThresholdSlider: View {
+    let label: String
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let formatLabel: (Double) -> String
+
+    var body: some View {
+        VStack(spacing: 8) {
+            GeometryReader { proxy in
+                let width = max(proxy.size.width, 1)
+                let x = xPosition(for: value, width: width)
+
+                ZStack(alignment: .leading) {
+                    Capsule(style: .continuous)
+                        .fill(.quaternary)
+                        .frame(height: 7)
+
+                    Capsule(style: .continuous)
+                        .fill(Color.accentColor.opacity(0.28))
+                        .frame(width: x, height: 7)
+
+                    ThresholdHandle(color: .accentColor)
+                        .position(x: x, y: 11)
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { gesture in
+                                    value = steppedValue(for: gesture.location.x, width: width)
+                                }
+                        )
+                }
+                .frame(height: 22)
+                .contentShape(Rectangle())
+            }
+            .frame(height: 22)
+
+            HStack {
+                Text(label)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text("+\(formatLabel(value))")
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.tint)
+            }
+        }
+    }
+
+    private func xPosition(for value: Double, width: CGFloat) -> CGFloat {
+        let fraction = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return width * min(max(fraction, 0), 1)
+    }
+
+    private func steppedValue(for x: CGFloat, width: CGFloat) -> Double {
         let fraction = Double(min(max(x / max(width, 1), 0), 1))
         let raw = range.lowerBound + fraction * (range.upperBound - range.lowerBound)
         let stepped = (raw / step).rounded() * step

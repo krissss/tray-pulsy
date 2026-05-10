@@ -87,17 +87,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         )
     }
 
-    func applicationWillTerminate(_ notification: Notification) {
+    @MainActor func applicationWillTerminate(_ notification: Notification) {
+        statusBarController?.stop()
         appState?.systemMonitor.history.flush()
+        appState?.flushSpikeEvents()
         releaseInstanceLock()
     }
 
-    @objc private func handleSleep() {
+    @MainActor @objc private func handleSleep() {
         appState?.systemMonitor.history.flush()
+        appState?.flushSpikeEvents()
         statusBarController?.pause()
     }
 
-    @objc private func handleWake() {
+    @MainActor @objc private func handleWake() {
         statusBarController?.resume()
     }
 }

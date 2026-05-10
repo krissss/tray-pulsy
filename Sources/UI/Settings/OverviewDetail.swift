@@ -26,9 +26,36 @@ struct OverviewDetail: View {
                         .controlSize(.small)
                     }
                 }
+                Section {
+                    SpikeDiagnosticsSection()
+                } header: {
+                    HStack {
+                        Text(L10n.spikeSectionHeader)
+                        Spacer()
+                        Button {
+                            clearSpikeEvents()
+                        } label: {
+                            Label(L10n.spikeClear, systemImage: "trash")
+                                .font(.subheadline)
+                        }
+                        .buttonStyle(.glass)
+                        .controlSize(.small)
+                        .disabled(spikeEvents.isEmpty)
+                    }
+                } footer: {
+                    Text(L10n.spikeSectionFooter)
+                }
             }
             .formStyle(.grouped)
         }
+    }
+
+    @Environment(AppState.self) private var appState
+
+    private var spikeEvents: [MetricSpikeEvent] { appState.spikeEvents }
+
+    private func clearSpikeEvents() {
+        appState.clearSpikeEvents()
     }
 }
 
@@ -101,6 +128,104 @@ private struct SkinPreviewSection: View {
     }
 }
 
+// MARK: - Spike Diagnostics
+
+private struct SpikeDiagnosticsSection: View {
+    @Environment(AppState.self) private var appState
+
+    var body: some View {
+        if appState.spikeEvents.isEmpty {
+            ContentUnavailableView(
+                L10n.spikeEmptyTitle,
+                systemImage: "waveform.path.ecg",
+                description: Text(L10n.spikeEmptyDescription)
+            )
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+        } else {
+            VStack(spacing: 8) {
+                ForEach(appState.spikeEvents) { event in
+                    SpikeEventCard(event: event)
+                }
+            }
+            .padding(.vertical, 4)
+        }
+    }
+}
+
+private struct SpikeEventCard: View {
+    let event: MetricSpikeEvent
+    @State private var isExpanded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                isExpanded.toggle()
+            } label: {
+                HStack(spacing: 10) {
+                    Image(systemName: event.metric.systemImage)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(event.metric.accentColor)
+                        .frame(width: 26, height: 26)
+                        .background {
+                            Circle().fill(event.metric.accentColor.opacity(0.12))
+                        }
+                        .accessibilityHidden(true)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(event.metric.label)
+                            .font(.subheadline.weight(.semibold))
+                        Text(String(format: L10n.spikeJumpFormat, event.metric.formatValue(event.previousValue), event.metric.formatValue(event.currentValue)))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Spacer()
+
+                    VStack(alignment: .trailing, spacing: 2) {
+                        Text(timeFormatter.string(from: event.timestamp))
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                        Text("Δ \(event.metric.formatValue(event.delta))")
+                            .font(.caption.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(event.metric.accentColor)
+                    }
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 14, height: 22)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(L10n.spikeProcessesTitle)
+
+            if isExpanded {
+                SpikeProcessListView(processes: event.processes, status: event.processStatus)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(.quaternary.opacity(0.32))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(event.metric.accentColor.opacity(0.12), lineWidth: 1)
+        )
+        .accessibilityElement(children: .contain)
+        .animation(.easeInOut(duration: 0.16), value: isExpanded)
+    }
+
+    private var timeFormatter: DateFormatter {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss"
+        return formatter
+    }
+}
+
 // MARK: - Metrics Grid
 
 private struct MetricsGrid: View {
@@ -111,6 +236,7 @@ private struct MetricsGrid: View {
     @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
     @State private var memoryProcessMonitor = ProcessResourceMonitor(kind: .memory)
     @State private var processNetworkMonitor = ProcessNetworkMonitor()
+    @State private var expandedProcessSection: OverviewProcessSection?
 
     var body: some View {
         Group {
@@ -136,13 +262,21 @@ private struct MetricsGrid: View {
                             showCurrentValue: false
                         )
 
-                        processList(for: item)
+                        MetricProcessDisclosure(
+                            item: item,
+                            isExpanded: expansionBinding(for: processSection(for: item))
+                        ) {
+                            processList(for: item)
+                        }
                     }
                 }
             }
         }
         .onAppear {
-            startProcessMonitors()
+            updateProcessMonitors()
+        }
+        .onChange(of: expandedProcessSection) {
+            updateProcessMonitors()
         }
         .onDisappear {
             stopProcessMonitors()
@@ -176,15 +310,104 @@ private struct MetricsGrid: View {
         }
     }
 
-    private func startProcessMonitors() {
-        cpuProcessMonitor.start(limit: 5)
-        memoryProcessMonitor.start(limit: 5)
-        processNetworkMonitor.start(limit: 5)
+    private func processSection(for item: MetricDisplayItem) -> OverviewProcessSection? {
+        switch item {
+        case .cpu:
+            return .cpu
+        case .memory:
+            return .memory
+        case .networkDown:
+            return .network
+        default:
+            return nil
+        }
+    }
+
+    private func expansionBinding(for section: OverviewProcessSection?) -> Binding<Bool> {
+        Binding(
+            get: { section != nil && expandedProcessSection == section },
+            set: { isExpanded in expandedProcessSection = isExpanded ? section : nil }
+        )
+    }
+
+    private func updateProcessMonitors() {
+        stopProcessMonitors()
+        switch expandedProcessSection {
+        case .cpu:
+            cpuProcessMonitor.start(limit: 5)
+        case .memory:
+            memoryProcessMonitor.start(limit: 5)
+        case .network:
+            processNetworkMonitor.start(limit: 5)
+        case nil:
+            break
+        }
     }
 
     private func stopProcessMonitors() {
         cpuProcessMonitor.stop()
         memoryProcessMonitor.stop()
         processNetworkMonitor.stop()
+    }
+}
+
+private enum OverviewProcessSection {
+    case cpu
+    case memory
+    case network
+}
+
+private struct MetricProcessDisclosure<Detail: View>: View {
+    let item: MetricDisplayItem
+    @Binding var isExpanded: Bool
+    @ViewBuilder let detail: () -> Detail
+
+    var body: some View {
+        if canShowProcesses {
+            VStack(spacing: 6) {
+                Button {
+                    isExpanded.toggle()
+                } label: {
+                    HStack(spacing: 6) {
+                        Label(title, systemImage: "list.bullet.rectangle")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        Spacer()
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                            .frame(width: 14, height: 22)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(title)
+
+                if isExpanded {
+                    detail()
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+            }
+            .padding(.leading, 40)
+            .animation(.easeInOut(duration: 0.16), value: isExpanded)
+        }
+    }
+
+    private var canShowProcesses: Bool {
+        switch item {
+        case .cpu, .memory, .networkDown:
+            return true
+        default:
+            return false
+        }
+    }
+
+    private var title: String {
+        switch item {
+        case .networkDown:
+            return L10n.popoverNetworkTopProcesses
+        default:
+            return L10n.popoverProcessTopProcesses
+        }
     }
 }

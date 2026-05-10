@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 @testable import TrayPulsy
@@ -74,6 +75,23 @@ struct ProcessNetworkMonitorTests {
         #expect(active[0].pid == 42)
         #expect(active[0].downloadBytesPerSec == 1_500)
         #expect(active[0].uploadBytesPerSec == 300)
+    }
+
+    @Test("sample frame aggregates rows and tracks freshness")
+    func sampleFrameFreshness() {
+        let now = Date()
+        let frame = ProcessNetworkSampleFrame(
+            samples: [
+                RawProcessNetworkSample(pid: 42, name: "Browser", downloadBytes: 1_000, uploadBytes: 100),
+                RawProcessNetworkSample(pid: 42, name: "Browser", downloadBytes: 1_500, uploadBytes: 150),
+            ],
+            timestamp: now
+        )
+
+        #expect(frame.samplesByPID[42]?.downloadBytes == 2_500)
+        #expect(frame.samplesByPID[42]?.uploadBytes == 250)
+        #expect(frame.isFresh(at: now.addingTimeInterval(2), maxAge: 3))
+        #expect(!frame.isFresh(at: now.addingTimeInterval(4), maxAge: 3))
     }
 
     @Test("sort modes reorder by download, upload and total")

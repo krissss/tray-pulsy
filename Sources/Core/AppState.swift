@@ -17,6 +17,7 @@ final class AppState {
 
     /// Ring buffer of metric snapshots for sparkline / trend charts.
     var metricsHistory: MetricsHistory { systemMonitor.history }
+    var spikeEvents: [MetricSpikeEvent] { spikeHistory.events }
 
     // Callbacks — registered by StatusBarController
     var onSkinChanged: (([NSImage]) -> Void)?
@@ -27,6 +28,11 @@ final class AppState {
     var onExternalSkinPathChanged: (() -> Void)?
 
     private var defaultsObservers: [Defaults.Observation] = []
+    private var spikeDetector = MetricSpikeDetector()
+    private let spikeHistory: MetricSpikeHistory
+    private var spikeSampleTasks: [UUID: Task<Void, Never>] = [:]
+    private var pendingSpikeTaskIDs: Set<UUID> = []
+    private var pendingSpikeMetrics: Set<MetricSpikeKind> = []
 
     init(
         systemMonitor: SystemMonitor,
@@ -36,6 +42,7 @@ final class AppState {
         self.systemMonitor = systemMonitor
         self.skinManager = skinManager
         self.updateManager = updateManager
+        self.spikeHistory = MetricSpikeHistory(limit: Defaults[.spikeEventLimit].count)
     }
 
     func activate() {
@@ -47,6 +54,10 @@ final class AppState {
         systemMonitor.stop()
         defaultsObservers.forEach { $0.invalidate() }
         defaultsObservers.removeAll()
+        spikeSampleTasks.values.forEach { $0.cancel() }
+        spikeSampleTasks.removeAll()
+        pendingSpikeTaskIDs.removeAll()
+        pendingSpikeMetrics.removeAll()
     }
 
     // ═════════════════════════════════════════════════════════
@@ -103,6 +114,12 @@ final class AppState {
                     self?.systemMonitor.reconfigure(sampleInterval: interval, maxDuration: change.newValue.seconds)
                 }
             },
+            Defaults.observe(.spikeEventLimit) { [weak self] change in
+                MainActor.assumeIsolated {
+                    self?.spikeHistory.reconfigure(limit: change.newValue.count)
+                    self?.cancelSamplesOutsideRetainedEvents()
+                }
+            },
             Defaults.observe(.pulsyColorTheme) { [weak self] _ in
                 MainActor.assumeIsolated { self?.handlePulsyConfigChange() }
             },
@@ -131,6 +148,7 @@ final class AppState {
             systemMonitor.enabledMetrics = Set(SystemMonitor.MetricKind.allCases)
         } else {
             var needed = Set([Defaults[.speedSource].requiredMetric])
+            needed.formUnion([.cpu, .memory, .network])
             if !Defaults[.metricDisplayItems].isEmpty {
                 needed.formUnion(Defaults[.metricDisplayItems].map(\.requiredMetric))
             }
@@ -143,6 +161,77 @@ final class AppState {
         let source = Defaults[.speedSource]
         let rawValue = systemMonitor.valueForSource(source)
         return source.normalizeForAnimation(rawValue)
+    }
+
+    func detectMetricSpikeIfNeeded() {
+        guard Defaults[.spikeEventLimit].count > 0 else { return }
+        guard let snapshot = systemMonitor.history.lastSnapshot else { return }
+        let candidates = spikeDetector.detectCandidates(
+            snapshot: snapshot,
+            thresholds: Defaults[.thresholds],
+            spikeDeltas: Defaults[.spikeDeltas],
+            excludedMetrics: pendingSpikeMetrics,
+            shouldRecordCooldown: false,
+            preserveCandidateBaselines: true
+        )
+
+        for candidate in candidates {
+            confirmAndRecordSpike(candidate)
+        }
+    }
+
+    private func confirmAndRecordSpike(_ candidate: MetricSpikeCandidate) {
+        let eventID = UUID()
+        let thresholds = Defaults[.thresholds]
+        let spikeDeltas = Defaults[.spikeDeltas]
+        pendingSpikeTaskIDs.insert(eventID)
+        pendingSpikeMetrics.insert(candidate.metric)
+        spikeSampleTasks[eventID] = Task { [weak self] in
+            let result = await MetricSpikeProcessSampler.confirmSpike(
+                candidate: candidate,
+                thresholds: thresholds,
+                spikeDeltas: spikeDeltas
+            )
+            guard let self, !Task.isCancelled else { return }
+            defer {
+                self.pendingSpikeTaskIDs.remove(eventID)
+                self.pendingSpikeMetrics.remove(candidate.metric)
+                self.spikeSampleTasks.removeValue(forKey: eventID)
+            }
+
+            switch result {
+            case .success(.some(let confirmation)):
+                self.spikeDetector.recordCooldown(for: confirmation.candidate.metric)
+                let status: SpikeProcessSampleStatus = confirmation.processes.isEmpty ? .unavailable : .ready
+                let event = MetricSpikeEvent(
+                    id: eventID,
+                    metric: confirmation.candidate.metric,
+                    previousValue: confirmation.candidate.previousValue,
+                    currentValue: confirmation.candidate.currentValue,
+                    delta: confirmation.candidate.delta,
+                    timestamp: confirmation.candidate.timestamp,
+                    processStatus: status,
+                    processes: confirmation.processes
+                )
+                self.spikeHistory.record(event)
+                self.cancelSamplesOutsideRetainedEvents()
+            case .success(nil), .failure:
+                break
+            }
+        }
+    }
+
+    func clearSpikeEvents() {
+        spikeSampleTasks.values.forEach { $0.cancel() }
+        spikeSampleTasks.removeAll()
+        pendingSpikeTaskIDs.removeAll()
+        pendingSpikeMetrics.removeAll()
+        spikeHistory.clear()
+        spikeDetector.reset()
+    }
+
+    func flushSpikeEvents() {
+        spikeHistory.flush()
     }
 
     // Pulsy frame cache — avoid regenerating 24 NSImage per tick
@@ -169,5 +258,16 @@ final class AppState {
     private func handlePulsyConfigChange() {
         guard skinManager.currentSkin.id == "pulsy" else { return }
         onPulsyConfigChanged?()
+    }
+
+    private func cancelSamplesOutsideRetainedEvents() {
+        let retainedIDs = Set(spikeHistory.events.map(\.id))
+        let removedIDs = spikeSampleTasks.keys.filter {
+            !retainedIDs.contains($0) && !pendingSpikeTaskIDs.contains($0)
+        }
+        for id in removedIDs {
+            spikeSampleTasks[id]?.cancel()
+            spikeSampleTasks.removeValue(forKey: id)
+        }
     }
 }

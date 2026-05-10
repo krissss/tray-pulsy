@@ -6,6 +6,7 @@ struct PerformanceDetail: View {
     @Default(.fpsLimit) private var fpsLimit
     @Default(.sampleInterval) private var sampleInterval
     @Default(.historyDuration) private var historyDuration
+    @Default(.spikeEventLimit) private var spikeEventLimit
 
     var body: some View {
         GlassEffectContainer {
@@ -56,6 +57,18 @@ struct PerformanceDetail: View {
                     Text(L10n.perfHistoryHeader)
                 } footer: {
                     Text(L10n.perfHistoryFooter)
+                }
+
+                Section {
+                    Picker(selection: $spikeEventLimit, label: Label(L10n.perfSpikeLimitLabel, systemImage: "waveform.path.ecg")) {
+                        ForEach(SpikeEventLimit.allCases, id: \.rawValue) { limit in
+                            Text(limit.displayName).tag(limit)
+                        }
+                    }
+                } header: {
+                    Text(L10n.perfSpikeLimitHeader)
+                } footer: {
+                    Text(L10n.perfSpikeLimitFooter)
                 }
             }
             .formStyle(.grouped)
