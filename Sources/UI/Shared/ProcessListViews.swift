@@ -352,10 +352,14 @@ private struct ProcessUsageRow: View {
         HStack(spacing: 8) {
             ProcessIcon(pid: pid)
 
-            Text(name)
-                .font(.system(size: 11, weight: .medium))
-                .lineLimit(1)
-                .truncationMode(.middle)
+            HStack(spacing: 5) {
+                Text(name)
+                    .font(.system(size: 11, weight: .medium))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                ProcessIDText(pid: pid)
+            }
 
             Spacer(minLength: 8)
 
@@ -381,7 +385,34 @@ private struct ProcessUsageRow: View {
         .frame(height: 24)
         .padding(.horizontal, 4)
         .background(.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-        .accessibilityLabel("\(name), \(accessibilityValue)")
+        .accessibilityLabel("\(name), PID \(pid), \(accessibilityValue)")
+    }
+}
+
+private struct ProcessIDText: View {
+    let pid: Int
+
+    var body: some View {
+        Button {
+            copyPID()
+        } label: {
+            Text("\(pid)")
+                .font(.system(size: 9, design: .monospaced))
+                .foregroundStyle(.tertiary)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(L10n.popoverProcessCopyPID)
+        .accessibilityLabel("PID \(pid)")
+        .accessibilityHint(L10n.popoverProcessCopyPID)
+    }
+
+    private func copyPID() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(String(pid), forType: .string)
     }
 }
 

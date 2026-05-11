@@ -226,6 +226,7 @@ enum L10n {
             "popover.process.noActivity": "No active processes",
             "popover.process.showCPU": "Show CPU processes",
             "popover.process.showMemory": "Show memory processes",
+            "popover.process.copyPID": "Copy PID",
             "popover.process.cpuHeader": "% CPU",
             "popover.process.memoryHeader": "Memory / %",
             "popover.network.topProcesses": "Top Processes",
@@ -413,6 +414,7 @@ enum L10n {
             "popover.process.noActivity": "暂无活跃进程",
             "popover.process.showCPU": "显示 CPU 进程",
             "popover.process.showMemory": "显示内存进程",
+            "popover.process.copyPID": "复制 PID",
             "popover.process.cpuHeader": "% CPU",
             "popover.process.memoryHeader": "内存 / %",
             "popover.network.topProcesses": "进程排行",
@@ -664,6 +666,7 @@ enum L10n {
     static var popoverProcessNoActivity: String { tr("popover.process.noActivity", "暂无活跃进程") }
     static var popoverCPUProcessesToggle: String { tr("popover.process.showCPU", "显示 CPU 进程") }
     static var popoverMemoryProcessesToggle: String { tr("popover.process.showMemory", "显示内存进程") }
+    static var popoverProcessCopyPID: String { tr("popover.process.copyPID", "复制 PID") }
     static var popoverProcessCPUHeader: String { tr("popover.process.cpuHeader", "% CPU") }
     static var popoverProcessMemoryHeader: String { tr("popover.process.memoryHeader", "内存 / %") }
     static var popoverNetworkTopProcesses: String { tr("popover.network.topProcesses", "进程排行") }
