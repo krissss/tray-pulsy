@@ -8,6 +8,8 @@ import SwiftUI
 struct SparklineChart: View {
     let values: [Double]
     var color: Color = .accentColor
+    var secondaryValues: [Double]? = nil
+    var secondaryColor: Color? = nil
     var lineWidth: CGFloat = 1.5
     var showFill: Bool = true
     var showDot: Bool = true
@@ -35,6 +37,12 @@ struct SparklineChart: View {
             let bp = showAnnotations ? Self.padBottom : 0
             let chartW = size.width - lp - rp
             let chartH = size.height - tp - bp
+            guard chartW > 0, chartH > 0 else { return }
+            let plotRect = CGRect(x: lp, y: tp, width: chartW, height: chartH)
+            let plotShape = Path(roundedRect: plotRect, cornerSize: CGSize(width: 6, height: 6))
+
+            context.fill(plotShape, with: .color(.secondary.opacity(showAnnotations ? 0.025 : 0.035)))
+            context.stroke(plotShape, with: .color(.secondary.opacity(0.06)), lineWidth: 0.5)
 
             let (vMin, vMax) = bounds
             let range = vMax - vMin
@@ -45,7 +53,11 @@ struct SparklineChart: View {
                     p.move(to: CGPoint(x: lp, y: y))
                     p.addLine(to: CGPoint(x: lp + chartW, y: y))
                 }
-                context.stroke(path, with: .color(color.opacity(0.5)), lineWidth: lineWidth)
+                context.stroke(
+                    path,
+                    with: .color(color.opacity(0.5)),
+                    style: StrokeStyle(lineWidth: lineWidth, lineCap: .round, lineJoin: .round)
+                )
                 return
             }
 
@@ -65,37 +77,56 @@ struct SparklineChart: View {
                 }
             }
 
-            // Threshold zones
-            for zone in thresholds {
-                let y = yFor(min(zone.value, vMax))
-                let rect = CGRect(x: lp, y: y, width: chartW, height: tp + chartH - y)
-                context.fill(Path(rect), with: .color(zone.color.opacity(0.08)))
+            // Threshold zones. Higher values are riskier, so color the area above each threshold.
+            let sortedThresholds = thresholds
+                .filter { $0.value > vMin && $0.value < vMax }
+                .sorted { $0.value < $1.value }
+            for index in sortedThresholds.indices {
+                let zone = sortedThresholds[index]
+                let lowerY = yFor(zone.value)
+                let upperY = index + 1 < sortedThresholds.count
+                    ? yFor(sortedThresholds[index + 1].value)
+                    : tp
+                let rect = CGRect(
+                    x: lp,
+                    y: min(upperY, lowerY),
+                    width: chartW,
+                    height: max(abs(lowerY - upperY), 1)
+                )
+                context.fill(Path(rect), with: .color(zone.color.opacity(showAnnotations ? 0.08 : 0.055)))
                 if showAnnotations {
                     let thresholdLine = Path { p in
-                        p.move(to: CGPoint(x: lp, y: y))
-                        p.addLine(to: CGPoint(x: lp + chartW, y: y))
+                        p.move(to: CGPoint(x: lp, y: lowerY))
+                        p.addLine(to: CGPoint(x: lp + chartW, y: lowerY))
                     }
-                    context.stroke(thresholdLine, with: .color(zone.color.opacity(0.24)), lineWidth: 0.75)
+                    context.stroke(
+                        thresholdLine,
+                        with: .color(zone.color.opacity(0.24)),
+                        style: StrokeStyle(lineWidth: 0.75, lineCap: .round)
+                    )
                 }
             }
 
-            let points = values.enumerated().map { i, v in
-                CGPoint(
-                    x: lp + CGFloat(i) / CGFloat(Swift.max(values.count - 1, 1)) * chartW,
-                    y: yFor(v)
-                )
-            }
+            let renderLimit = renderPointLimit(for: chartW)
+            let primarySamples = downsample(values, limit: renderLimit)
+            let secondarySamples = secondaryValues.map { downsample($0, limit: renderLimit) } ?? []
+            let points = chartPoints(for: primarySamples, totalCount: values.count, x: lp, width: chartW, yFor: yFor)
+            let secondaryPoints = chartPoints(
+                for: secondarySamples,
+                totalCount: secondaryValues?.count ?? 0,
+                x: lp,
+                width: chartW,
+                yFor: yFor
+            )
 
             // Fill
             if showFill {
-                let fillPath = Path { p in
-                    p.move(to: CGPoint(x: points[0].x, y: tp + chartH))
-                    for pt in points { p.addLine(to: pt) }
-                    p.addLine(to: CGPoint(x: points[points.count - 1].x, y: tp + chartH))
-                    p.closeSubpath()
-                }
+                var fillPath = smoothedPath(for: points, yRange: tp...(tp + chartH))
+                fillPath.addLine(to: CGPoint(x: points[points.count - 1].x, y: tp + chartH))
+                fillPath.addLine(to: CGPoint(x: points[0].x, y: tp + chartH))
+                fillPath.closeSubpath()
                 let gradient = GraphicsContext.Shading.linearGradient(
-                    Gradient(colors: [color.opacity(0.18), color.opacity(0.02)]),
+                    Gradient(colors: [color.opacity(showAnnotations ? 0.20 : 0.24), color.opacity(0.015)]),
                     startPoint: CGPoint(x: lp, y: tp),
                     endPoint: CGPoint(x: lp, y: tp + chartH)
                 )
@@ -103,19 +134,29 @@ struct SparklineChart: View {
             }
 
             // Line
-            let linePath = Path { p in
-                p.move(to: points[0])
-                for i in 1..<points.count { p.addLine(to: points[i]) }
+            drawLine(
+                points,
+                color: color,
+                width: lineWidth,
+                in: &context,
+                yRange: tp...(tp + chartH)
+            )
+
+            if !secondaryPoints.isEmpty, let secondaryColor = secondaryColor {
+                drawLine(
+                    secondaryPoints,
+                    color: secondaryColor,
+                    width: max(lineWidth - 0.25, 1.25),
+                    in: &context,
+                    yRange: tp...(tp + chartH)
+                )
             }
-            context.stroke(linePath, with: .color(color.opacity(0.18)), lineWidth: lineWidth + 2.5)
-            context.stroke(linePath, with: .color(color), lineWidth: lineWidth)
 
             // Latest-value dot
             if showDot, let last = points.last {
-                context.fill(
-                    Path(ellipseIn: CGRect(x: last.x - 3, y: last.y - 3, width: 6, height: 6)),
-                    with: .color(color)
-                )
+                let dot = Path(ellipseIn: CGRect(x: last.x - 3, y: last.y - 3, width: 6, height: 6))
+                context.fill(dot, with: .color(color))
+                context.stroke(dot, with: .color(.primary.opacity(0.12)), lineWidth: 1)
             }
 
             guard showAnnotations else { return }
@@ -161,9 +202,139 @@ struct SparklineChart: View {
     }
 
     private var bounds: (min: Double, max: Double) {
-        let mn = values.min() ?? 0
-        let mx = values.max() ?? 1
-        return (mn, mx == mn ? mn + 1 : mx)
+        let allValues = (values + (secondaryValues ?? [])).filter(\.isFinite)
+        let dataMin = allValues.min() ?? 0
+        let dataMax = allValues.max() ?? 1
+        let upper = max(dataMax, 1)
+        let lower = min(dataMin, 0)
+        let range = max(upper - lower, upper * 0.18, 1)
+        let paddedMin = lower < 0 ? lower - range * 0.1 : 0
+        return (paddedMin, upper + range * 0.18)
+    }
+
+    private func renderPointLimit(for width: CGFloat) -> Int {
+        let density: CGFloat = showAnnotations ? 0.9 : 0.55
+        let cap = showAnnotations ? 260 : 160
+        return min(max(Int(width * density), 48), cap)
+    }
+
+    private func chartPoints(
+        for samples: [ChartSample],
+        totalCount: Int,
+        x: CGFloat,
+        width: CGFloat,
+        yFor: (Double) -> CGFloat
+    ) -> [CGPoint] {
+        let denominator = CGFloat(Swift.max(totalCount - 1, 1))
+        return samples.map { sample in
+            CGPoint(
+                x: x + CGFloat(sample.index) / denominator * width,
+                y: yFor(sample.value)
+            )
+        }
+    }
+
+    private func downsample(_ series: [Double], limit: Int) -> [ChartSample] {
+        let sanitized = series.map { $0.isFinite ? $0 : 0 }
+        guard sanitized.count > limit, limit >= 3 else {
+            return sanitized.enumerated().map { ChartSample(index: $0.offset, value: $0.element) }
+        }
+
+        let bucketSize = Double(sanitized.count - 2) / Double(limit - 2)
+        var samples = [ChartSample(index: 0, value: sanitized[0])]
+        samples.reserveCapacity(limit)
+
+        var anchorIndex = 0
+        for bucket in 0..<(limit - 2) {
+            let nextAverageStart = Int(floor(Double(bucket + 1) * bucketSize)) + 1
+            let nextAverageEnd = min(Int(floor(Double(bucket + 2) * bucketSize)) + 1, sanitized.count)
+            let averageRange = nextAverageStart..<max(nextAverageStart + 1, nextAverageEnd)
+
+            let averageX: Double
+            let averageY: Double
+            if averageRange.lowerBound < sanitized.count {
+                let clampedRange = averageRange.lowerBound..<min(averageRange.upperBound, sanitized.count)
+                let count = Double(clampedRange.count)
+                averageX = clampedRange.reduce(0) { $0 + Double($1) } / count
+                averageY = clampedRange.reduce(0) { $0 + sanitized[$1] } / count
+            } else {
+                averageX = Double(sanitized.count - 1)
+                averageY = sanitized[sanitized.count - 1]
+            }
+
+            let candidateStart = Int(floor(Double(bucket) * bucketSize)) + 1
+            let candidateEnd = min(Int(floor(Double(bucket + 1) * bucketSize)) + 1, sanitized.count - 1)
+            let candidateRange = candidateStart..<max(candidateStart + 1, candidateEnd)
+
+            var selectedIndex = candidateStart
+            var largestArea = -Double.infinity
+            let anchorX = Double(anchorIndex)
+            let anchorY = sanitized[anchorIndex]
+
+            for index in candidateRange where index < sanitized.count {
+                let area = abs(
+                    (anchorX - averageX) * (sanitized[index] - anchorY)
+                    - (anchorX - Double(index)) * (averageY - anchorY)
+                )
+                if area > largestArea {
+                    largestArea = area
+                    selectedIndex = index
+                }
+            }
+
+            selectedIndex = min(max(selectedIndex, 0), sanitized.count - 1)
+            samples.append(ChartSample(index: selectedIndex, value: sanitized[selectedIndex]))
+            anchorIndex = selectedIndex
+        }
+
+        samples.append(ChartSample(index: sanitized.count - 1, value: sanitized[sanitized.count - 1]))
+        return samples
+    }
+
+    private func drawLine(
+        _ points: [CGPoint],
+        color: Color,
+        width: CGFloat,
+        in context: inout GraphicsContext,
+        yRange: ClosedRange<CGFloat>
+    ) {
+        guard !points.isEmpty else { return }
+        let linePath = smoothedPath(for: points, yRange: yRange)
+        context.stroke(
+            linePath,
+            with: .color(color.opacity(0.18)),
+            style: StrokeStyle(lineWidth: width + 2.5, lineCap: .round, lineJoin: .round)
+        )
+        context.stroke(
+            linePath,
+            with: .color(color),
+            style: StrokeStyle(lineWidth: width, lineCap: .round, lineJoin: .round)
+        )
+    }
+
+    private func smoothedPath(for points: [CGPoint], yRange: ClosedRange<CGFloat>) -> Path {
+        Path { path in
+            guard let first = points.first else { return }
+            path.move(to: first)
+            guard points.count > 1 else { return }
+
+            for index in 0..<(points.count - 1) {
+                let previous = index > 0 ? points[index - 1] : points[index]
+                let current = points[index]
+                let next = points[index + 1]
+                let following = index + 2 < points.count ? points[index + 2] : next
+
+                let control1 = CGPoint(
+                    x: current.x + (next.x - previous.x) / 9,
+                    y: (current.y + (next.y - previous.y) / 9).clamped(to: yRange)
+                )
+                let control2 = CGPoint(
+                    x: next.x - (following.x - current.x) / 9,
+                    y: (next.y - (following.y - current.y) / 9).clamped(to: yRange)
+                )
+                path.addCurve(to: next, control1: control1, control2: control2)
+            }
+        }
     }
 
     /// Choose time label interval so we get ~5-7 labels.
@@ -188,4 +359,15 @@ struct SparklineChart: View {
         if mins > 0 { return "\(mins)m" }
         return "\(Int(seconds))s"
     }
+}
+
+private extension CGFloat {
+    func clamped(to range: ClosedRange<CGFloat>) -> CGFloat {
+        Swift.min(Swift.max(self, range.lowerBound), range.upperBound)
+    }
+}
+
+private struct ChartSample {
+    let index: Int
+    let value: Double
 }

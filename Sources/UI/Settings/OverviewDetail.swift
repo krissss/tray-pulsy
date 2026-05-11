@@ -277,11 +277,16 @@ private struct MetricsGrid: View {
                             values: history.cachedValues(for: item.historyKeyPath),
                             timestamps: history.cachedTimestampArray(for: item.historyKeyPath),
                             color: Color(item.accentColor),
+                            secondaryValues: secondaryValues(for: item, history: history),
+                            secondaryColor: secondaryColor(for: item),
                             thresholds: item.thresholdZones(from: thresholds),
                             valueFormatter: item.formatChartValue,
-                            chartHeight: 64,
+                            chartHeight: 72,
                             timeSpan: historyDuration.seconds,
-                            showCurrentValue: false
+                            showCurrentValue: false,
+                            annotationMode: .adaptive(densePointLimit: 480),
+                            primaryValuePrefix: primaryValuePrefix(for: item),
+                            secondaryValuePrefix: secondaryValuePrefix(for: item)
                         )
 
                         MetricProcessDisclosure(
@@ -306,6 +311,44 @@ private struct MetricsGrid: View {
         .onDisappear {
             stopProcessMonitors()
         }
+    }
+
+    private func secondaryValues(for item: MetricDisplayItem, history: MetricsHistory) -> [Double]? {
+        guard item == .networkDown,
+              metricMonitorItems.contains(.networkDown),
+              metricMonitorItems.contains(.networkUp) else {
+            return nil
+        }
+        return history.cachedValues(for: MetricDisplayItem.networkUp.historyKeyPath)
+    }
+
+    private func secondaryColor(for item: MetricDisplayItem) -> Color? {
+        guard item == .networkDown,
+              metricMonitorItems.contains(.networkDown),
+              metricMonitorItems.contains(.networkUp) else {
+            return nil
+        }
+        return .cyan
+    }
+
+    private func primaryValuePrefix(for item: MetricDisplayItem) -> String? {
+        switch item {
+        case .networkDown:
+            return "↓"
+        case .networkUp:
+            return "↑"
+        default:
+            return nil
+        }
+    }
+
+    private func secondaryValuePrefix(for item: MetricDisplayItem) -> String? {
+        guard item == .networkDown,
+              metricMonitorItems.contains(.networkDown),
+              metricMonitorItems.contains(.networkUp) else {
+            return nil
+        }
+        return "↑"
     }
 
     @ViewBuilder

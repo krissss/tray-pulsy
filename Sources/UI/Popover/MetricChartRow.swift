@@ -6,6 +6,21 @@ import SwiftUI
 
 /// A metric row with icon, label, value text, and an annotated trend chart.
 /// Used by both the popover metrics panel and the Overview settings tab.
+enum MetricChartAnnotationMode {
+    case standard
+    case adaptive(densePointLimit: Int)
+
+    func showsAnnotations(compact: Bool, pointCount: Int) -> Bool {
+        guard !compact else { return false }
+        switch self {
+        case .standard:
+            return true
+        case .adaptive(let densePointLimit):
+            return pointCount <= densePointLimit
+        }
+    }
+}
+
 struct MetricChartRow: View {
     let icon: String
     let label: String
@@ -14,6 +29,8 @@ struct MetricChartRow: View {
     let values: [Double]
     let timestamps: [Date]
     let color: Color
+    var secondaryValues: [Double]? = nil
+    var secondaryColor: Color? = nil
     var thresholds: [(value: Double, color: Color)] = []
     var valueFormatter: (Double) -> String = { String(format: "%.0f%%", $0) }
     var chartHeight: CGFloat = 64
@@ -21,6 +38,9 @@ struct MetricChartRow: View {
     var compact: Bool = false
     var timeSpan: TimeInterval = 1800
     var showCurrentValue: Bool = true
+    var annotationMode: MetricChartAnnotationMode = .standard
+    var primaryValuePrefix: String? = nil
+    var secondaryValuePrefix: String? = nil
 
     var body: some View {
         VStack(spacing: 4) {
@@ -67,11 +87,15 @@ struct MetricChartRow: View {
                     values: values,
                     timestamps: timestamps,
                     color: color,
+                    secondaryValues: secondaryValues,
+                    secondaryColor: secondaryColor,
                     thresholds: thresholds,
                     timeSpan: timeSpan,
                     valueFormatter: valueFormatter,
+                    primaryValuePrefix: primaryValuePrefix,
+                    secondaryValuePrefix: secondaryValuePrefix,
                     chartHeight: chartHeight,
-                    showAnnotations: true,
+                    showAnnotations: showsChartAnnotations,
                     showCurrentValue: showCurrentValue
                 )
                 .padding(.leading, 0)
@@ -93,6 +117,10 @@ struct MetricChartRow: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(label) \(valueText)")
+    }
+
+    private var showsChartAnnotations: Bool {
+        annotationMode.showsAnnotations(compact: compact, pointCount: values.count)
     }
 }
 

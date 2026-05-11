@@ -30,7 +30,9 @@ struct PopoverMetricsView: View {
 
             PopoverHeader(
                 skinName: skinDisplayName,
-                speedSource: speedSource
+                speedSource: speedSource,
+                openMainWindow: openMainWindow,
+                quit: { NSApp.terminate(nil) }
             )
 
             VStack(spacing: 8) {
@@ -73,11 +75,6 @@ struct PopoverMetricsView: View {
                     }
                 }
             }
-
-            PopoverActionBar(
-                openMainWindow: openMainWindow,
-                quit: { NSApp.terminate(nil) }
-            )
         }
         .padding(12)
         .frame(width: 336)
@@ -101,12 +98,54 @@ struct PopoverMetricsView: View {
             values: history.cachedValues(for: item.historyKeyPath),
             timestamps: history.cachedTimestampArray(for: item.historyKeyPath),
             color: Color(item.accentColor),
+            secondaryValues: secondaryValues(for: item, history: history),
+            secondaryColor: secondaryColor(for: item),
             thresholds: item.thresholdZones(from: thresholds),
             valueFormatter: item.formatChartValue,
             chartHeight: 52, iconSize: 18, compact: true,
             timeSpan: historyDuration.seconds,
-            showCurrentValue: false
+            showCurrentValue: false,
+            primaryValuePrefix: primaryValuePrefix(for: item),
+            secondaryValuePrefix: secondaryValuePrefix(for: item)
         )
+    }
+
+    private func secondaryValues(for item: MetricDisplayItem, history: MetricsHistory) -> [Double]? {
+        guard item == .networkDown,
+              metricMonitorItems.contains(.networkDown),
+              metricMonitorItems.contains(.networkUp) else {
+            return nil
+        }
+        return history.cachedValues(for: MetricDisplayItem.networkUp.historyKeyPath)
+    }
+
+    private func secondaryColor(for item: MetricDisplayItem) -> Color? {
+        guard item == .networkDown,
+              metricMonitorItems.contains(.networkDown),
+              metricMonitorItems.contains(.networkUp) else {
+            return nil
+        }
+        return .cyan
+    }
+
+    private func primaryValuePrefix(for item: MetricDisplayItem) -> String? {
+        switch item {
+        case .networkDown:
+            return "↓"
+        case .networkUp:
+            return "↑"
+        default:
+            return nil
+        }
+    }
+
+    private func secondaryValuePrefix(for item: MetricDisplayItem) -> String? {
+        guard item == .networkDown,
+              metricMonitorItems.contains(.networkDown),
+              metricMonitorItems.contains(.networkUp) else {
+            return nil
+        }
+        return "↑"
     }
 
     private var skinDisplayName: String {
@@ -186,6 +225,8 @@ private enum ProcessSection {
 private struct PopoverHeader: View {
     let skinName: String
     let speedSource: SpeedSource
+    let openMainWindow: () -> Void
+    let quit: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -207,43 +248,31 @@ private struct PopoverHeader: View {
 
             Spacer(minLength: 8)
 
-            Text(AppConstants.appName)
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(.tertiary)
-                .padding(.horizontal, 7)
-                .padding(.vertical, 4)
-                .background(.quaternary, in: Capsule())
+            HStack(spacing: 6) {
+                Button(action: openMainWindow) {
+                    Label(L10n.popoverOpenMainWindow, systemImage: "macwindow")
+                        .labelStyle(.iconOnly)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.glass)
+                .controlSize(.small)
+                .help(L10n.popoverOpenMainWindow)
+                .accessibilityLabel(L10n.popoverOpenMainWindow)
+
+                Button(action: quit) {
+                    Label(L10n.popoverQuit, systemImage: "power")
+                        .labelStyle(.iconOnly)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.glass)
+                .controlSize(.small)
+                .foregroundStyle(.secondary)
+                .help(L10n.popoverQuit)
+                .accessibilityLabel(L10n.popoverQuit)
+            }
         }
         .padding(10)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-}
-
-private struct PopoverActionBar: View {
-    let openMainWindow: () -> Void
-    let quit: () -> Void
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Button(action: openMainWindow) {
-                Label(L10n.popoverOpenMainWindow, systemImage: "macwindow")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
-            .controlSize(.small)
-            .frame(maxWidth: .infinity, minHeight: 28)
-            .help(L10n.popoverOpenMainWindow)
-
-            Button(action: quit) {
-                Label(L10n.popoverQuit, systemImage: "power")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.glass)
-            .controlSize(.small)
-            .frame(maxWidth: .infinity, minHeight: 28)
-            .foregroundStyle(.secondary)
-            .help(L10n.popoverQuit)
-        }
     }
 }
 
@@ -251,13 +280,8 @@ private struct MetricStaticRow<Row: View>: View {
     let row: Row
 
     var body: some View {
-        HStack(alignment: .top, spacing: 6) {
-            row
-                .frame(maxWidth: .infinity)
-            Color.clear
-                .frame(width: 14, height: 22)
-                .padding(.top, 1)
-        }
+        row
+            .frame(maxWidth: .infinity)
     }
 }
 
@@ -266,26 +290,25 @@ private struct MetricDisclosureRow<Row: View, Detail: View>: View {
     @Binding var isExpanded: Bool
     let helpText: String
     @ViewBuilder let detail: () -> Detail
+    @State private var isHovering = false
 
     var body: some View {
         VStack(spacing: 6) {
             Button {
                 isExpanded.toggle()
             } label: {
-                HStack(alignment: .top, spacing: 6) {
-                    row
-                        .frame(maxWidth: .infinity)
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 14, height: 22)
-                        .padding(.top, 1)
-                }
-                .contentShape(Rectangle())
+                row
+                    .frame(maxWidth: .infinity)
+                    .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                            .stroke(.secondary.opacity(isHovering || isExpanded ? 0.16 : 0), lineWidth: 1)
+                    }
             }
             .buttonStyle(.plain)
             .help(helpText)
             .accessibilityLabel(helpText)
+            .onHover { isHovering = $0 }
 
             if isExpanded {
                 detail()
