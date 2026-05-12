@@ -3,50 +3,47 @@ import SwiftUI
 
 struct OverviewDetail: View {
     var body: some View {
-        GlassEffectContainer {
-            Form {
-                Section {
-                    SkinPreviewSection()
-                }
-                Section {
-                    MetricsGrid()
-                } header: {
-                    HStack {
-                        Text(L10n.overviewMonitorHeader)
-                        Spacer()
-                        Button {
-                            guard let url = NSWorkspace.shared.urlForApplication(
-                                withBundleIdentifier: "com.apple.ActivityMonitor") else { return }
-                            NSWorkspace.shared.open(url)
-                        } label: {
-                            Label(L10n.overviewActivityMonitor, systemImage: "arrow.up.right.square")
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
+        SettingsFormPage {
+            Section {
+                SkinPreviewSection()
+            }
+            Section {
+                MetricsGrid()
+            } header: {
+                HStack {
+                    Text(L10n.overviewMonitorHeader)
+                    Spacer()
+                    Button {
+                        guard let url = NSWorkspace.shared.urlForApplication(
+                            withBundleIdentifier: "com.apple.ActivityMonitor") else { return }
+                        NSWorkspace.shared.open(url)
+                    } label: {
+                        Label(L10n.overviewActivityMonitor, systemImage: "arrow.up.right.square")
+                            .font(.subheadline)
                     }
-                }
-                Section {
-                    SpikeDiagnosticsSection()
-                } header: {
-                    HStack {
-                        Text(L10n.spikeSectionHeader)
-                        Spacer()
-                        Button {
-                            clearSpikeEvents()
-                        } label: {
-                            Label(L10n.spikeClear, systemImage: "trash")
-                                .font(.subheadline)
-                        }
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
-                        .disabled(spikeEvents.isEmpty)
-                    }
-                } footer: {
-                    Text(L10n.spikeSectionFooter)
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
                 }
             }
-            .formStyle(.grouped)
+            Section {
+                SpikeDiagnosticsSection()
+            } header: {
+                HStack {
+                    Text(L10n.spikeSectionHeader)
+                    Spacer()
+                    Button {
+                        clearSpikeEvents()
+                    } label: {
+                        Label(L10n.spikeClear, systemImage: "trash")
+                            .font(.subheadline)
+                    }
+                    .buttonStyle(.glass)
+                    .controlSize(.small)
+                    .disabled(spikeEvents.isEmpty)
+                }
+            } footer: {
+                Text(L10n.spikeSectionFooter)
+            }
         }
     }
 
@@ -94,8 +91,16 @@ private struct SkinPreviewSection: View {
                 Text(appState.skinManager.skin(for: skin).displayName)
                     .font(.headline)
                 HStack(spacing: 20) {
-                    Label("\(Int(currentSourceValue))%", systemImage: speedSource.systemImage)
-                    Label("\(Int(previewAnimator?.currentFPS ?? 0)) FPS", systemImage: "gauge.with.dots.needle.33percent")
+                    HStack(spacing: 6) {
+                        Image(systemName: speedSource.systemImage)
+                            .accessibilityHidden(true)
+                        SettingsValueBadge(text: "\(Int(currentSourceValue))%")
+                    }
+                    HStack(spacing: 6) {
+                        Image(systemName: "gauge.with.dots.needle.33percent")
+                            .accessibilityHidden(true)
+                        SettingsValueBadge(text: "\(Int(previewAnimator?.currentFPS ?? 0)) FPS", color: .green)
+                    }
                 }
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
@@ -178,19 +183,17 @@ private struct SpikeEventCard: View {
     @State private var isExpanded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             Button {
-                isExpanded.toggle()
+                withAnimation(ContainedExpansionMotion.layoutAnimation(expanding: !isExpanded)) {
+                    isExpanded.toggle()
+                }
             } label: {
                 HStack(spacing: 10) {
-                    Image(systemName: event.metric.systemImage)
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(event.metric.accentColor)
-                        .frame(width: 26, height: 26)
-                        .background {
-                            Circle().fill(event.metric.accentColor.opacity(0.12))
-                        }
-                        .accessibilityHidden(true)
+                    SettingsRowIcon(
+                        systemImage: event.metric.systemImage,
+                        color: event.metric.accentColor
+                    )
 
                     VStack(alignment: .leading, spacing: 2) {
                         Text(event.metric.label)
@@ -221,9 +224,8 @@ private struct SpikeEventCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel(L10n.spikeProcessesTitle)
 
-            if isExpanded {
+            ContainedExpansion(isExpanded: isExpanded, topSpacing: 8) {
                 SpikeProcessListView(processes: event.processes, status: event.processStatus)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
         .padding(10)
@@ -236,7 +238,6 @@ private struct SpikeEventCard: View {
                 .stroke(event.metric.accentColor.opacity(0.12), lineWidth: 1)
         )
         .accessibilityElement(children: .contain)
-        .animation(.easeInOut(duration: 0.16), value: isExpanded)
     }
 
     private var timeFormatter: DateFormatter {
@@ -456,32 +457,22 @@ private struct MetricProcessDisclosure<Detail: View>: View {
 
     var body: some View {
         if canShowProcesses {
-            VStack(spacing: 6) {
-                Button {
+            VStack(spacing: 0) {
+                SettingsDisclosureButton(
+                    title: title,
+                    systemImage: "list.bullet.rectangle",
+                    isExpanded: isExpanded,
+                    color: Color(item.accentColor)
+                ) {
                     isExpanded.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Label(title, systemImage: "list.bullet.rectangle")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                        Spacer()
-                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .frame(width: 14, height: 22)
-                    }
-                    .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
                 .accessibilityLabel(title)
 
-                if isExpanded {
+                ContainedExpansion(isExpanded: isExpanded, topSpacing: 6) {
                     detail()
-                        .transition(.opacity.combined(with: .move(edge: .top)))
                 }
             }
             .padding(.leading, 40)
-            .animation(.easeInOut(duration: 0.16), value: isExpanded)
         }
     }
 

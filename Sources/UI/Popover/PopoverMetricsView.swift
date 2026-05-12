@@ -293,9 +293,11 @@ private struct MetricDisclosureRow<Row: View, Detail: View>: View {
     @State private var isHovering = false
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 0) {
             Button {
-                isExpanded.toggle()
+                withAnimation(ContainedExpansionMotion.layoutAnimation(expanding: !isExpanded)) {
+                    isExpanded.toggle()
+                }
             } label: {
                 row
                     .frame(maxWidth: .infinity)
@@ -310,11 +312,9 @@ private struct MetricDisclosureRow<Row: View, Detail: View>: View {
             .accessibilityLabel(helpText)
             .onHover { isHovering = $0 }
 
-            if isExpanded {
+            ContainedExpansion(isExpanded: isExpanded, topSpacing: 6) {
                 detail()
-                    .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .animation(.easeInOut(duration: 0.16), value: isExpanded)
     }
 }

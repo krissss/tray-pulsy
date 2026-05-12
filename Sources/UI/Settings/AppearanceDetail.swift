@@ -17,61 +17,50 @@ struct SkinDetail: View {
     @Default(.pulsyAmplitudeSensitivity) private var pulsyAmplitudeSensitivity
 
     var body: some View {
-        GlassEffectContainer {
-            Form {
-                Section {
-                    LazyVGrid(columns: [GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 10)], spacing: 10) {
-                        ForEach(appState.skinManager.allSkins) { s in
-                            Button {
-                                skin = s.id
-                            } label: {
-                                SkinThumbnail(
-                                    skin: s,
-                                    isSelected: skin == s.id,
-                                    pulsyConfigToken: pulsyConfigToken
-                                )
-                            }
-                            .buttonStyle(.plain)
+        SettingsFormPage {
+            Section {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 72, maximum: 96), spacing: 10)], spacing: 10) {
+                    ForEach(appState.skinManager.allSkins) { s in
+                        Button {
+                            skin = s.id
+                        } label: {
+                            SkinThumbnail(
+                                skin: s,
+                                isSelected: skin == s.id,
+                                pulsyConfigToken: pulsyConfigToken
+                            )
                         }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.vertical, 4)
-                } header: {
-                    Text(L10n.skinLibraryHeader)
                 }
-
-                pulsyConfigSection()
-
-                Section {
-                    HStack {
-                        TextField(L10n.skinPathLabel, text: $externalSkinPath, prompt: Text(L10n.skinPathPrompt))
-                            .textFieldStyle(.roundedBorder)
-                        Button(L10n.skinBrowse) {
-                            let panel = NSOpenPanel()
-                            panel.canChooseFiles = false
-                            panel.canChooseDirectories = true
-                            panel.allowsMultipleSelection = false
-                            if panel.runModal() == .OK, let url = panel.url {
-                                externalSkinPath = url.path
-                            }
-                        }
-                        .buttonStyle(.glass)
-                        .controlSize(.small)
-                    }
-                    if !externalSkinPath.isEmpty {
-                        let expanded = (externalSkinPath as NSString).expandingTildeInPath
-                        if !FileManager.default.fileExists(atPath: expanded) {
-                            Label(L10n.skinPathNotFound, systemImage: "exclamationmark.triangle.fill")
-                                .font(.caption)
-                                .foregroundStyle(.orange)
-                        }
-                    }
-                } header: {
-                    Text(L10n.skinExtHeader)
-                } footer: {
-                    Text(L10n.skinExtInfo)
-                }
+                .padding(.vertical, 4)
+            } header: {
+                Text(L10n.skinLibraryHeader)
             }
-            .formStyle(.grouped)
+
+            pulsyConfigSection()
+
+            Section {
+                HStack(alignment: .center, spacing: 12) {
+                    externalSkinPathLabel
+                        .frame(width: 92, alignment: .leading)
+                    externalSkinPathControls
+                        .layoutPriority(1)
+                }
+
+                if !externalSkinPath.isEmpty {
+                    let expanded = (externalSkinPath as NSString).expandingTildeInPath
+                    if !FileManager.default.fileExists(atPath: expanded) {
+                        Label(L10n.skinPathNotFound, systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.orange)
+                    }
+                }
+            } header: {
+                Text(L10n.skinExtHeader)
+            } footer: {
+                Text(L10n.skinExtInfo)
+            }
         }
     }
 
@@ -80,6 +69,37 @@ struct SkinDetail: View {
 
     private var pulsyConfigToken: String {
         "\(pulsyColorTheme.rawValue)-\(pulsyWaveformStyle.rawValue)-\(pulsyLineWidth)-\(pulsyGlowIntensity)-\(pulsyAmplitudeSensitivity)"
+    }
+
+    private var externalSkinPathLabel: some View {
+        SettingsRowLabel(
+            title: L10n.skinPathLabel,
+            systemImage: "folder",
+            color: .pink
+        )
+    }
+
+    private var externalSkinPathControls: some View {
+        HStack(spacing: 8) {
+            TextField("", text: $externalSkinPath, prompt: Text(L10n.skinPathPrompt))
+                .textFieldStyle(.roundedBorder)
+                .frame(minWidth: 160)
+                .layoutPriority(1)
+                .accessibilityLabel(L10n.skinPathLabel)
+            Button {
+                let panel = NSOpenPanel()
+                panel.canChooseFiles = false
+                panel.canChooseDirectories = true
+                panel.allowsMultipleSelection = false
+                if panel.runModal() == .OK, let url = panel.url {
+                    externalSkinPath = url.path
+                }
+            } label: {
+                Label(L10n.skinBrowse, systemImage: "folder.badge.plus")
+            }
+            .buttonStyle(.glass)
+            .controlSize(.small)
+        }
     }
 }
 
@@ -181,17 +201,15 @@ private struct PulsySliderRow<Control: View>: View {
     @ViewBuilder let control: () -> Control
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 8) {
-                Image(systemName: systemImage)
-                    .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                Text(title)
+        SettingsInsetPanel(spacing: 9) {
+            HStack(spacing: 10) {
+                SettingsRowLabel(
+                    title: title,
+                    systemImage: systemImage,
+                    color: .pink
+                )
                 Spacer()
-                Text(value)
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                SettingsValueBadge(text: value, color: .pink)
             }
             control()
         }
@@ -206,19 +224,16 @@ struct MetricsDetail: View {
     @Default(.thresholds) private var thresholds
 
     var body: some View {
-        GlassEffectContainer {
-            Form {
-                Section {
-                    ForEach(MetricDisplayItem.allCases) { item in
-                        MetricRowView(item: item)
-                    }
-                } header: {
-                    Text(L10n.metricsHeader)
-                } footer: {
-                    Text(L10n.metricsFooter)
+        SettingsFormPage {
+            Section {
+                ForEach(MetricDisplayItem.allCases) { item in
+                    MetricRowView(item: item)
                 }
+            } header: {
+                Text(L10n.metricsHeader)
+            } footer: {
+                Text(L10n.metricsFooter)
             }
-            .formStyle(.grouped)
         }
     }
 }
@@ -260,7 +275,9 @@ private struct MetricRowView: View {
                        let nextSource = SpeedSource.firstAvailable(in: metricMonitorItems) {
                         speedSource = nextSource
                     }
-                    isAdvancedExpanded = false
+                    withAnimation(ContainedExpansionMotion.layoutAnimation(expanding: false)) {
+                        isAdvancedExpanded = false
+                    }
                 case .monitorOnly:
                     metricMonitorItems.insert(item)
                     metricDisplayItems.remove(item)
@@ -274,77 +291,86 @@ private struct MetricRowView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 12) {
-                Text(item.displayName)
-                Spacer(minLength: 16)
-                Picker(L10n.metricsModePickerLabel, selection: modeBinding) {
-                    ForEach(MetricManagementMode.allCases) { mode in
-                        Text(mode.label).tag(mode)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .controlSize(.small)
-                .frame(width: 220)
-            }
-            if isMonitored {
-                Button {
-                    isAdvancedExpanded.toggle()
-                } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "chevron.right")
-                            .font(.caption2.weight(.semibold))
-                            .rotationEffect(.degrees(isAdvancedExpanded ? 90 : 0))
-                        Label(L10n.metricsAdvancedSettings, systemImage: "slider.horizontal.3")
-                            .labelStyle(.titleAndIcon)
-                        Spacer()
-                    }
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 2)
+            metricHeaderRow
 
-                if isAdvancedExpanded {
-                    VStack(spacing: 10) {
-                        DualThresholdSlider(
-                            title: L10n.metricsColorThresholdLabel,
-                            description: L10n.metricsColorThresholdDescription,
-                            warning: Binding(
-                                get: { thresholds[keyPath: item.thresholdKeyPath].warning },
-                                set: { thresholds[keyPath: item.thresholdKeyPath].warning = $0 }
-                            ),
-                            critical: Binding(
-                                get: { thresholds[keyPath: item.thresholdKeyPath].critical },
-                                set: { thresholds[keyPath: item.thresholdKeyPath].critical = $0 }
-                            ),
-                            range: sliderRange,
-                            step: sliderStep,
-                            formatLabel: valueLabel
-                        )
-                        if item.supportsSpikeDiagnostics, let deltaKeyPath = item.spikeDeltaKeyPath {
-                            SingleThresholdSlider(
-                                label: L10n.metricsSpikeDeltaLabel,
-                                description: L10n.metricsSpikeDeltaDescription,
-                                value: Binding(
-                                    get: { spikeDeltas[keyPath: deltaKeyPath] },
-                                    set: { spikeDeltas[keyPath: deltaKeyPath] = $0 }
+            if isMonitored {
+                VStack(spacing: 0) {
+                    SettingsDisclosureButton(
+                        title: L10n.metricsAdvancedSettings,
+                        systemImage: "slider.horizontal.3",
+                        isExpanded: isAdvancedExpanded,
+                        color: Color(nsColor: item.accentColor)
+                    ) {
+                        isAdvancedExpanded.toggle()
+                    }
+
+                    ContainedExpansion(isExpanded: isAdvancedExpanded, topSpacing: 2) {
+                        SettingsInsetPanel(spacing: 12) {
+                            DualThresholdSlider(
+                                title: L10n.metricsColorThresholdLabel,
+                                description: L10n.metricsColorThresholdDescription,
+                                warning: Binding(
+                                    get: { thresholds[keyPath: item.thresholdKeyPath].warning },
+                                    set: { thresholds[keyPath: item.thresholdKeyPath].warning = $0 }
                                 ),
-                                range: spikeDeltaRange,
-                                step: spikeDeltaStep,
+                                critical: Binding(
+                                    get: { thresholds[keyPath: item.thresholdKeyPath].critical },
+                                    set: { thresholds[keyPath: item.thresholdKeyPath].critical = $0 }
+                                ),
+                                range: sliderRange,
+                                step: sliderStep,
                                 formatLabel: valueLabel
                             )
+                            if item.supportsSpikeDiagnostics, let deltaKeyPath = item.spikeDeltaKeyPath {
+                                SingleThresholdSlider(
+                                    label: L10n.metricsSpikeDeltaLabel,
+                                    description: L10n.metricsSpikeDeltaDescription,
+                                    value: Binding(
+                                        get: { spikeDeltas[keyPath: deltaKeyPath] },
+                                        set: { spikeDeltas[keyPath: deltaKeyPath] = $0 }
+                                    ),
+                                    range: spikeDeltaRange,
+                                    step: spikeDeltaStep,
+                                    formatLabel: valueLabel
+                                )
+                            }
                         }
+                        .padding(.top, 2)
                     }
-                    .padding(.leading, 18)
-                    .padding(.top, 2)
                 }
             }
         }
     }
 
     // MARK: - Slider helpers
+
+    private var metricHeaderRow: some View {
+        HStack(spacing: 12) {
+            metricLabel
+            Spacer(minLength: 16)
+            modePicker
+        }
+    }
+
+    private var metricLabel: some View {
+        SettingsRowLabel(
+            title: item.displayName,
+            systemImage: item.chartIcon,
+            color: Color(nsColor: item.accentColor)
+        )
+    }
+
+    private var modePicker: some View {
+        Picker(L10n.metricsModePickerLabel, selection: modeBinding) {
+            ForEach(MetricManagementMode.allCases) { mode in
+                Text(mode.label).tag(mode)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .controlSize(.small)
+        .frame(width: 220)
+    }
 
     private var isPercent: Bool {
         switch item {
@@ -410,16 +436,25 @@ private struct DualThresholdSlider: View {
     let formatLabel: (Double) -> String
 
     var body: some View {
-        VStack(spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.caption)
-                    .foregroundStyle(.primary)
-                Text(description)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                HStack(spacing: 6) {
+                    SettingsValueBadge(text: L10n.metricsWarningThreshold(formatLabel(warning)), color: .orange)
+                    SettingsValueBadge(text: L10n.metricsCriticalThreshold(formatLabel(critical)), color: .red)
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
 
             GeometryReader { proxy in
                 let width = max(proxy.size.width, 1)
@@ -463,16 +498,6 @@ private struct DualThresholdSlider: View {
                 .contentShape(Rectangle())
             }
             .frame(height: 22)
-
-            HStack {
-                Text(L10n.metricsWarningThreshold(formatLabel(warning)))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.yellow)
-                Spacer()
-                Text(L10n.metricsCriticalThreshold(formatLabel(critical)))
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.red)
-            }
         }
     }
 
@@ -498,7 +523,23 @@ private struct SingleThresholdSlider: View {
     let formatLabel: (Double) -> String
 
     var body: some View {
-        VStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(label)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text(description)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Spacer(minLength: 8)
+
+                SettingsValueBadge(text: "+\(formatLabel(value))", color: .accentColor)
+            }
+
             GeometryReader { proxy in
                 let width = max(proxy.size.width, 1)
                 let x = xPosition(for: value, width: width)
@@ -525,21 +566,6 @@ private struct SingleThresholdSlider: View {
                 .contentShape(Rectangle())
             }
             .frame(height: 22)
-
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(label)
-                        .font(.caption)
-                        .foregroundStyle(.primary)
-                    Text(description)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-                Text("+\(formatLabel(value))")
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.tint)
-            }
         }
     }
 

@@ -7,37 +7,42 @@ struct GeneralDetail: View {
     @Default(.language) private var language
 
     var body: some View {
-        GlassEffectContainer {
-            Form {
-                Section {
-                    Toggle(isOn: $launchAtStartup) {
-                        Label(L10n.generalStartupToggle, systemImage: "power.circle")
-                    }
-                    .onChange(of: launchAtStartup) {
-                        toggleLaunchAtLogin(launchAtStartup)
-                    }
-                } header: {
-                    Text(L10n.generalStartupHeader)
-                } footer: {
-                    Text(String(format: L10n.generalStartupFooter, AppConstants.appName))
+        SettingsFormPage {
+            Section {
+                Toggle(isOn: $launchAtStartup) {
+                    SettingsRowLabel(
+                        title: L10n.generalStartupToggle,
+                        systemImage: "power.circle.fill",
+                        color: .green
+                    )
                 }
-
-                Section {
-                    Picker(selection: $language) {
-                        ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
-                            Text(lang.displayName).tag(lang)
-                        }
-                    } label: {
-                        Label(L10n.generalLanguageHeader, systemImage: "globe")
-                    }
-                } header: {
-                    Text(L10n.generalLanguageHeader)
+                .onChange(of: launchAtStartup) {
+                    toggleLaunchAtLogin(launchAtStartup)
                 }
-                .onChange(of: language) {
-                    language.apply()
-                }
+            } header: {
+                Text(L10n.generalStartupHeader)
+            } footer: {
+                Text(String(format: L10n.generalStartupFooter, AppConstants.appName))
             }
-            .formStyle(.grouped)
+
+            Section {
+                Picker(selection: $language) {
+                    ForEach(AppLanguage.allCases, id: \.rawValue) { lang in
+                        Text(lang.displayName).tag(lang)
+                    }
+                } label: {
+                    SettingsRowLabel(
+                        title: L10n.generalLanguageHeader,
+                        systemImage: "globe",
+                        color: .blue
+                    )
+                }
+            } header: {
+                Text(L10n.generalLanguageHeader)
+            }
+            .onChange(of: language) {
+                language.apply()
+            }
         }
     }
 

@@ -43,49 +43,4 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Lazily-rendered colored icon cached per section.
-    var coloredIcon: NSImage {
-        IconCache.shared.icon(for: self)
-    }
-}
-
-/// Pre-renders and caches colored tab icons on first access (main actor only).
-private final class IconCache: @unchecked Sendable {
-    static let shared = IconCache()
-    private var cache: [String: NSImage] = [:]
-
-    func icon(for section: SettingsSection) -> NSImage {
-        if let cached = cache[section.rawValue] { return cached }
-        let image = renderIcon(systemName: section.systemImage, color: section.color)
-        cache[section.rawValue] = image
-        return image
-    }
-
-    private func renderIcon(systemName: String, color: Color) -> NSImage {
-        MainActor.assumeIsolated {
-            let iconSize: CGFloat = 20
-            let view = NSHostingView(rootView:
-                ZStack {
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(color.gradient)
-                    Image(systemName: systemName)
-                        .font(.system(size: 10, weight: .semibold))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: iconSize, height: iconSize)
-            )
-            let frame = NSRect(x: 0, y: 0, width: iconSize, height: iconSize)
-            view.frame = frame
-            view.layoutSubtreeIfNeeded()
-
-            guard let rep = view.bitmapImageRepForCachingDisplay(in: frame) else {
-                return NSImage(systemSymbolName: systemName, accessibilityDescription: nil)!
-            }
-            view.cacheDisplay(in: frame, to: rep)
-
-            let image = NSImage(size: frame.size)
-            image.addRepresentation(rep)
-            return image
-        }
-    }
 }
