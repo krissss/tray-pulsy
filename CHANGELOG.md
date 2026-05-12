@@ -28,6 +28,18 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-05-13
+
+### Added
+
+- 支持复制进程 PID
+- 优化指标图表显示效果
+- 美化设置窗口布局
+
+### Changed
+
+- ci: 拆分测试与发布工作流
+
 ## [1.0.13] - 2026-05-11
 
 ### Added
@@ -134,7 +146,8 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 - README 添加首次打开提示损坏的解决方法
 - AGENTS.md 添加 Sparkle 自动更新文档
 
-[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.0.13...HEAD
+[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/krissss/tray-pulsy/compare/v1.0.13...v1.1.0
 [1.0.13]: https://github.com/krissss/tray-pulsy/compare/v1.0.12...v1.0.13
 [1.0.12]: https://github.com/krissss/tray-pulsy/compare/v1.0.11...v1.0.12
 [1.0.11]: https://github.com/krissss/tray-pulsy/compare/v1.0.10...v1.0.11
