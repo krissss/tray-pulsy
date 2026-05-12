@@ -225,5 +225,28 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.1.0</title>
+        <sparkle:version>1.1.0</sparkle:version>
+        <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Tue, 12 May 2026 16:17:24 +0000</pubDate>
+        <description><![CDATA[<b>Added</b>
+<ul>
+<li>支持复制进程 PID</li>
+<li>优化指标图表显示效果</li>
+<li>美化设置窗口布局</li>
+</ul>
+<b>Changed</b>
+<ul>
+<li>ci: 拆分测试与发布工作流</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.1.0/TrayPulsy-v1.1.0.zip"
+            sparkle:edSignature="0+Oybb++Cl5Atvkg2g3r//RQgBRxETk8cnldsORldy9Q00KI2jSSfXnD3K95HDLANpRCnbUnWkIHKQ1JWFt0Aw=="
+            length="4041157"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
