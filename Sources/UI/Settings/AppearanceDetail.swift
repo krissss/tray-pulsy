@@ -1,4 +1,3 @@
-import CompactSlider
 import Defaults
 import SwiftUI
 
@@ -142,29 +141,29 @@ private extension SkinDetail {
                     PulsySliderRow(
                         title: L10n.pulsySettingsLineWidth,
                         systemImage: "lineweight",
-                        value: String(format: "%.1f", pulsyLineWidth)
-                    ) {
-                        CompactSlider(value: $pulsyLineWidth, in: 0.5...2.0, step: 0.1) {}
-                            .compactSliderSecondaryColor(progressColor: .accentColor)
-                    }
+                        value: String(format: "%.1f", pulsyLineWidth),
+                        sliderValue: $pulsyLineWidth,
+                        range: 0.5...2.0,
+                        step: 0.1
+                    )
 
                     PulsySliderRow(
                         title: L10n.pulsySettingsGlowIntensity,
                         systemImage: "sparkles",
-                        value: String(format: "%.1f", pulsyGlowIntensity)
-                    ) {
-                        CompactSlider(value: $pulsyGlowIntensity, in: 0...1.0, step: 0.1) {}
-                            .compactSliderSecondaryColor(progressColor: .accentColor)
-                    }
+                        value: String(format: "%.1f", pulsyGlowIntensity),
+                        sliderValue: $pulsyGlowIntensity,
+                        range: 0...1.0,
+                        step: 0.1
+                    )
 
                     PulsySliderRow(
                         title: L10n.pulsySettingsAmplitudeSensitivity,
                         systemImage: "waveform.path.ecg",
-                        value: String(format: "%.2f", pulsyAmplitudeSensitivity)
-                    ) {
-                        CompactSlider(value: $pulsyAmplitudeSensitivity, in: 0.2...1.0, step: 0.05) {}
-                            .compactSliderSecondaryColor(progressColor: .accentColor)
-                    }
+                        value: String(format: "%.2f", pulsyAmplitudeSensitivity),
+                        sliderValue: $pulsyAmplitudeSensitivity,
+                        range: 0.2...1.0,
+                        step: 0.05
+                    )
                 }
             } header: {
                 Text(L10n.pulsySettingsHeader)
@@ -194,11 +193,13 @@ private struct PulsyThemeStrip: View {
     }
 }
 
-private struct PulsySliderRow<Control: View>: View {
+private struct PulsySliderRow: View {
     let title: String
     let systemImage: String
     let value: String
-    @ViewBuilder let control: () -> Control
+    @Binding var sliderValue: Double
+    let range: ClosedRange<Double>
+    let step: Double
 
     var body: some View {
         SettingsInsetPanel(spacing: 9) {
@@ -211,7 +212,7 @@ private struct PulsySliderRow<Control: View>: View {
                 Spacer()
                 SettingsValueBadge(text: value, color: .pink)
             }
-            control()
+            SingleValueSlider(value: $sliderValue, range: range, step: step, color: .pink)
         }
     }
 }
@@ -567,6 +568,54 @@ private struct SingleThresholdSlider: View {
             }
             .frame(height: 22)
         }
+    }
+
+    private func xPosition(for value: Double, width: CGFloat) -> CGFloat {
+        let fraction = (value - range.lowerBound) / (range.upperBound - range.lowerBound)
+        return width * min(max(fraction, 0), 1)
+    }
+
+    private func steppedValue(for x: CGFloat, width: CGFloat) -> Double {
+        let fraction = Double(min(max(x / max(width, 1), 0), 1))
+        let raw = range.lowerBound + fraction * (range.upperBound - range.lowerBound)
+        let stepped = (raw / step).rounded() * step
+        return min(max(stepped, range.lowerBound), range.upperBound)
+    }
+}
+
+private struct SingleValueSlider: View {
+    @Binding var value: Double
+    let range: ClosedRange<Double>
+    let step: Double
+    let color: Color
+
+    var body: some View {
+        GeometryReader { proxy in
+            let width = max(proxy.size.width, 1)
+            let x = xPosition(for: value, width: width)
+
+            ZStack(alignment: .leading) {
+                Capsule(style: .continuous)
+                    .fill(.quaternary)
+                    .frame(height: 7)
+
+                Capsule(style: .continuous)
+                    .fill(color.opacity(0.28))
+                    .frame(width: x, height: 7)
+
+                ThresholdHandle(color: color)
+                    .position(x: x, y: 11)
+                    .gesture(
+                        DragGesture(minimumDistance: 0)
+                            .onChanged { gesture in
+                                value = steppedValue(for: gesture.location.x, width: width)
+                            }
+                    )
+            }
+            .frame(height: 22)
+            .contentShape(Rectangle())
+        }
+        .frame(height: 22)
     }
 
     private func xPosition(for value: Double, width: CGFloat) -> CGFloat {
