@@ -102,7 +102,7 @@ private struct SettingsSidebar: View {
             Spacer(minLength: 0)
         }
         .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxHeight: .infinity, alignment: .top)
         .overlay(alignment: .trailing) {
             Rectangle()
                 .fill(.secondary.opacity(0.14))
