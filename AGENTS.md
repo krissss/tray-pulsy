@@ -45,6 +45,7 @@ This project is indexed by GitNexus as **tray-pulsy** (99 symbols, 93 relationsh
 ## Project Rules
 
 - **修改 README 时必须同步中英文两个版本**（`README.md` 中文、`README_EN.md` 英文），确保内容一致。
+- 涉及 SwiftUI/AppKit 窗口、设置页、Popover 或打包资源的改动，不能只依赖 `swift build`/`swift test`；发布前至少执行 `make app` 并启动本地 `./TrayPulsy.app` 验证目标入口能打开，避免 dev/build 与真实 `.app` 行为不一致。
 
 ## Memory Management（内存控制）
 

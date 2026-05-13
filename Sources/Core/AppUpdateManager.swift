@@ -1,4 +1,5 @@
 import Combine
+import Foundation
 import Observation
 import Sparkle
 import SwiftUI
@@ -24,7 +25,11 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
 
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
     @ObservationIgnored private var updaterStarted = false
-    @ObservationIgnored private static let bundleHasIdentifier = Bundle.main.bundleIdentifier != nil
+    @ObservationIgnored private static let isRunningTests =
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil ||
+        ProcessInfo.processInfo.processName == "xctest"
+    @ObservationIgnored private static let sparkleIsAvailable =
+        Bundle.main.bundleIdentifier != nil && !isRunningTests
     @ObservationIgnored private(set) lazy var updaterController: SPUStandardUpdaterController = {
         SPUStandardUpdaterController(
             startingUpdater: false,
@@ -37,7 +42,7 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
 
     override init() {
         super.init()
-        guard Self.bundleHasIdentifier else {
+        guard Self.sparkleIsAvailable else {
             // Debug build: enable button so user can see the "not available" alert
             canCheckForUpdates = true
             return
@@ -52,7 +57,7 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
     // MARK: - Public API
 
     func checkForUpdates() {
-        guard Self.bundleHasIdentifier else {
+        guard Self.sparkleIsAvailable else {
             let alert = NSAlert()
             alert.messageText = L10n.updateErrorDebug
             alert.runModal()

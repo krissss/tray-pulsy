@@ -30,14 +30,11 @@ private struct SettingsDetailPane<Content: View>: View {
 
     var body: some View {
         content()
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipped()
             .background {
                 SettingsDetailBackground(color: section.color)
                     .ignoresSafeArea(.container, edges: .top)
             }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .navigationTitle(section.title)
+            .navigationTitle(section.title)
     }
 }
 

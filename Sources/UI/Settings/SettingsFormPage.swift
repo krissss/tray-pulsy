@@ -14,9 +14,7 @@ struct SettingsFormPage<Content: View>: View {
             .contentMargins(.top, 16, for: .scrollContent)
             .contentMargins(.bottom, 22, for: .scrollContent)
             .background(.clear)
-            .clipped()
         }
-        .clipped()
     }
 }
 
