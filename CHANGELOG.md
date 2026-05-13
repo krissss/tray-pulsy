@@ -4,29 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [1.0.2] - 2026-04-25
+## [Unreleased]
+
+## [1.1.1] - 2026-05-13
 
 ### Fixed
 
-- 修复 make app 构建版本找不到皮肤：添加 skins 子目录搜索路径
-
-### Changed
-
-- CI 添加单元测试 + push/PR 自动触发测试
-- 修复 CI 测试 locale 相关断言
-
-## [1.0.1] - 2026-04-24
-
-### Changed
-
-- README 添加 Homebrew 安装方式 + 更新 badge 版本号
-- Release 增加 DMG 打包（含 Applications 快捷方式）
-
-## [1.0.0] - 2026-04-24
-
-First release. TrayPulsy is a lightweight macOS menu bar app that displays animated characters whose speed responds in real time to system usage. Supports multiple skins (Cat, Parrot, Horse, Pulsy waveform, etc.), real-time system metrics (CPU, GPU, RAM, SSD, Network), and full customization through a Settings window.
-
-## [Unreleased]
+- 修复设置窗口打开崩溃
+- 统一 Pulsy 设置滑块样式
 
 ## [1.1.0] - 2026-05-13
 
@@ -146,7 +131,30 @@ First release. TrayPulsy is a lightweight macOS menu bar app that displays anima
 - README 添加首次打开提示损坏的解决方法
 - AGENTS.md 添加 Sparkle 自动更新文档
 
-[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.1.0...HEAD
+## [1.0.2] - 2026-04-25
+
+### Fixed
+
+- 修复 make app 构建版本找不到皮肤：添加 skins 子目录搜索路径
+
+### Changed
+
+- CI 添加单元测试 + push/PR 自动触发测试
+- 修复 CI 测试 locale 相关断言
+
+## [1.0.1] - 2026-04-24
+
+### Changed
+
+- README 添加 Homebrew 安装方式 + 更新 badge 版本号
+- Release 增加 DMG 打包（含 Applications 快捷方式）
+
+## [1.0.0] - 2026-04-24
+
+First release. TrayPulsy is a lightweight macOS menu bar app that displays animated characters whose speed responds in real time to system usage. Supports multiple skins (Cat, Parrot, Horse, Pulsy waveform, etc.), real-time system metrics (CPU, GPU, RAM, SSD, Network), and full customization through a Settings window.
+
+[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/krissss/tray-pulsy/compare/v1.1.0...v1.1.1
 [1.1.0]: https://github.com/krissss/tray-pulsy/compare/v1.0.13...v1.1.0
 [1.0.13]: https://github.com/krissss/tray-pulsy/compare/v1.0.12...v1.0.13
 [1.0.12]: https://github.com/krissss/tray-pulsy/compare/v1.0.11...v1.0.12
