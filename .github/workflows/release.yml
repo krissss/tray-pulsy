@@ -25,7 +25,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .build
-          key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+          key: spm-${{ runner.os }}-${{ hashFiles('Package.swift', 'TrayPulsy.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved') }}
           restore-keys: |
             spm-${{ runner.os }}-
 
@@ -33,15 +33,16 @@ jobs:
         run: make app
 
       - name: Package ZIP
-        run: zip -r TrayPulsy-${{ github.ref_name }}.zip TrayPulsy.app
+        run: ditto -c -k --sequesterRsrc --keepParent TrayPulsy.app TrayPulsy-${{ github.ref_name }}.zip
 
       - name: Sign update with Sparkle
         id: sparkle_sign
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
+          SIGN_UPDATE=$(make print-sparkle-sign-update)
           # Sign the zip — pipe private key via stdin, no Keychain needed
-          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | .build/artifacts/sparkle/Sparkle/bin/sign_update TrayPulsy-${{ github.ref_name }}.zip --ed-key-file - 2>&1)
+          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" TrayPulsy-${{ github.ref_name }}.zip --ed-key-file - 2>&1)
           echo "signature=$SIGNATURE" >> "$GITHUB_OUTPUT"
 
           # Get file size
@@ -163,7 +164,7 @@ jobs:
           DMG=TrayPulsy-${{ github.ref_name }}.dmg
           DMG_STAGING=TrayPulsy-dmg-staging
           mkdir -p "$DMG_STAGING"
-          cp -r TrayPulsy.app "$DMG_STAGING/"
+          ditto TrayPulsy.app "$DMG_STAGING/TrayPulsy.app"
           ln -s /Applications "$DMG_STAGING/Applications"
           hdiutil create -volname "TrayPulsy" -srcfolder "$DMG_STAGING" -ov -format UDZO "$DMG"
           rm -rf "$DMG_STAGING"
