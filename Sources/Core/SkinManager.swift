@@ -285,6 +285,14 @@ final class SkinManager: @unchecked Sendable {
 // ═══════════════════════════════════════════════════════════════
 
 private func sharedResourceBundle() -> Bundle {
-    if let rb = Bundle(path: Bundle.main.bundlePath + "/TrayPulsy_TrayPulsy.bundle") { return rb }
+    let candidates = [
+        Bundle.main.bundleURL.appendingPathComponent("TrayPulsy_TrayPulsy.bundle"),
+        Bundle.main.resourceURL?.appendingPathComponent("TrayPulsy_TrayPulsy.bundle")
+    ].compactMap { $0 }
+
+    for url in candidates {
+        if let bundle = Bundle(url: url) { return bundle }
+    }
+
     return .main
 }
