@@ -10,6 +10,7 @@ final class TrayAnimator: @unchecked Sendable {
     private var frames: [NSImage] = []
     private var currentValue: Double = 0
     private var fpsLimit: FPSLimit = .fps40
+    private var reverseAnimationSpeed: Bool = false
     private var currentInterval: TimeInterval = 0.10
 
     /// Current playback FPS (read-only, for UI display).
@@ -28,6 +29,11 @@ final class TrayAnimator: @unchecked Sendable {
 
     func setFPSLimit(_ limit: FPSLimit) {
         fpsLimit = limit
+        forceRestartTimer()
+    }
+
+    func setReverseAnimationSpeed(_ isReversed: Bool) {
+        reverseAnimationSpeed = isReversed
         forceRestartTimer()
     }
 
@@ -66,7 +72,8 @@ final class TrayAnimator: @unchecked Sendable {
     ///   fps40 (1.0x): ~10fps idle → ~40fps at 75%+
     ///   fps10 (4.0x): ~2.5fps idle → ~10fps at 75%+
     func computeInterval() -> TimeInterval {
-        let base = max(0.025, 0.10 - 0.12 * (currentValue / 100.0))
+        let normalizedValue = reverseAnimationSpeed ? 100.0 - currentValue : currentValue
+        let base = max(0.025, 0.10 - 0.12 * (normalizedValue / 100.0))
         return base * fpsLimit.rateMultiplier
     }
 

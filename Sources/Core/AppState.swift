@@ -22,6 +22,7 @@ final class AppState {
     // Callbacks — registered by StatusBarController
     var onSkinChanged: (([NSImage]) -> Void)?
     var onFPSLimitChanged: ((FPSLimit) -> Void)?
+    var onReverseAnimationSpeedChanged: ((Bool) -> Void)?
     var onMetricsConfigChanged: (() -> Void)?
     var onPulsyConfigChanged: (() -> Void)?
     var onSampleIntervalChanged: ((SampleInterval) -> Void)?
@@ -84,6 +85,11 @@ final class AppState {
             Defaults.observe(.fpsLimit) { [weak self] change in
                 MainActor.assumeIsolated {
                     self?.onFPSLimitChanged?(change.newValue)
+                }
+            },
+            Defaults.observe(.reverseAnimationSpeed) { [weak self] change in
+                MainActor.assumeIsolated {
+                    self?.onReverseAnimationSpeedChanged?(change.newValue)
                 }
             },
             Defaults.observe(.sampleInterval) { [weak self] change in

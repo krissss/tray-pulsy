@@ -68,6 +68,11 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(FPSLimit.allCases.count, 4)
     }
 
+    func testReverseAnimationSpeed_defaultIsOff() {
+        Defaults[.reverseAnimationSpeed] = false
+        XCTAssertFalse(Defaults[.reverseAnimationSpeed])
+    }
+
     // MARK: - SampleInterval.seconds
 
     func testSampleInterval_seconds() {

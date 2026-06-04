@@ -55,6 +55,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
 
         // 4. Apply FPS limit
         animator.setFPSLimit(Defaults[.fpsLimit])
+        animator.setReverseAnimationSpeed(Defaults[.reverseAnimationSpeed])
 
         // 5. Configure button: any click → open settings
         setupButton()
@@ -70,6 +71,9 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         }
         appState.onFPSLimitChanged = { [weak self] limit in
             self?.animator.setFPSLimit(limit)
+        }
+        appState.onReverseAnimationSpeedChanged = { [weak self] isReversed in
+            self?.animator.setReverseAnimationSpeed(isReversed)
         }
         appState.onMetricsConfigChanged = { [weak self] in
             self?.updateEnabledMetrics()

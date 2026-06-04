@@ -9,6 +9,7 @@ struct SkinDetail: View {
     @Environment(AppState.self) private var appState
     @Default(.skin) private var skin
     @Default(.externalSkinPath) private var externalSkinPath
+    @Default(.reverseAnimationSpeed) private var reverseAnimationSpeed
     @Default(.pulsyColorTheme) private var pulsyColorTheme
     @Default(.pulsyWaveformStyle) private var pulsyWaveformStyle
     @Default(.pulsyLineWidth) private var pulsyLineWidth
@@ -35,6 +36,20 @@ struct SkinDetail: View {
                 .padding(.vertical, 4)
             } header: {
                 Text(L10n.skinLibraryHeader)
+            }
+
+            Section {
+                Toggle(isOn: $reverseAnimationSpeed) {
+                    SettingsRowLabel(
+                        title: L10n.skinReverseAnimationToggle,
+                        systemImage: "arrow.up.arrow.down.circle",
+                        color: .pink
+                    )
+                }
+            } header: {
+                Text(L10n.skinMotionHeader)
+            } footer: {
+                Text(L10n.skinReverseAnimationFooter)
             }
 
             pulsyConfigSection()

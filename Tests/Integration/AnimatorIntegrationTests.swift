@@ -52,6 +52,28 @@ final class AnimatorIntegrationTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(loadedCount, idleCount, "Loaded should fire >= idle")
     }
 
+    func testHighLoadReversed_firesSlowerThanIdle() {
+        let idle = TrayAnimator(initialFrames: makeFrames(5))
+        var idleCount = 0
+        idle.onFrameUpdate = { _ in idleCount += 1 }
+        idle.setReverseAnimationSpeed(true)
+        idle.updateValue(0)
+        idle.start()
+
+        let loaded = TrayAnimator(initialFrames: makeFrames(5))
+        var loadedCount = 0
+        loaded.onFrameUpdate = { _ in loadedCount += 1 }
+        loaded.setReverseAnimationSpeed(true)
+        loaded.updateValue(100)
+        loaded.start()
+
+        spinRunLoop(seconds: 1.2)
+        idle.stop(); loaded.stop()
+
+        XCTAssertGreaterThan(idleCount, 0, "Idle animator should have fired")
+        XCTAssertLessThanOrEqual(loadedCount, idleCount, "Loaded should fire <= idle when reversed")
+    }
+
     func testFPSLimit_slowsDownAnimation() {
         let fast = TrayAnimator(initialFrames: makeFrames(5))
         var fastCount = 0

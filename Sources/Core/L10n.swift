@@ -119,6 +119,9 @@ enum L10n {
             "settings.skin.pathLabel": "Path",
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "Browse",
+            "settings.skin.motionHeader": "Animation",
+            "settings.skin.reverseAnimation.toggle": "Reverse Animation Speed",
+            "settings.skin.reverseAnimation.footer": "When enabled, higher system usage slows the skin animation instead of speeding it up.",
             "settings.skin.extHeader": "External Skins",
             "settings.skin.extInfo": "Each subfolder is one skin containing PNG frame sequences.\nFolder name = skin name (e.g. 01.cat → cat). Same name overrides built-in skins.",
             "settings.skin.pathNotFound": "Path not found",
@@ -331,6 +334,9 @@ enum L10n {
             "settings.skin.pathLabel": "路径",
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "浏览",
+            "settings.skin.motionHeader": "动画",
+            "settings.skin.reverseAnimation.toggle": "反转动画速度",
+            "settings.skin.reverseAnimation.footer": "开启后，系统越忙皮肤动画越慢，而不是越快。",
             "settings.skin.extHeader": "外部皮肤",
             "settings.skin.extInfo": "每个子文件夹为一个皮肤，内含 PNG 序列帧。\n文件夹名即皮肤名（如 01.cat → cat），同名会覆盖内置皮肤。",
             "settings.skin.pathNotFound": "路径不存在",
@@ -551,6 +557,9 @@ enum L10n {
     static var skinPathLabel:    String { tr("settings.skin.pathLabel", "路径") }
     static var skinPathPrompt:   String { tr("settings.skin.pathPrompt", "~/skins") }
     static var skinBrowse:       String { tr("settings.skin.browse", "浏览") }
+    static var skinMotionHeader: String { tr("settings.skin.motionHeader", "动画") }
+    static var skinReverseAnimationToggle: String { tr("settings.skin.reverseAnimation.toggle", "反转动画速度") }
+    static var skinReverseAnimationFooter: String { tr("settings.skin.reverseAnimation.footer", "开启后，系统越忙皮肤动画越慢，而不是越快。") }
     static var skinExtHeader:    String { tr("settings.skin.extHeader", "外部皮肤") }
     static var skinExtInfo:      String { tr("settings.skin.extInfo", "每个子文件夹为一个皮肤，内含 PNG 序列帧。\n文件夹名即皮肤名（如 01.cat → cat），同名会覆盖内置皮肤。") }
     static var skinPathNotFound: String { tr("settings.skin.pathNotFound", "路径不存在") }

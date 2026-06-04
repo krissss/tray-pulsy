@@ -1,7 +1,9 @@
+import Defaults
 import SwiftUI
 
 struct SkinThumbnail: View {
     @Environment(AppState.self) private var appState
+    @Default(.reverseAnimationSpeed) private var reverseAnimationSpeed
     let skin: SkinInfo
     let isSelected: Bool
     let pulsyConfigToken: String
@@ -55,6 +57,9 @@ struct SkinThumbnail: View {
             guard isSelected, skin.id == "pulsy" else { return }
             startAnimation()
         }
+        .onChange(of: reverseAnimationSpeed) {
+            animator?.setReverseAnimationSpeed(reverseAnimationSpeed)
+        }
     }
 
     private func updateAnimationState() {
@@ -76,6 +81,7 @@ struct SkinThumbnail: View {
 
         let animator = TrayAnimator(initialFrames: frames)
         animator.setFPSLimit(.fps20)
+        animator.setReverseAnimationSpeed(reverseAnimationSpeed)
         animator.onFrameUpdate = { [weak animator] image in
             _ = animator
             MainActor.assumeIsolated {

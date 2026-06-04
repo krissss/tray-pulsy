@@ -21,6 +21,22 @@ final class TrayAnimatorTests: XCTestCase {
         XCTAssertEqual(interval, 0.025 * FPSLimit.fps40.rateMultiplier, accuracy: 0.001)
     }
 
+    func testComputeInterval_fullLoadReversed_fps40() {
+        let a = makeAnimator()
+        a.setReverseAnimationSpeed(true)
+        a.updateValue(100)
+        let interval = a.computeInterval()
+        XCTAssertEqual(interval, 0.10 * FPSLimit.fps40.rateMultiplier, accuracy: 0.001)
+    }
+
+    func testComputeInterval_idleReversed_fps40() {
+        let a = makeAnimator()
+        a.setReverseAnimationSpeed(true)
+        a.updateValue(0)
+        let interval = a.computeInterval()
+        XCTAssertEqual(interval, 0.025 * FPSLimit.fps40.rateMultiplier, accuracy: 0.001)
+    }
+
     func testComputeInterval_midLoad_fps40() {
         let a = makeAnimator()
         a.updateValue(50)
@@ -159,6 +175,14 @@ final class TrayAnimatorTests: XCTestCase {
         a.start()
         // interval = 0.025 → FPS = 40
         XCTAssertEqual(a.currentFPS, 40.0, accuracy: 0.1)
+    }
+
+    func testCurrentFPS_reversedHighLoadIsSlow() {
+        let a = makeAnimator()
+        a.setReverseAnimationSpeed(true)
+        a.updateValue(100)
+        a.start()
+        XCTAssertEqual(a.currentFPS, 10.0, accuracy: 0.1)
     }
 
     func testCurrentFPS_afterFPSLimitChange() {

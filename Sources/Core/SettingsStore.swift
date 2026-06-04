@@ -26,6 +26,9 @@ extension Defaults.Keys {
     // 帧率上限
     static let fpsLimit = Key<FPSLimit>("traypulsy_fpsLimit", default: .fps40)
 
+    // 反转动画速度映射：越忙越慢
+    static let reverseAnimationSpeed = Key<Bool>("traypulsy_reverseAnimationSpeed", default: false)
+
     // 速度来源
     static let speedSource = Key<SpeedSource>("traypulsy_speedSource", default: .cpu)
 

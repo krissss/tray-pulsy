@@ -63,6 +63,7 @@ private struct SkinPreviewSection: View {
     @Default(.speedSource) private var speedSource
     @Default(.skin) private var skin
     @Default(.fpsLimit) private var fpsLimit
+    @Default(.reverseAnimationSpeed) private var reverseAnimationSpeed
     @Default(.metricMonitorItems) private var metricMonitorItems
 
     @State private var previewAnimator: TrayAnimator?
@@ -116,6 +117,7 @@ private struct SkinPreviewSection: View {
         .onChange(of: speedSource) { syncAnimatorValue() }
         .onChange(of: metricMonitorItems) { syncAnimatorValue() }
         .onChange(of: fpsLimit) { previewAnimator?.setFPSLimit(fpsLimit) }
+        .onChange(of: reverseAnimationSpeed) { previewAnimator?.setReverseAnimationSpeed(reverseAnimationSpeed) }
     }
 
     private func setupAnimator() {
@@ -124,6 +126,7 @@ private struct SkinPreviewSection: View {
         let frames = appState.skinManager.frames(for: skinInfo)
         let animator = TrayAnimator(initialFrames: frames)
         animator.setFPSLimit(fpsLimit)
+        animator.setReverseAnimationSpeed(reverseAnimationSpeed)
         animator.onFrameUpdate = { [weak animator] image in
             // Capture animator to keep it alive; self check prevents stale updates
             _ = animator

@@ -30,6 +30,23 @@ final class PipelineIntegrationTests: XCTestCase {
         animator.stop()
     }
 
+    func testCPU_highLoadReversed_slowsDownAnimation() {
+        let animator = TrayAnimator(initialFrames: makeFrames(3))
+        animator.setReverseAnimationSpeed(true)
+        animator.start()
+
+        let idleNormalized = SpeedSource.cpu.normalizeForAnimation(5.0)
+        animator.updateValue(idleNormalized)
+        let fpsIdle = animator.currentFPS
+
+        let loadedNormalized = SpeedSource.cpu.normalizeForAnimation(85.0)
+        animator.updateValue(loadedNormalized)
+        let fpsLoaded = animator.currentFPS
+
+        XCTAssertLessThan(fpsLoaded, fpsIdle)
+        animator.stop()
+    }
+
     // MARK: - Memory pipeline
 
     func testMemory_normalizeProducesReasonableRange() {

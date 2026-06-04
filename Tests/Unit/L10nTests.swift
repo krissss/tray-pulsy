@@ -83,6 +83,9 @@ struct L10nTests {
         #expect(!L10n.overviewMonitorHeader.isEmpty)
         #expect(!L10n.overviewProcessHeader.isEmpty)
         #expect(!L10n.skinHeader.isEmpty)
+        #expect(!L10n.skinMotionHeader.isEmpty)
+        #expect(!L10n.skinReverseAnimationToggle.isEmpty)
+        #expect(!L10n.skinReverseAnimationFooter.isEmpty)
         #expect(!L10n.metricsHeader.isEmpty)
         #expect(!L10n.metricsModePickerLabel.isEmpty)
         #expect(!L10n.metricsModeOff.isEmpty)
@@ -136,6 +139,7 @@ struct L10nTests {
             "speed.cpu", "speed.gpu", "speed.memory", "speed.disk",
             "metric.cpu", "metric.gpu", "metric.memory", "metric.disk", "metric.netDown", "metric.netUp",
             "fps.10", "fps.20", "fps.30", "fps.40",
+            "settings.skin.motionHeader", "settings.skin.reverseAnimation.toggle", "settings.skin.reverseAnimation.footer",
             "theme.system", "theme.light", "theme.dark",
             "window.title",
         ])
