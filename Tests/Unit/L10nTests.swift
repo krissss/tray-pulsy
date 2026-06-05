@@ -83,9 +83,20 @@ struct L10nTests {
         #expect(!L10n.overviewMonitorHeader.isEmpty)
         #expect(!L10n.overviewProcessHeader.isEmpty)
         #expect(!L10n.skinHeader.isEmpty)
+        #expect(!L10n.skinPreviewLoadLabel.isEmpty)
+        #expect(!L10n.skinPreviewLoadFooter.isEmpty)
         #expect(!L10n.skinMotionHeader.isEmpty)
         #expect(!L10n.skinReverseAnimationToggle.isEmpty)
         #expect(!L10n.skinReverseAnimationFooter.isEmpty)
+        #expect(!L10n.skinOnlineHeader.isEmpty)
+        #expect(!L10n.skinOnlineManifestURL.isEmpty)
+        #expect(!L10n.skinOnlineInvalidManifestURL.isEmpty)
+        #expect(!L10n.skinOnlineRefresh.isEmpty)
+        #expect(!L10n.skinOnlineInstall.isEmpty)
+        #expect(!L10n.skinOnlineDelete.isEmpty)
+        #expect(!L10n.skinOnlineInstalled.isEmpty)
+        #expect(!L10n.skinOnlineAuthor("Author").isEmpty)
+        #expect(!L10n.skinOnlinePreview.isEmpty)
         #expect(!L10n.metricsHeader.isEmpty)
         #expect(!L10n.metricsModePickerLabel.isEmpty)
         #expect(!L10n.metricsModeOff.isEmpty)
@@ -139,7 +150,16 @@ struct L10nTests {
             "speed.cpu", "speed.gpu", "speed.memory", "speed.disk",
             "metric.cpu", "metric.gpu", "metric.memory", "metric.disk", "metric.netDown", "metric.netUp",
             "fps.10", "fps.20", "fps.30", "fps.40",
-            "settings.skin.motionHeader", "settings.skin.reverseAnimation.toggle", "settings.skin.reverseAnimation.footer",
+            "settings.skin.previewLoad.label", "settings.skin.previewLoad.footer",
+            "settings.skin.motionHeader", "settings.skin.animationSpeed.label",
+            "settings.skin.animationSpeed.0.5", "settings.skin.animationSpeed.0.75", "settings.skin.animationSpeed.1",
+            "settings.skin.animationSpeed.1.5", "settings.skin.animationSpeed.2",
+            "settings.skin.reverseAnimation.toggle", "settings.skin.reverseAnimation.footer", "settings.skin.motion.footer",
+            "settings.skin.online.header", "settings.skin.online.footer", "settings.skin.online.refresh",
+            "settings.skin.online.manifestURL", "settings.skin.online.invalidManifestURL",
+            "settings.skin.online.install", "settings.skin.online.delete", "settings.skin.online.installed",
+            "settings.skin.online.loading", "settings.skin.online.empty", "settings.skin.online.author",
+            "settings.skin.online.source", "settings.skin.online.preview",
             "theme.system", "theme.light", "theme.dark",
             "window.title",
         ])
@@ -230,6 +250,18 @@ struct L10nTests {
         #expect(FPSLimit.fps20.displayName == "20 FPS")
         #expect(FPSLimit.fps30.displayName == "30 FPS")
         #expect(FPSLimit.fps40.displayName == "40 FPS")
+    }
+
+    @Test("SkinAnimationSpeed displayNames")
+    func skinAnimationSpeedDisplayNames() {
+        Defaults[.language] = .zhHans
+        L10n.reload()
+
+        #expect(SkinAnimationSpeed.half.displayName == "0.5x")
+        #expect(SkinAnimationSpeed.threeQuarter.displayName == "0.75x")
+        #expect(SkinAnimationSpeed.normal.displayName == "1x")
+        #expect(SkinAnimationSpeed.oneAndHalf.displayName == "1.5x")
+        #expect(SkinAnimationSpeed.double.displayName == "2x")
     }
 
     @Test("HistoryDuration seconds and displayNames")

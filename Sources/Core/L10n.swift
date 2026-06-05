@@ -116,15 +116,37 @@ enum L10n {
             // Skin Settings
             "settings.skin.header": "Skins",
             "settings.skin.libraryHeader": "Skin Library",
+            "settings.skin.previewLoad.label": "Preview Load",
+            "settings.skin.previewLoad.footer": "Simulates a metric percentage for skin previews only. The menu bar still follows the real selected metric.",
             "settings.skin.pathLabel": "Path",
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "Browse",
             "settings.skin.motionHeader": "Animation",
+            "settings.skin.animationSpeed.label": "Playback Speed",
+            "settings.skin.animationSpeed.0.5": "0.5x",
+            "settings.skin.animationSpeed.0.75": "0.75x",
+            "settings.skin.animationSpeed.1": "1x",
+            "settings.skin.animationSpeed.1.5": "1.5x",
+            "settings.skin.animationSpeed.2": "2x",
             "settings.skin.reverseAnimation.toggle": "Reverse Animation Speed",
             "settings.skin.reverseAnimation.footer": "When enabled, higher system usage slows the skin animation instead of speeding it up.",
+            "settings.skin.motion.footer": "Playback speed scales skin frame animation independently from the global max frame rate. Reverse speed changes how system usage maps to animation speed.",
             "settings.skin.extHeader": "External Skins",
             "settings.skin.extInfo": "Each subfolder is one skin containing PNG frame sequences.\nFolder name = skin name (e.g. 01.cat → cat). Same name overrides built-in skins.",
             "settings.skin.pathNotFound": "Path not found",
+            "settings.skin.online.header": "Online Skins",
+            "settings.skin.online.footer": "Download skins from the online skin library.",
+            "settings.skin.online.manifestURL": "Manifest URL",
+            "settings.skin.online.invalidManifestURL": "Enter a valid manifest URL",
+            "settings.skin.online.refresh": "Refresh",
+            "settings.skin.online.install": "Install",
+            "settings.skin.online.delete": "Delete",
+            "settings.skin.online.installed": "Installed",
+            "settings.skin.online.loading": "Loading...",
+            "settings.skin.online.empty": "No online skins loaded",
+            "settings.skin.online.author": "by %@",
+            "settings.skin.online.source": "Source",
+            "settings.skin.online.preview": "Skin preview",
 
             // Metrics Settings
             "settings.metrics.header": "Metrics",
@@ -331,15 +353,37 @@ enum L10n {
             // Skin Settings
             "settings.skin.header": "皮肤",
             "settings.skin.libraryHeader": "皮肤库",
+            "settings.skin.previewLoad.label": "预览负载",
+            "settings.skin.previewLoad.footer": "仅用于皮肤预览，模拟某个指标的百分比；菜单栏仍然跟随真实选中的指标。",
             "settings.skin.pathLabel": "路径",
             "settings.skin.pathPrompt": "~/skins",
             "settings.skin.browse": "浏览",
             "settings.skin.motionHeader": "动画",
+            "settings.skin.animationSpeed.label": "播放速度",
+            "settings.skin.animationSpeed.0.5": "0.5x",
+            "settings.skin.animationSpeed.0.75": "0.75x",
+            "settings.skin.animationSpeed.1": "1x",
+            "settings.skin.animationSpeed.1.5": "1.5x",
+            "settings.skin.animationSpeed.2": "2x",
             "settings.skin.reverseAnimation.toggle": "反转动画速度",
             "settings.skin.reverseAnimation.footer": "开启后，系统越忙皮肤动画越慢，而不是越快。",
+            "settings.skin.motion.footer": "播放速度只调节皮肤序列帧动画，独立于全局最高帧率。反转速度用于改变系统负载与动画快慢的映射。",
             "settings.skin.extHeader": "外部皮肤",
             "settings.skin.extInfo": "每个子文件夹为一个皮肤，内含 PNG 序列帧。\n文件夹名即皮肤名（如 01.cat → cat），同名会覆盖内置皮肤。",
             "settings.skin.pathNotFound": "路径不存在",
+            "settings.skin.online.header": "在线皮肤",
+            "settings.skin.online.footer": "从在线皮肤库中下载皮肤",
+            "settings.skin.online.manifestURL": "Manifest URL",
+            "settings.skin.online.invalidManifestURL": "请输入有效的 Manifest URL",
+            "settings.skin.online.refresh": "刷新",
+            "settings.skin.online.install": "安装",
+            "settings.skin.online.delete": "删除",
+            "settings.skin.online.installed": "已安装",
+            "settings.skin.online.loading": "正在加载...",
+            "settings.skin.online.empty": "暂无在线皮肤",
+            "settings.skin.online.author": "作者：%@",
+            "settings.skin.online.source": "来源",
+            "settings.skin.online.preview": "皮肤预览",
 
             // Metrics Settings
             "settings.metrics.header": "指标",
@@ -554,15 +598,37 @@ enum L10n {
 
     static var skinHeader:       String { tr("settings.skin.header", "皮肤") }
     static var skinLibraryHeader: String { tr("settings.skin.libraryHeader", "皮肤库") }
+    static var skinPreviewLoadLabel: String { tr("settings.skin.previewLoad.label", "预览负载") }
+    static var skinPreviewLoadFooter: String { tr("settings.skin.previewLoad.footer", "仅用于皮肤预览，模拟某个指标的百分比；菜单栏仍然跟随真实选中的指标。") }
     static var skinPathLabel:    String { tr("settings.skin.pathLabel", "路径") }
     static var skinPathPrompt:   String { tr("settings.skin.pathPrompt", "~/skins") }
     static var skinBrowse:       String { tr("settings.skin.browse", "浏览") }
     static var skinMotionHeader: String { tr("settings.skin.motionHeader", "动画") }
+    static var skinAnimationSpeedLabel: String { tr("settings.skin.animationSpeed.label", "播放速度") }
+    static var skinAnimationSpeedHalf: String { tr("settings.skin.animationSpeed.0.5", "0.5x") }
+    static var skinAnimationSpeedThreeQuarter: String { tr("settings.skin.animationSpeed.0.75", "0.75x") }
+    static var skinAnimationSpeedNormal: String { tr("settings.skin.animationSpeed.1", "1x") }
+    static var skinAnimationSpeedOneAndHalf: String { tr("settings.skin.animationSpeed.1.5", "1.5x") }
+    static var skinAnimationSpeedDouble: String { tr("settings.skin.animationSpeed.2", "2x") }
     static var skinReverseAnimationToggle: String { tr("settings.skin.reverseAnimation.toggle", "反转动画速度") }
     static var skinReverseAnimationFooter: String { tr("settings.skin.reverseAnimation.footer", "开启后，系统越忙皮肤动画越慢，而不是越快。") }
+    static var skinMotionFooter: String { tr("settings.skin.motion.footer", "播放速度只调节皮肤序列帧动画，独立于全局最高帧率。反转速度用于改变系统负载与动画快慢的映射。") }
     static var skinExtHeader:    String { tr("settings.skin.extHeader", "外部皮肤") }
     static var skinExtInfo:      String { tr("settings.skin.extInfo", "每个子文件夹为一个皮肤，内含 PNG 序列帧。\n文件夹名即皮肤名（如 01.cat → cat），同名会覆盖内置皮肤。") }
     static var skinPathNotFound: String { tr("settings.skin.pathNotFound", "路径不存在") }
+    static var skinOnlineHeader: String { tr("settings.skin.online.header", "在线皮肤") }
+    static var skinOnlineFooter: String { tr("settings.skin.online.footer", "从在线皮肤库中下载皮肤") }
+    static var skinOnlineManifestURL: String { tr("settings.skin.online.manifestURL", "Manifest URL") }
+    static var skinOnlineInvalidManifestURL: String { tr("settings.skin.online.invalidManifestURL", "请输入有效的 Manifest URL") }
+    static var skinOnlineRefresh: String { tr("settings.skin.online.refresh", "刷新") }
+    static var skinOnlineInstall: String { tr("settings.skin.online.install", "安装") }
+    static var skinOnlineDelete: String { tr("settings.skin.online.delete", "删除") }
+    static var skinOnlineInstalled: String { tr("settings.skin.online.installed", "已安装") }
+    static var skinOnlineLoading: String { tr("settings.skin.online.loading", "正在加载...") }
+    static var skinOnlineEmpty: String { tr("settings.skin.online.empty", "暂无在线皮肤") }
+    static func skinOnlineAuthor(_ value: String) -> String { String(format: tr("settings.skin.online.author", "作者：%@"), value) }
+    static var skinOnlineSource: String { tr("settings.skin.online.source", "来源") }
+    static var skinOnlinePreview: String { tr("settings.skin.online.preview", "皮肤预览") }
 
     // MARK: - Metrics Settings
 

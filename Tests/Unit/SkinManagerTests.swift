@@ -12,6 +12,7 @@ final class SkinManagerTests: XCTestCase {
         super.setUp()
         tempDir = NSTemporaryDirectory() + "TrayPulsyTest_\(UUID().uuidString)"
         try? FileManager.default.createDirectory(atPath: tempDir, withIntermediateDirectories: true)
+        SkinManager.installedSkinDirectoryOverride = URL(fileURLWithPath: tempDir + "/InstalledSkins", isDirectory: true)
         Defaults[.externalSkinPath] = ""
         manager = SkinManager()
     }
@@ -19,6 +20,7 @@ final class SkinManagerTests: XCTestCase {
     override func tearDown() {
         // Reset to clean state to avoid polluting other tests
         Defaults[.externalSkinPath] = ""
+        SkinManager.installedSkinDirectoryOverride = nil
         manager = nil
         try? FileManager.default.removeItem(atPath: tempDir)
         tempDir = nil
@@ -43,8 +45,8 @@ final class SkinManagerTests: XCTestCase {
 
     /// Create a skin directory with `n` valid PNG frames.
     @discardableResult
-    private func createSkinDir(name: String, frameCount: Int = 2) -> String {
-        let dir = tempDir + "/" + name
+    private func createSkinDir(name: String, frameCount: Int = 2, basePath: String? = nil) -> String {
+        let dir = (basePath ?? tempDir) + "/" + name
         try? FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
         for i in 0..<frameCount {
             createPNG(at: dir + "/frame\(i).png")
@@ -196,6 +198,25 @@ final class SkinManagerTests: XCTestCase {
 
         let skins = SkinManager.discoverSkins(externalPath: extDir)
         XCTAssertEqual(skins.filter { $0.id == "cat" }.count, 1)
+    }
+
+    func testDiscoverSkins_includesInstalledOnlineSkins() {
+        let installDir = SkinManager.installedSkinDirectory.path
+        createSkinDir(name: "onlinecat", frameCount: 2, basePath: installDir)
+
+        let skins = SkinManager.discoverSkins(externalPath: "")
+
+        XCTAssertTrue(skins.contains(where: { $0.id == "onlinecat" }))
+    }
+
+    func testDiscoverSkins_installedOnlineSkinOverridesBundledByCanonicalID() {
+        let installDir = SkinManager.installedSkinDirectory.path
+        createSkinDir(name: "parrot", frameCount: 2, basePath: installDir)
+
+        let skins = SkinManager.discoverSkins(externalPath: "")
+
+        XCTAssertTrue(skins.contains(where: { $0.id == "parrot" }))
+        XCTAssertFalse(skins.contains(where: { $0.id == "06.parrot" }))
     }
 
     func testDiscoverSkins_sortedAlphabetically() {

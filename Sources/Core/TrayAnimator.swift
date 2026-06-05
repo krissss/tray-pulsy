@@ -11,6 +11,7 @@ final class TrayAnimator: @unchecked Sendable {
     private var currentValue: Double = 0
     private var fpsLimit: FPSLimit = .fps40
     private var reverseAnimationSpeed: Bool = false
+    private var skinAnimationSpeed: SkinAnimationSpeed = .normal
     private var currentInterval: TimeInterval = 0.10
 
     /// Current playback FPS (read-only, for UI display).
@@ -34,6 +35,11 @@ final class TrayAnimator: @unchecked Sendable {
 
     func setReverseAnimationSpeed(_ isReversed: Bool) {
         reverseAnimationSpeed = isReversed
+        forceRestartTimer()
+    }
+
+    func setSkinAnimationSpeed(_ speed: SkinAnimationSpeed) {
+        skinAnimationSpeed = speed
         forceRestartTimer()
     }
 
@@ -74,7 +80,7 @@ final class TrayAnimator: @unchecked Sendable {
     func computeInterval() -> TimeInterval {
         let normalizedValue = reverseAnimationSpeed ? 100.0 - currentValue : currentValue
         let base = max(0.025, 0.10 - 0.12 * (normalizedValue / 100.0))
-        return base * fpsLimit.rateMultiplier
+        return base * fpsLimit.rateMultiplier * skinAnimationSpeed.intervalMultiplier
     }
 
     private func maybeRestartTimer() {

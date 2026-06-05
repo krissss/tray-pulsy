@@ -56,6 +56,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         // 4. Apply FPS limit
         animator.setFPSLimit(Defaults[.fpsLimit])
         animator.setReverseAnimationSpeed(Defaults[.reverseAnimationSpeed])
+        animator.setSkinAnimationSpeed(Defaults[.skinAnimationSpeed])
 
         // 5. Configure button: any click → open settings
         setupButton()
@@ -75,6 +76,9 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         appState.onReverseAnimationSpeedChanged = { [weak self] isReversed in
             self?.animator.setReverseAnimationSpeed(isReversed)
         }
+        appState.onSkinAnimationSpeedChanged = { [weak self] speed in
+            self?.animator.setSkinAnimationSpeed(speed)
+        }
         appState.onMetricsConfigChanged = { [weak self] in
             self?.updateEnabledMetrics()
             self?.refreshMetricDisplay()
@@ -87,6 +91,10 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
             self?.startUpdateLoop()
         }
         appState.onExternalSkinPathChanged = { [weak self] in
+            guard let self else { return }
+            self.animator.changeSkin(to: self.skinManager.frames())
+        }
+        appState.onSkinLibraryChanged = { [weak self] in
             guard let self else { return }
             self.animator.changeSkin(to: self.skinManager.frames())
         }

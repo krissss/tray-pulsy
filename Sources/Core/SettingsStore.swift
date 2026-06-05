@@ -29,6 +29,9 @@ extension Defaults.Keys {
     // 反转动画速度映射：越忙越慢
     static let reverseAnimationSpeed = Key<Bool>("traypulsy_reverseAnimationSpeed", default: false)
 
+    // 皮肤动画播放倍率
+    static let skinAnimationSpeed = Key<SkinAnimationSpeed>("traypulsy_skinAnimationSpeed", default: .normal)
+
     // 速度来源
     static let speedSource = Key<SpeedSource>("traypulsy_speedSource", default: .cpu)
 
@@ -58,6 +61,12 @@ extension Defaults.Keys {
 
     // 外部皮肤目录
     static let externalSkinPath = Key<String>("traypulsy_externalSkinPath", default: "")
+
+    // 在线皮肤 Manifest URL override；空值表示使用默认在线皮肤库。
+    static let onlineSkinManifestURL = Key<String>(
+        "traypulsy_onlineSkinManifestURL",
+        default: ""
+    )
 
     // 语言
     static let language = Key<AppLanguage>("traypulsy_language", default: .system)
@@ -102,6 +111,38 @@ enum FPSLimit: String, CaseIterable, Defaults.Serializable {
         case .fps20: return 2.0
         case .fps30: return 1.33
         case .fps40: return 1.0
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - Skin Animation Speed
+// ═══════════════════════════════════════════════════════════════
+
+enum SkinAnimationSpeed: String, CaseIterable, Defaults.Serializable {
+    case half = "0.5x"
+    case threeQuarter = "0.75x"
+    case normal = "1x"
+    case oneAndHalf = "1.5x"
+    case double = "2x"
+
+    var displayName: String {
+        switch self {
+        case .half: return L10n.skinAnimationSpeedHalf
+        case .threeQuarter: return L10n.skinAnimationSpeedThreeQuarter
+        case .normal: return L10n.skinAnimationSpeedNormal
+        case .oneAndHalf: return L10n.skinAnimationSpeedOneAndHalf
+        case .double: return L10n.skinAnimationSpeedDouble
+        }
+    }
+
+    var intervalMultiplier: Double {
+        switch self {
+        case .half: return 2.0
+        case .threeQuarter: return 1.33
+        case .normal: return 1.0
+        case .oneAndHalf: return 0.67
+        case .double: return 0.5
         }
     }
 }

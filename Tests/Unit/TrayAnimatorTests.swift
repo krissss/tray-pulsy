@@ -62,6 +62,22 @@ final class TrayAnimatorTests: XCTestCase {
         XCTAssertEqual(interval, 0.025 * FPSLimit.fps20.rateMultiplier, accuracy: 0.001)
     }
 
+    func testComputeInterval_skinAnimationSpeedHalf() {
+        let a = makeAnimator()
+        a.setSkinAnimationSpeed(.half)
+        a.updateValue(0)
+        let interval = a.computeInterval()
+        XCTAssertEqual(interval, 0.10 * FPSLimit.fps40.rateMultiplier * SkinAnimationSpeed.half.intervalMultiplier, accuracy: 0.001)
+    }
+
+    func testComputeInterval_skinAnimationSpeedDouble() {
+        let a = makeAnimator()
+        a.setSkinAnimationSpeed(.double)
+        a.updateValue(0)
+        let interval = a.computeInterval()
+        XCTAssertEqual(interval, 0.10 * FPSLimit.fps40.rateMultiplier * SkinAnimationSpeed.double.intervalMultiplier, accuracy: 0.001)
+    }
+
     // MARK: - Value clamping
 
     func testUpdateValue_clampsNegative() {
@@ -191,6 +207,14 @@ final class TrayAnimatorTests: XCTestCase {
         a.start()
         // interval = 0.10 * 4.0 = 0.40 → FPS = 2.5
         XCTAssertEqual(a.currentFPS, 2.5, accuracy: 0.1)
+    }
+
+    func testCurrentFPS_afterSkinAnimationSpeedChange() {
+        let a = makeAnimator()
+        a.setSkinAnimationSpeed(.half)
+        a.start()
+        // interval = 0.10 * 2.0 = 0.20 → FPS = 5
+        XCTAssertEqual(a.currentFPS, 5.0, accuracy: 0.1)
     }
 
     func testCurrentFPS_emptyFrames_isZero() {

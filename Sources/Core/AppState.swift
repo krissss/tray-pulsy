@@ -14,6 +14,7 @@ final class AppState {
     let systemMonitor: SystemMonitor
     let skinManager: SkinManager
     let updateManager: AppUpdateManager
+    let onlineSkinCatalog: OnlineSkinCatalog
 
     /// Ring buffer of metric snapshots for sparkline / trend charts.
     var metricsHistory: MetricsHistory { systemMonitor.history }
@@ -23,10 +24,24 @@ final class AppState {
     var onSkinChanged: (([NSImage]) -> Void)?
     var onFPSLimitChanged: ((FPSLimit) -> Void)?
     var onReverseAnimationSpeedChanged: ((Bool) -> Void)?
+    var onSkinAnimationSpeedChanged: ((SkinAnimationSpeed) -> Void)?
     var onMetricsConfigChanged: (() -> Void)?
     var onPulsyConfigChanged: (() -> Void)?
     var onSampleIntervalChanged: ((SampleInterval) -> Void)?
     var onExternalSkinPathChanged: (() -> Void)?
+    var onSkinLibraryChanged: (() -> Void)?
+
+    private static var defaultOnlineSkinCatalog: OnlineSkinCatalog {
+        let saved = Defaults[.onlineSkinManifestURL].trimmingCharacters(in: .whitespacesAndNewlines)
+        let savedURL = URL(string: saved)
+        let savedScheme = savedURL?.scheme?.lowercased()
+        let url = if let savedURL, ["http", "https", "file"].contains(savedScheme ?? "") {
+            savedURL
+        } else {
+            OnlineSkinCatalog.defaultManifestURL
+        }
+        return OnlineSkinCatalog(manifestURL: url)
+    }
 
     private var defaultsObservers: [Defaults.Observation] = []
     private var spikeDetector = MetricSpikeDetector()
@@ -39,11 +54,13 @@ final class AppState {
     init(
         systemMonitor: SystemMonitor,
         skinManager: SkinManager,
-        updateManager: AppUpdateManager
+        updateManager: AppUpdateManager,
+        onlineSkinCatalog: OnlineSkinCatalog = AppState.defaultOnlineSkinCatalog
     ) {
         self.systemMonitor = systemMonitor
         self.skinManager = skinManager
         self.updateManager = updateManager
+        self.onlineSkinCatalog = onlineSkinCatalog
         self.spikeHistory = MetricSpikeHistory(limit: Defaults[.spikeEventLimit].count)
     }
 
@@ -90,6 +107,11 @@ final class AppState {
             Defaults.observe(.reverseAnimationSpeed) { [weak self] change in
                 MainActor.assumeIsolated {
                     self?.onReverseAnimationSpeedChanged?(change.newValue)
+                }
+            },
+            Defaults.observe(.skinAnimationSpeed) { [weak self] change in
+                MainActor.assumeIsolated {
+                    self?.onSkinAnimationSpeedChanged?(change.newValue)
                 }
             },
             Defaults.observe(.sampleInterval) { [weak self] change in
@@ -187,6 +209,35 @@ final class AppState {
         }
         let rawValue = systemMonitor.valueForSource(source)
         return source.normalizeForAnimation(rawValue)
+    }
+
+    func installOnlineSkin(_ skin: OnlineSkinCatalogItem) async {
+        do {
+            try await onlineSkinCatalog.install(skin)
+            reloadSkinLibrary(selecting: skin.id)
+        } catch {
+            // OnlineSkinCatalog stores the user-visible error.
+        }
+    }
+
+    func deleteOnlineSkin(_ skin: OnlineSkinCatalogItem) {
+        do {
+            try onlineSkinCatalog.delete(skin)
+            reloadSkinLibrary()
+        } catch {
+            // OnlineSkinCatalog stores the user-visible error.
+        }
+    }
+
+    func reloadSkinLibrary(selecting skinID: String? = nil) {
+        onlineSkinCatalog.reloadInstalledSkins()
+        skinManager.reload()
+        if let skinID {
+            let s = skinManager.skin(for: skinID)
+            skinManager.setSkin(s)
+            Defaults[.skin] = s.id
+        }
+        onSkinLibraryChanged?()
     }
 
     func detectMetricSpikeIfNeeded() {

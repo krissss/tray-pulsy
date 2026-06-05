@@ -32,7 +32,7 @@ brew install --cask tray-pulsy
 
 | 功能           | 说明 |
 |--------------|------|
-| 🐱 **多款皮肤**  | Cat、Parrot、Horse、Mona、Dab、Pulsy 波形等，支持自定义扩展 |
+| 🐱 **多款皮肤**  | 内置 Pulsy 波形皮肤，支持在线皮肤库与自定义 PNG 皮肤 |
 | ⚡  **动态速度**  | 动画速度可跟随 CPU、GPU、内存或磁盘实时变化 |
 | 🔢 **状态栏指标** | 可选择在菜单栏图标旁显示 CPU、GPU、内存、磁盘、网络指标，并设置阈值颜色 |
 | 📊 **实时监控**  | 菜单栏 Popover 与概览面板显示实时状态和历史趋势图 |
@@ -44,9 +44,10 @@ brew install --cask tray-pulsy
 
 ## 🎨 皮肤
 
-- **内置皮肤**：包含 Cat、Dab、Horse、Mario、Mona、Parrot、PartyBlobCat、Points、RunCat_U，以及程序生成的 Pulsy 波形皮肤。
+- **内置皮肤**：应用默认保留程序生成的 Pulsy 波形皮肤，不再随应用包内打包 PNG 皮肤帧。
 - **Pulsy 配置**：Pulsy 皮肤支持配色主题、波形样式、线条粗细、发光强度和振幅大小。
-- **外部皮肤**：可在设置中选择外部皮肤目录；每个子文件夹是一套 PNG 帧序列，文件夹名即皮肤名，同名会覆盖内置皮肤。
+- **在线皮肤库**：PNG 皮肤通过 [tray-pulsy-skins](https://github.com/krissss/tray-pulsy-skins) 托管；可在设置中预览动画、下载安装到本地，展示顺序由远程 manifest 决定。
+- **外部皮肤**：可在设置中选择外部皮肤目录；每个子文件夹是一套 PNG 帧序列，文件夹名即皮肤名，同名会覆盖已安装的在线皮肤。
 
 ## 📊 系统监控
 
@@ -62,6 +63,6 @@ TrayPulsy 使用 Sparkle 2 提供自动更新能力。你可以在关于页面�
 
 ## 🙏 致谢
 
-- **[Kyome22/RunCat365](https://github.com/Kyome22/RunCat365)** — 灵感来源 & Cat、Parrot、Horse 像素素材
-- **[chux0519/runcat-tray](https://github.com/chux0519/runcat-tray)** — Mona、Dab、PartyBlobCat 素材
-- **[shenbo/runcat-pyqt5-win](https://github.com/shenbo/runcat-pyqt5-win)** — Mario、Points、RunCat_U 素材
+- **[Kyome22/RunCat365](https://github.com/Kyome22/RunCat365)** — 灵感来源，以及在线皮肤库中 RunCat、Parrot、Horse 等素材来源
+- **[chux0519/runcat-tray](https://github.com/chux0519/runcat-tray)** — 在线皮肤库中 Mona、Dab、PartyBlobCat 等素材来源
+- **[shenbo/runcat-pyqt5-win](https://github.com/shenbo/runcat-pyqt5-win)** — 在线皮肤库中 Mario、Points、RunCat_U 等素材来源

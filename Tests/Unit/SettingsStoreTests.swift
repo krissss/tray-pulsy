@@ -68,9 +68,33 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(FPSLimit.allCases.count, 4)
     }
 
+    // MARK: - SkinAnimationSpeed.intervalMultiplier
+
+    func testSkinAnimationSpeed_intervalMultipliers() {
+        XCTAssertEqual(SkinAnimationSpeed.half.intervalMultiplier, 2.0)
+        XCTAssertEqual(SkinAnimationSpeed.threeQuarter.intervalMultiplier, 1.33)
+        XCTAssertEqual(SkinAnimationSpeed.normal.intervalMultiplier, 1.0)
+        XCTAssertEqual(SkinAnimationSpeed.oneAndHalf.intervalMultiplier, 0.67)
+        XCTAssertEqual(SkinAnimationSpeed.double.intervalMultiplier, 0.5)
+    }
+
+    func testSkinAnimationSpeed_allCases() {
+        XCTAssertEqual(SkinAnimationSpeed.allCases.count, 5)
+    }
+
     func testReverseAnimationSpeed_defaultIsOff() {
         Defaults[.reverseAnimationSpeed] = false
         XCTAssertFalse(Defaults[.reverseAnimationSpeed])
+    }
+
+    func testSkinAnimationSpeed_defaultIsNormal() {
+        Defaults[.skinAnimationSpeed] = .normal
+        XCTAssertEqual(Defaults[.skinAnimationSpeed], .normal)
+    }
+
+    func testOnlineSkinManifestURL_defaultIsEmptyOverride() {
+        Defaults[.onlineSkinManifestURL] = ""
+        XCTAssertEqual(Defaults[.onlineSkinManifestURL], "")
     }
 
     // MARK: - SampleInterval.seconds

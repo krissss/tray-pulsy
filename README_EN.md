@@ -32,7 +32,7 @@ brew install --cask tray-pulsy
 
 | Feature | Description |
 |---------|-------------|
-| 🐱 **Multiple Skins** | Cat, Parrot, Horse, Mona, Dab, Pulsy waveform, and custom skin support |
+| 🐱 **Multiple Skins** | Built-in Pulsy waveform skin, online skin catalog, and custom PNG skins |
 | ⚡ **Dynamic Speed** | Animation speed can follow CPU, GPU, memory, or disk activity |
 | 🔢 **Status Bar Metrics** | Choose which CPU, GPU, memory, disk, and network metrics appear beside the menu bar icon, with threshold colors |
 | 📊 **Live Monitoring** | Menu bar popover and Overview panel show live status and history charts |
@@ -44,9 +44,10 @@ brew install --cask tray-pulsy
 
 ## 🎨 Skins
 
-- **Built-in skins**: Cat, Dab, Horse, Mario, Mona, Parrot, PartyBlobCat, Points, RunCat_U, plus the programmatic Pulsy waveform skin.
+- **Built-in skin**: the app keeps the programmatic Pulsy waveform skin by default and no longer bundles PNG skin frames inside the app package.
 - **Pulsy configuration**: Pulsy supports color themes, waveform styles, line width, glow intensity, and amplitude sensitivity.
-- **External skins**: choose an external skin directory in Settings; each subfolder is one PNG frame sequence, the folder name becomes the skin name, and matching names override built-in skins.
+- **Online skin catalog**: PNG skins are hosted in [tray-pulsy-skins](https://github.com/krissss/tray-pulsy-skins); Settings can preview animations, install skins locally, and use the remote manifest order for display.
+- **External skins**: choose an external skin directory in Settings; each subfolder is one PNG frame sequence, the folder name becomes the skin name, and matching names override installed online skins.
 
 ## 📊 System Monitoring
 
@@ -62,6 +63,6 @@ TrayPulsy uses Sparkle 2 for automatic updates. You can check for updates from t
 
 ## 🙏 Acknowledgements
 
-- **[Kyome22/RunCat365](https://github.com/Kyome22/RunCat365)** — Inspiration & Cat, Parrot, Horse assets
-- **[chux0519/runcat-tray](https://github.com/chux0519/runcat-tray)** — Mona, Dab, PartyBlobCat assets
-- **[shenbo/runcat-pyqt5-win](https://github.com/shenbo/runcat-pyqt5-win)** — Mario, Points, RunCat_U assets
+- **[Kyome22/RunCat365](https://github.com/Kyome22/RunCat365)** — Inspiration and source for online RunCat, Parrot, Horse, and related assets
+- **[chux0519/runcat-tray](https://github.com/chux0519/runcat-tray)** — Source for online Mona, Dab, PartyBlobCat, and related assets
+- **[shenbo/runcat-pyqt5-win](https://github.com/shenbo/runcat-pyqt5-win)** — Source for online Mario, Points, RunCat_U, and related assets

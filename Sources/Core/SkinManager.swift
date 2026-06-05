@@ -24,6 +24,8 @@ struct SkinInfo: Identifiable, Hashable, Sendable {
 @Observable
 final class SkinManager: @unchecked Sendable {
     static let defaultSkinID = "pulsy"
+    nonisolated(unsafe) static var installedSkinDirectoryOverride: URL?
+    static var installedSkinDirectory: URL { installedSkinDirectoryOverride ?? OnlineSkinCatalog.defaultInstallDirectory }
 
     /// All discovered skins (bundled + external), sorted by id.
     private(set) var allSkins: [SkinInfo]
@@ -42,7 +44,12 @@ final class SkinManager: @unchecked Sendable {
     /// Re-scan skins after external path changes.
     func reload() {
         allSkins = Self.discoverSkins(externalPath: Defaults[.externalSkinPath])
-        if !allSkins.contains(where: { $0.id == currentSkin.id }) {
+        if let refreshed = allSkins.first(where: { Self.canonicalID(for: $0.id) == Self.canonicalID(for: currentSkin.id) }) {
+            currentSkin = refreshed
+            if Defaults[.skin] != refreshed.id {
+                Defaults[.skin] = refreshed.id
+            }
+        } else {
             let fallback = skin(for: Self.defaultSkinID)
             currentSkin = fallback
             Defaults[.skin] = fallback.id
@@ -56,6 +63,8 @@ final class SkinManager: @unchecked Sendable {
         if let s = allSkins.first(where: { $0.id == id }) { return s }
         // Migration: old ID "cat" → match "01.cat" by suffix
         if let s = allSkins.first(where: { $0.id.hasSuffix(".\(id)") }) { return s }
+        let canonical = Self.canonicalID(for: id)
+        if let s = allSkins.first(where: { Self.canonicalID(for: $0.id) == canonical }) { return s }
         return allSkins.first ?? SkinInfo(id: Self.defaultSkinID, displayName: Self.defaultSkinID)
     }
 
@@ -120,35 +129,42 @@ final class SkinManager: @unchecked Sendable {
         // 1. Bundled skins
         let bundled = scanDirectory(bundledSkinPaths())
         for s in bundled {
-            if seen.insert(s.id).inserted { skins.append(s) }
+            upsert(s, into: &skins, seen: &seen)
         }
 
-        // 2. External skins (override bundled if same id)
+        // 2. Managed online skins (override bundled by canonical name)
+        let installed = scanDirectory([installedSkinDirectory.path])
+        for s in installed {
+            upsert(s, into: &skins, seen: &seen)
+        }
+
+        // 3. External skins (user intent, override bundled/online by canonical name)
         if !externalPath.isEmpty {
             let expanded = (externalPath as NSString).expandingTildeInPath
             let external = scanDirectory([expanded])
             for s in external {
-                if let idx = skins.firstIndex(where: { $0.id == s.id }) {
-                    skins[idx] = s  // external overrides bundled
-                } else if seen.insert(s.id).inserted {
-                    skins.append(s)
-                }
+                upsert(s, into: &skins, seen: &seen)
             }
         }
 
-        // 3. Virtual skins (cannot be overridden by file-based skins)
+        // 4. Virtual skins (cannot be overridden by file-based skins)
         for s in virtualSkins {
-            if let idx = skins.firstIndex(where: { $0.id == s.id }) {
-                skins[idx] = s
-            } else if seen.insert(s.id).inserted {
-                skins.append(s)
-            }
+            upsert(s, into: &skins, seen: &seen)
         }
 
         return skins.sorted { a, b in
             if a.id == "pulsy" { return true }
             if b.id == "pulsy" { return false }
             return a.id < b.id
+        }
+    }
+
+    private static func upsert(_ skin: SkinInfo, into skins: inout [SkinInfo], seen: inout Set<String>) {
+        let key = canonicalID(for: skin.id)
+        if let idx = skins.firstIndex(where: { canonicalID(for: $0.id) == key }) {
+            skins[idx] = skin
+        } else if seen.insert(key).inserted {
+            skins.append(skin)
         }
     }
 
@@ -179,12 +195,7 @@ final class SkinManager: @unchecked Sendable {
                 let hasPNG = (try? fm.contentsOfDirectory(atPath: dirPath))?.contains(where: { $0.hasSuffix(".png") }) ?? false
                 guard hasPNG else { continue }
                 // Strip numeric prefix for display name: "01.cat" → "cat"
-                let display: String
-                if let dot = name.firstIndex(of: ".") {
-                    display = String(name[name.index(after: dot)...])
-                } else {
-                    display = name
-                }
+                let display = canonicalID(for: name)
                 skins.append(SkinInfo(id: name, displayName: display))
             }
         }
@@ -205,8 +216,8 @@ final class SkinManager: @unchecked Sendable {
         let fm = FileManager.default
         let externalPath = Defaults[.externalSkinPath]
 
-        // Search order: external first (user intent), then bundled
-        var searchDirs = Self.bundledSkinPaths()
+        // Search order: external first (user intent), then online installs, then bundled.
+        var searchDirs = [Self.installedSkinDirectory.path] + Self.bundledSkinPaths()
         if !externalPath.isEmpty {
             searchDirs.insert((externalPath as NSString).expandingTildeInPath, at: 0)
         }
@@ -229,6 +240,13 @@ final class SkinManager: @unchecked Sendable {
             if !frames.isEmpty { return frames }
         }
         return []
+    }
+
+    private static func canonicalID(for id: String) -> String {
+        guard let dot = id.firstIndex(of: ".") else { return id }
+        let prefix = id[..<dot]
+        guard !prefix.isEmpty, prefix.allSatisfy(\.isNumber) else { return id }
+        return String(id[id.index(after: dot)...])
     }
 
     // ═════════════════════════════════════════════════════════
