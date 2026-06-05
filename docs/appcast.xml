@@ -300,5 +300,23 @@
             type="application/octet-stream"
         />
     </item>
+                  <item>
+        <title>TrayPulsy 1.2.0</title>
+        <sparkle:version>1.2.0</sparkle:version>
+        <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+        <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+        <pubDate>Fri, 05 Jun 2026 16:31:14 +0000</pubDate>
+        <description><![CDATA[<b>Added</b>
+<ul>
+<li>支持反转动画速度</li>
+<li>支持在线皮肤库</li>
+</ul>]]></description>
+        <enclosure
+            url="https://github.com/krissss/tray-pulsy/releases/download/v1.2.0/TrayPulsy-v1.2.0.zip"
+            sparkle:edSignature="3p1JBisTaIYFUC3b/OJAN+L3xN2/LC2i5XNRHucv0F39CbNBPiOfqls0YRQhRHcEp5MA01XpNtVQsUoYP56gAg=="
+            length="4753701"
+            type="application/octet-stream"
+        />
+    </item>
     </channel>
 </rss>
