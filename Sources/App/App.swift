@@ -11,6 +11,14 @@ private let instanceLockFile = URL(
 
 nonisolated(unsafe) private var instanceLockFD: Int32 = -1
 
+private var enforcesSingleInstance: Bool {
+#if DEBUG
+    false
+#else
+    true
+#endif
+}
+
 /// Acquire an exclusive flock. Returns `true` if we are the sole instance.
 private func acquireInstanceLock() -> Bool {
     instanceLockFD = open(instanceLockFile.path, O_WRONLY | O_CREAT | O_CLOEXEC, 0o644)
@@ -49,7 +57,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // ── 1️⃣ Single instance guard ──
-        if !acquireInstanceLock() {
+        if enforcesSingleInstance && !acquireInstanceLock() {
             print("⚠️ \(AppConstants.appName) is already running")
             exit(0)
         }

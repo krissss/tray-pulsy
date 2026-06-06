@@ -9,7 +9,7 @@ SPARKLE_SIGN_UPDATE := $(DERIVED_DATA)/SourcePackages/artifacts/sparkle/Sparkle/
 VERSION := $(shell git describe --tags --abbrev=0 2>/dev/null | sed 's/^v//')
 VERSION := $(or $(VERSION),0.0.0)
 
-.PHONY: all app build clean run print-sparkle-sign-update
+.PHONY: all app build clean run run-dev print-sparkle-sign-update
 
 all: app
 
@@ -34,7 +34,10 @@ print-sparkle-sign-update:
 	@printf '%s\n' "$(SPARKLE_SIGN_UPDATE)"
 
 run: app
-	open "$(APP_BUNDLE)"
+	open -n "$(APP_BUNDLE)"
+
+run-dev:
+	$(MAKE) run CONFIGURATION=Debug
 
 clean:
 	rm -rf "$(APP_BUNDLE)"

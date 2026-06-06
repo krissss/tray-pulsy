@@ -244,9 +244,12 @@ private struct PopoverHeader: View {
                 Text(skinName)
                     .font(.system(.headline, design: .rounded).weight(.semibold))
                     .lineLimit(1)
-                Text("\(L10n.perfSourceLabel): \(speedSource.label)")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 6) {
+                    Text("\(L10n.perfSourceLabel): \(speedSource.label)")
+                        .foregroundStyle(.secondary)
+                    debugBadge
+                }
+                .font(.caption)
             }
 
             Spacer(minLength: 8)
@@ -293,6 +296,20 @@ private struct PopoverHeader: View {
 
     private var floatingWindowHelp: String {
         floatingWindowEnabled ? L10n.floatingWindowHide : L10n.floatingWindowToggle
+    }
+
+    @ViewBuilder
+    private var debugBadge: some View {
+#if DEBUG
+        Text("DEBUG \(ProcessInfo.processInfo.processIdentifier)")
+            .font(.caption2.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(.orange)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1)
+            .background(.orange.opacity(0.12), in: Capsule())
+            .accessibilityLabel("Debug process \(ProcessInfo.processInfo.processIdentifier)")
+#endif
     }
 }
 
