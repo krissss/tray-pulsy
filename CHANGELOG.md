@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-06-06
+
+### Added
+
+- 支持悬浮窗指标面板
+
 ## [1.2.0] - 2026-06-06
 
 ### Added
@@ -172,7 +178,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 First release. TrayPulsy is a lightweight macOS menu bar app that displays animated characters whose speed responds in real time to system usage. Supports multiple skins (Cat, Parrot, Horse, Pulsy waveform, etc.), real-time system metrics (CPU, GPU, RAM, SSD, Network), and full customization through a Settings window.
 
-[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/krissss/tray-pulsy/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/krissss/tray-pulsy/compare/v1.1.3...v1.2.0
 [1.1.3]: https://github.com/krissss/tray-pulsy/compare/v1.1.2...v1.1.3
 [1.1.2]: https://github.com/krissss/tray-pulsy/compare/v1.1.1...v1.1.2
