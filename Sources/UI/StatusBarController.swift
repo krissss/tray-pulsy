@@ -13,6 +13,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
     private var animator: TrayAnimator!
     private var updateTask: Task<Void, Never>?
     private var settingsWindow: NSWindow?
+    private var floatingPanelController: FloatingMetricsPanelController?
     private let statusBarView = StatusBarView()
     private var lastDisplayedMetricText: String = ""
 
@@ -45,7 +46,9 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
 
         // 2. Wire direct callback — update StatusBarView's frame image
         animator.onFrameUpdate = { [weak self] image in
-            self?.statusBarView.setFrameImage(image)
+            guard let self else { return }
+            self.statusBarView.setFrameImage(image)
+            self.floatingPanelController?.setFrameImage(image)
         }
 
         // 3. Apply saved skin
@@ -65,6 +68,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         animator.start()
         startUpdateLoop()
         updateEnabledMetrics()
+        syncFloatingWindow()
 
         // 7. Register callbacks from AppState
         appState.onSkinChanged = { [weak self] frames in
@@ -82,6 +86,9 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         appState.onMetricsConfigChanged = { [weak self] in
             self?.updateEnabledMetrics()
             self?.refreshMetricDisplay()
+        }
+        appState.onFloatingWindowConfigChanged = { [weak self] in
+            self?.syncFloatingWindow()
         }
         appState.onPulsyConfigChanged = { [weak self] in
             self?.animator.updateFrames(self?.appState.regeneratePulsyFrames() ?? [])
@@ -113,6 +120,8 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         animator.stop()
         updateTask?.cancel()
         updateTask = nil
+        floatingPanelController?.close()
+        floatingPanelController = nil
         settingsWindow?.close()
         settingsWindow = nil
         NotificationCenter.default.removeObserver(self, name: L10n.languageDidChangeNotification, object: nil)
@@ -281,6 +290,10 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         DispatchQueue.main.async { NSApp.activate(ignoringOtherApps: true) }
     }
 
+    private func openSettingsFromFloatingWindow() {
+        openSettings()
+    }
+
     func windowWillClose(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         updateEnabledMetrics()
@@ -350,6 +363,25 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
     private func updateEnabledMetrics() {
         let settingsOpen = settingsWindow?.isVisible == true
         appState.updateEnabledMetrics(settingsOpen: settingsOpen)
+    }
+
+    private func syncFloatingWindow() {
+        if Defaults[.floatingWindowEnabled] {
+            let controller = floatingPanelController ?? FloatingMetricsPanelController(
+                appState: appState,
+                openSettings: { [weak self] in
+                    self?.openSettingsFromFloatingWindow()
+                }
+            )
+            floatingPanelController = controller
+            controller.show()
+            controller.setFrameImage(statusBarView.currentFrame)
+            updateEnabledMetrics()
+        } else {
+            floatingPanelController?.close()
+            floatingPanelController = nil
+            updateEnabledMetrics()
+        }
     }
 
     /// Force-refresh metric display (called by observers when settings change).

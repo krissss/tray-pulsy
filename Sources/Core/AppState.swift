@@ -30,6 +30,7 @@ final class AppState {
     var onSampleIntervalChanged: ((SampleInterval) -> Void)?
     var onExternalSkinPathChanged: (() -> Void)?
     var onSkinLibraryChanged: (() -> Void)?
+    var onFloatingWindowConfigChanged: (() -> Void)?
 
     private static var defaultOnlineSkinCatalog: OnlineSkinCatalog {
         let saved = Defaults[.onlineSkinManifestURL].trimmingCharacters(in: .whitespacesAndNewlines)
@@ -131,6 +132,48 @@ final class AppState {
                     self?.onMetricsConfigChanged?()
                 }
             },
+            Defaults.observe(.floatingWindowEnabled) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                    self?.onMetricsConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowAlwaysOnTop) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowShowsSkin) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowMetricsLayout) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowBackgroundColor) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowBackgroundOpacity) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowTextColor) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                }
+            },
+            Defaults.observe(.floatingWindowMetricItems) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onFloatingWindowConfigChanged?()
+                    self?.onMetricsConfigChanged?()
+                }
+            },
             Defaults.observe(.externalSkinPath) { [weak self] _ in
                 MainActor.assumeIsolated {
                     guard let self else { return }
@@ -179,7 +222,7 @@ final class AppState {
 
     /// Only read the metrics we actually need.
     func updateEnabledMetrics(settingsOpen: Bool) {
-        let monitoredItems = Defaults[.metricMonitorItems]
+        let monitoredItems = effectiveMonitoredItems()
         normalizeSpeedSource(for: monitoredItems)
         cancelPendingSpikeSamples(forUnmonitoredItems: monitoredItems)
         let monitored = Set(monitoredItems.map(\.requiredMetric))
@@ -188,6 +231,17 @@ final class AppState {
             recordedMetrics: monitored,
             recordedMetricItems: monitoredItems
         )
+    }
+
+    private func effectiveMonitoredItems() -> Set<MetricDisplayItem> {
+        var items = Defaults[.metricMonitorItems]
+        if Defaults[.floatingWindowEnabled] {
+            let floatingItems = Defaults[.floatingWindowMetricItems].isEmpty
+                ? Defaults.Keys.defaultFloatingWindowMetricItems
+                : Defaults[.floatingWindowMetricItems]
+            items.formUnion(floatingItems)
+        }
+        return items
     }
 
     private func normalizeSpeedSource(for monitoredItems: Set<MetricDisplayItem>) {

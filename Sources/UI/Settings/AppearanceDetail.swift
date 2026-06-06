@@ -868,9 +868,119 @@ private struct PulsySliderRow: View {
 
 struct MetricsDetail: View {
     @Default(.thresholds) private var thresholds
+    @Default(.floatingWindowEnabled) private var floatingWindowEnabled
+    @Default(.floatingWindowAlwaysOnTop) private var floatingWindowAlwaysOnTop
+    @Default(.floatingWindowShowsSkin) private var floatingWindowShowsSkin
+    @Default(.floatingWindowMetricsLayout) private var floatingWindowMetricsLayout
+    @Default(.floatingWindowBackgroundColor) private var floatingWindowBackgroundColor
+    @Default(.floatingWindowBackgroundOpacity) private var floatingWindowBackgroundOpacity
+    @Default(.floatingWindowTextColor) private var floatingWindowTextColor
+
+    private var floatingWindowBackgroundColorBinding: Binding<Color> {
+        Binding(
+            get: { floatingWindowBackgroundColor.color },
+            set: { floatingWindowBackgroundColor = FloatingWindowColor(color: $0) }
+        )
+    }
+
+    private var floatingWindowTextColorBinding: Binding<Color> {
+        Binding(
+            get: { floatingWindowTextColor.color },
+            set: { floatingWindowTextColor = FloatingWindowColor(color: $0) }
+        )
+    }
+
+    private var floatingWindowBackgroundOpacityBinding: Binding<Double> {
+        Binding(
+            get: { min(max(floatingWindowBackgroundOpacity, 0.15), 1) },
+            set: { floatingWindowBackgroundOpacity = min(max($0, 0.15), 1) }
+        )
+    }
 
     var body: some View {
         SettingsFormPage {
+            Section {
+                Toggle(isOn: $floatingWindowEnabled) {
+                    SettingsRowLabel(
+                        title: L10n.floatingWindowToggle,
+                        systemImage: "rectangle.on.rectangle.circle",
+                        color: .teal
+                    )
+                }
+
+                if floatingWindowEnabled {
+                    Toggle(isOn: $floatingWindowAlwaysOnTop) {
+                        SettingsRowLabel(
+                            title: L10n.floatingWindowAlwaysOnTop,
+                            systemImage: "pin.circle.fill",
+                            color: .teal
+                        )
+                    }
+
+                    Toggle(isOn: $floatingWindowShowsSkin) {
+                        SettingsRowLabel(
+                            title: L10n.floatingWindowShowSkin,
+                            systemImage: "sparkles.rectangle.stack",
+                            color: .teal
+                        )
+                    }
+
+                    Picker(selection: $floatingWindowMetricsLayout) {
+                        ForEach(FloatingWindowMetricsLayout.allCases) { layout in
+                            Text(layout.displayName).tag(layout)
+                        }
+                    } label: {
+                        SettingsRowLabel(
+                            title: L10n.floatingWindowLayout,
+                            systemImage: "rectangle.split.2x1",
+                            color: .teal
+                        )
+                    }
+                    .pickerStyle(.segmented)
+
+                    ColorPicker(selection: floatingWindowBackgroundColorBinding, supportsOpacity: false) {
+                        SettingsRowLabel(
+                            title: L10n.floatingWindowBackgroundColor,
+                            systemImage: "paintpalette.fill",
+                            color: .teal
+                        )
+                    }
+
+                    ColorPicker(selection: floatingWindowTextColorBinding, supportsOpacity: false) {
+                        SettingsRowLabel(
+                            title: L10n.floatingWindowTextColor,
+                            systemImage: "textformat",
+                            color: .teal
+                        )
+                    }
+
+                    SettingsInsetPanel(spacing: 9) {
+                        HStack(spacing: 10) {
+                            SettingsRowLabel(
+                                title: L10n.floatingWindowBackgroundOpacity,
+                                systemImage: "circle.lefthalf.filled",
+                                color: .teal
+                            )
+                            Spacer()
+                            SettingsValueBadge(
+                                text: "\(Int((floatingWindowBackgroundOpacityBinding.wrappedValue * 100).rounded()))%",
+                                color: .teal
+                            )
+                        }
+                        SingleValueSlider(
+                            value: floatingWindowBackgroundOpacityBinding,
+                            range: 0.15...1,
+                            step: 0.05,
+                            color: .teal
+                        )
+                    }
+                }
+            } header: {
+                Text(L10n.floatingWindowHeader)
+            } footer: {
+                Text(L10n.floatingWindowFooter)
+            }
+
             Section {
                 ForEach(MetricDisplayItem.allCases) { item in
                     MetricRowView(item: item)
@@ -891,12 +1001,20 @@ private struct MetricRowView: View {
     @Default(.speedSource) private var speedSource
     @Default(.metricMonitorItems) private var metricMonitorItems
     @Default(.metricDisplayItems) private var metricDisplayItems
+    @Default(.floatingWindowEnabled) private var floatingWindowEnabled
+    @Default(.floatingWindowMetricItems) private var floatingWindowMetricItems
     @Default(.thresholds) private var thresholds
     @Default(.spikeDeltas) private var spikeDeltas
     @State private var isAdvancedExpanded = false
 
     private var isMonitored: Bool {
         metricMonitorItems.contains(item)
+    }
+
+    private var selectedFloatingMetricItems: Set<MetricDisplayItem> {
+        floatingWindowEnabled && floatingWindowMetricItems.isEmpty
+            ? Defaults.Keys.defaultFloatingWindowMetricItems
+            : floatingWindowMetricItems
     }
 
     private var mode: MetricManagementMode {
@@ -917,6 +1035,12 @@ private struct MetricRowView: View {
                 case .off:
                     metricMonitorItems.remove(item)
                     metricDisplayItems.remove(item)
+                    var items = selectedFloatingMetricItems
+                    items.remove(item)
+                    floatingWindowMetricItems = items
+                    if items.isEmpty {
+                        floatingWindowEnabled = false
+                    }
                     if item.requiredMetric == speedSource.requiredMetric,
                        let nextSource = SpeedSource.firstAvailable(in: metricMonitorItems) {
                         speedSource = nextSource
@@ -930,6 +1054,29 @@ private struct MetricRowView: View {
                 case .menuBar:
                     metricMonitorItems.insert(item)
                     metricDisplayItems.insert(item)
+                }
+            }
+        )
+    }
+
+    private var floatingMetricBinding: Binding<Bool> {
+        Binding(
+            get: {
+                floatingWindowEnabled && selectedFloatingMetricItems.contains(item)
+            },
+            set: { isEnabled in
+                var items = selectedFloatingMetricItems
+                if isEnabled {
+                    items.insert(item)
+                    floatingWindowMetricItems = items
+                    metricMonitorItems.insert(item)
+                    floatingWindowEnabled = true
+                } else {
+                    items.remove(item)
+                    floatingWindowMetricItems = items
+                    if items.isEmpty {
+                        floatingWindowEnabled = false
+                    }
                 }
             }
         )
@@ -994,7 +1141,10 @@ private struct MetricRowView: View {
         HStack(spacing: 12) {
             metricLabel
             Spacer(minLength: 16)
-            modePicker
+            HStack(spacing: 10) {
+                floatingMetricToggle
+                modePicker
+            }
         }
     }
 
@@ -1016,6 +1166,17 @@ private struct MetricRowView: View {
         .labelsHidden()
         .controlSize(.small)
         .frame(width: 220)
+    }
+
+    private var floatingMetricToggle: some View {
+        Toggle(isOn: floatingMetricBinding) {
+            Text(L10n.metricsFloatingWindow)
+                .lineLimit(1)
+        }
+        .toggleStyle(.checkbox)
+        .controlSize(.small)
+        .fixedSize(horizontal: true, vertical: false)
+        .accessibilityLabel("\(item.displayName) \(L10n.metricsFloatingWindow)")
     }
 
     private var isPercent: Bool {

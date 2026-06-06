@@ -20,6 +20,8 @@ enum AppConstants {
 // 所有配置项在此定义，全局通过 Defaults[.key] 访问。
 
 extension Defaults.Keys {
+    static let defaultFloatingWindowMetricItems: Set<MetricDisplayItem> = [.cpu, .memory, .networkDown]
+
     // 皮肤
     static let skin = Key<String>("traypulsy_skin", default: SkinManager.defaultSkinID)
 
@@ -49,6 +51,35 @@ extension Defaults.Keys {
 
     // 菜单栏显示哪些指标（空 = 关闭）
     static let metricDisplayItems = Key<Set<MetricDisplayItem>>("traypulsy_metricDisplayItems", default: [])
+
+    // 悬浮窗
+    static let floatingWindowEnabled = Key<Bool>("traypulsy_floatingWindowEnabled", default: false)
+    static let floatingWindowAlwaysOnTop = Key<Bool>("traypulsy_floatingWindowAlwaysOnTop", default: true)
+    static let floatingWindowShowsSkin = Key<Bool>("traypulsy_floatingWindowShowsSkin", default: true)
+    static let floatingWindowMetricsLayout = Key<FloatingWindowMetricsLayout>(
+        "traypulsy_floatingWindowMetricsLayout",
+        default: .horizontal
+    )
+    static let floatingWindowBackgroundColor = Key<FloatingWindowColor>(
+        "traypulsy_floatingWindowBackgroundColor",
+        default: .defaultBackground
+    )
+    static let floatingWindowBackgroundOpacity = Key<Double>(
+        "traypulsy_floatingWindowBackgroundOpacity",
+        default: 0.72
+    )
+    static let floatingWindowTextColor = Key<FloatingWindowColor>(
+        "traypulsy_floatingWindowTextColor",
+        default: .defaultText
+    )
+    static let floatingWindowMetricItems = Key<Set<MetricDisplayItem>>(
+        "traypulsy_floatingWindowMetricItems",
+        default: defaultFloatingWindowMetricItems
+    )
+    static let floatingWindowPlacement = Key<FloatingWindowPlacement>(
+        "traypulsy_floatingWindowPlacement",
+        default: .unset
+    )
 
     // 采样间隔
     static let sampleInterval = Key<SampleInterval>("traypulsy_sampleInterval", default: .oneSec)
@@ -83,6 +114,59 @@ extension Defaults.Keys {
     static let pulsyLineWidth             = Key<Double>("traypulsy_pulsyLineWidth", default: 1.5)
     static let pulsyGlowIntensity         = Key<Double>("traypulsy_pulsyGlowIntensity", default: 1.0)
     static let pulsyAmplitudeSensitivity  = Key<Double>("traypulsy_pulsyAmplitudeSensitivity", default: 1.0)
+}
+
+struct FloatingWindowPlacement: Codable, Defaults.Serializable, Sendable, Equatable {
+    var x: Double
+    var y: Double
+    var width: Double
+    var height: Double
+
+    static let unset = FloatingWindowPlacement(x: -1, y: -1, width: 0, height: 0)
+
+    var hasSavedFrame: Bool {
+        width > 0 && height > 0
+    }
+}
+
+enum FloatingWindowMetricsLayout: String, CaseIterable, Defaults.Serializable, Identifiable {
+    case horizontal
+    case vertical
+
+    var id: Self { self }
+
+    var displayName: String {
+        switch self {
+        case .horizontal: return L10n.floatingWindowLayoutHorizontal
+        case .vertical:   return L10n.floatingWindowLayoutVertical
+        }
+    }
+}
+
+struct FloatingWindowColor: Codable, Defaults.Serializable, Sendable, Equatable {
+    var red: Double
+    var green: Double
+    var blue: Double
+
+    static let defaultBackground = FloatingWindowColor(red: 0.88, green: 0.88, blue: 0.88)
+    static let defaultText = FloatingWindowColor(red: 0.03, green: 0.03, blue: 0.03)
+
+    init(red: Double, green: Double, blue: Double) {
+        self.red = red
+        self.green = green
+        self.blue = blue
+    }
+
+    init(color: Color) {
+        let nsColor = NSColor(color).usingColorSpace(.sRGB) ?? .windowBackgroundColor
+        red = Double(nsColor.redComponent)
+        green = Double(nsColor.greenComponent)
+        blue = Double(nsColor.blueComponent)
+    }
+
+    var color: Color {
+        Color(red: red, green: green, blue: blue)
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

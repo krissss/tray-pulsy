@@ -150,11 +150,12 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "Metrics",
-            "settings.metrics.footer": "Off stops sampling and hides the metric. Monitor keeps history, charts, and spike diagnostics. Menu Bar also shows it next to the icon.",
+            "settings.metrics.footer": "Off stops sampling and hides the metric. Monitor keeps history, charts, and spike diagnostics. Menu Bar shows it next to the icon. Floating shows it in the HUD.",
             "settings.metrics.mode.picker": "Mode",
             "settings.metrics.mode.off": "Off",
             "settings.metrics.mode.monitorOnly": "Monitor",
             "settings.metrics.mode.menuBar": "Menu Bar",
+            "settings.metrics.floatingWindow": "Floating",
             "settings.metrics.advanced": "Advanced",
             "settings.metrics.colorThreshold": "Color threshold",
             "settings.metrics.colorThreshold.description": "Turns the metric yellow or red after it reaches these values.",
@@ -162,6 +163,18 @@ enum L10n {
             "settings.metrics.criticalThreshold": "Red %@",
             "settings.metrics.spikeDelta": "Spike trigger",
             "settings.metrics.spikeDelta.description": "Records a spike only when the confirmed jump is at least this large.",
+            "settings.floating.header": "Floating Window",
+            "settings.floating.toggle": "Show Floating Window",
+            "settings.floating.alwaysOnTop": "Keep Above Other Windows",
+            "settings.floating.showSkin": "Show Skin Animation",
+            "settings.floating.layout": "Metric Layout",
+            "settings.floating.layout.horizontal": "Horizontal",
+            "settings.floating.layout.vertical": "Vertical",
+            "settings.floating.backgroundColor": "Background Color",
+            "settings.floating.textColor": "Text Color",
+            "settings.floating.backgroundOpacity": "Background Opacity",
+            "settings.floating.footer": "Controls the compact HUD window. Choose which metrics appear from the metric rows below.",
+            "settings.floating.hide": "Hide Floating Window",
 
             // Performance Settings
             "performance.source.label": "Animation Drive",
@@ -387,11 +400,12 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "指标",
-            "settings.metrics.footer": "关闭会停止采样并隐藏指标；仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。",
+            "settings.metrics.footer": "关闭会停止采样并隐藏指标；仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁；悬浮窗会显示到 HUD 中。",
             "settings.metrics.mode.picker": "模式",
             "settings.metrics.mode.off": "关闭",
             "settings.metrics.mode.monitorOnly": "仅监控",
             "settings.metrics.mode.menuBar": "菜单栏",
+            "settings.metrics.floatingWindow": "悬浮窗",
             "settings.metrics.advanced": "高级设置",
             "settings.metrics.colorThreshold": "颜色阈值",
             "settings.metrics.colorThreshold.description": "指标达到这些值后，会在菜单栏和图表里标黄或标红。",
@@ -399,6 +413,18 @@ enum L10n {
             "settings.metrics.criticalThreshold": "红色 %@",
             "settings.metrics.spikeDelta": "尖峰判定",
             "settings.metrics.spikeDelta.description": "二次确认后的跳升至少达到这个值，才会记录一次尖峰。",
+            "settings.floating.header": "悬浮窗",
+            "settings.floating.toggle": "显示悬浮窗",
+            "settings.floating.alwaysOnTop": "保持在其他窗口上方",
+            "settings.floating.showSkin": "显示皮肤动画",
+            "settings.floating.layout": "指标布局",
+            "settings.floating.layout.horizontal": "横向",
+            "settings.floating.layout.vertical": "竖向",
+            "settings.floating.backgroundColor": "背景色",
+            "settings.floating.textColor": "字体颜色",
+            "settings.floating.backgroundOpacity": "背景透明度",
+            "settings.floating.footer": "控制紧凑 HUD 窗口；要显示哪些指标，请在下方指标行里勾选悬浮窗。",
+            "settings.floating.hide": "隐藏悬浮窗",
 
             // Performance Settings
             "performance.source.label": "动画驱动",
@@ -638,6 +664,7 @@ enum L10n {
     static var metricsModeOff: String { tr("settings.metrics.mode.off", "关闭") }
     static var metricsModeMonitorOnly: String { tr("settings.metrics.mode.monitorOnly", "仅监控") }
     static var metricsModeMenuBar: String { tr("settings.metrics.mode.menuBar", "菜单栏") }
+    static var metricsFloatingWindow: String { tr("settings.metrics.floatingWindow", "悬浮窗") }
     static var metricsAdvancedSettings: String { tr("settings.metrics.advanced", "高级设置") }
     static var metricsColorThresholdLabel: String { tr("settings.metrics.colorThreshold", "颜色阈值") }
     static var metricsColorThresholdDescription: String { tr("settings.metrics.colorThreshold.description", "指标达到这些值后，会在菜单栏和图表里标黄或标红。") }
@@ -645,6 +672,18 @@ enum L10n {
     static var metricsSpikeDeltaDescription: String { tr("settings.metrics.spikeDelta.description", "二次确认后的跳升至少达到这个值，才会记录一次尖峰。") }
     static func metricsWarningThreshold(_ value: String) -> String { String(format: tr("settings.metrics.warningThreshold", "黄色 %@"), value) }
     static func metricsCriticalThreshold(_ value: String) -> String { String(format: tr("settings.metrics.criticalThreshold", "红色 %@"), value) }
+    static var floatingWindowHeader: String { tr("settings.floating.header", "悬浮窗") }
+    static var floatingWindowToggle: String { tr("settings.floating.toggle", "显示悬浮窗") }
+    static var floatingWindowAlwaysOnTop: String { tr("settings.floating.alwaysOnTop", "保持在其他窗口上方") }
+    static var floatingWindowShowSkin: String { tr("settings.floating.showSkin", "显示皮肤动画") }
+    static var floatingWindowLayout: String { tr("settings.floating.layout", "指标布局") }
+    static var floatingWindowLayoutHorizontal: String { tr("settings.floating.layout.horizontal", "横向") }
+    static var floatingWindowLayoutVertical: String { tr("settings.floating.layout.vertical", "竖向") }
+    static var floatingWindowBackgroundColor: String { tr("settings.floating.backgroundColor", "背景色") }
+    static var floatingWindowTextColor: String { tr("settings.floating.textColor", "字体颜色") }
+    static var floatingWindowBackgroundOpacity: String { tr("settings.floating.backgroundOpacity", "背景透明度") }
+    static var floatingWindowFooter: String { tr("settings.floating.footer", "显示紧凑的实时 HUD，可包含皮肤动画和 label/value 指标。") }
+    static var floatingWindowHide: String { tr("settings.floating.hide", "隐藏悬浮窗") }
 
     // MARK: - Performance Settings
 
