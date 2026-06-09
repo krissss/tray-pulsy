@@ -50,6 +50,12 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
         _ = updaterController  // force lazy init to register delegates
         configureCancellables()
         startUpdaterIfNeeded()
+        // Sparkle recommends calling checkForUpdatesInBackground() right after
+        // starting the updater on every launch when auto-check is enabled.
+        // NSBackgroundActivityScheduler is unreliable for always-on menu-bar apps.
+        if updater.automaticallyChecksForUpdates {
+            updater.checkForUpdatesInBackground()
+        }
         // Read initial values from Sparkle (KVO only fires on *changes*)
         syncFromSparkle()
     }
@@ -65,6 +71,13 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
         }
         startUpdaterIfNeeded()
         updater.checkForUpdates()
+    }
+
+    /// Re-schedule the update cycle timer. Call on wake from sleep so
+    /// Sparkle doesn't miss the scheduled window.
+    func resetUpdateCycle() {
+        guard Self.sparkleIsAvailable else { return }
+        updater.resetUpdateCycle()
     }
 
     // MARK: - Private

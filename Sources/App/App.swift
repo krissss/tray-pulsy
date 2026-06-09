@@ -110,5 +110,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor @objc private func handleWake() {
         statusBarController?.resume()
+        appState?.updateManager.resetUpdateCycle()
     }
 }
