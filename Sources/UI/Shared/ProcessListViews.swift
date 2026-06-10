@@ -27,7 +27,13 @@ struct ProcessResourceListView: View {
             isEmpty: monitor.processes.isEmpty
         ) {
             ForEach(monitor.processes) { process in
-                ProcessResourceRow(process: process, kind: kind)
+                ProcessResourceRow(
+                    process: process,
+                    kind: kind,
+                    isPinned: monitor.pinnedProcessIDs.contains(process.pid),
+                    togglePinned: { monitor.togglePinnedProcess(process) },
+                    terminateProcess: { monitor.terminateProcess(pid: process.pid) }
+                )
             }
         }
     }
@@ -51,7 +57,12 @@ struct ProcessNetworkListView: View {
             isEmpty: monitor.processes.isEmpty
         ) {
             ForEach(monitor.processes) { process in
-                ProcessNetworkRow(process: process)
+                ProcessNetworkRow(
+                    process: process,
+                    isPinned: monitor.pinnedProcessIDs.contains(process.pid),
+                    togglePinned: { monitor.togglePinnedProcess(process) },
+                    terminateProcess: { monitor.terminateProcess(pid: process.pid) }
+                )
             }
         } trailingHeader: {
             ProcessNetworkSortMenu(monitor: monitor)
@@ -233,6 +244,9 @@ private struct ProcessNetworkSortMenu: View {
 private struct ProcessResourceRow: View {
     let process: ProcessResourceUsage
     let kind: ProcessResourceKind
+    let isPinned: Bool
+    let togglePinned: () -> Void
+    let terminateProcess: () -> Void
 
     var body: some View {
         ProcessUsageRow(
@@ -241,7 +255,10 @@ private struct ProcessResourceRow: View {
             valueText: valueText,
             accent: accent,
             fraction: fraction,
-            accessibilityValue: accessibilityValue
+            accessibilityValue: accessibilityValue,
+            isPinned: isPinned,
+            togglePinned: togglePinned,
+            terminateProcess: terminateProcess
         )
     }
 
@@ -291,6 +308,9 @@ private struct ProcessResourceRow: View {
 
 private struct ProcessNetworkRow: View {
     let process: ProcessNetworkUsage
+    let isPinned: Bool
+    let togglePinned: () -> Void
+    let terminateProcess: () -> Void
 
     var body: some View {
         ProcessUsageRow(
@@ -299,7 +319,10 @@ private struct ProcessNetworkRow: View {
             valueText: "↓\(formatSpeed(process.downloadBytesPerSec))  ↑\(formatSpeed(process.uploadBytesPerSec))",
             accent: .purple,
             fraction: activityFraction,
-            accessibilityValue: "\(L10n.popoverNetworkDownload) \(formatSpeed(process.downloadBytesPerSec)), \(L10n.popoverNetworkUpload) \(formatSpeed(process.uploadBytesPerSec))"
+            accessibilityValue: "\(L10n.popoverNetworkDownload) \(formatSpeed(process.downloadBytesPerSec)), \(L10n.popoverNetworkUpload) \(formatSpeed(process.uploadBytesPerSec))",
+            isPinned: isPinned,
+            togglePinned: togglePinned,
+            terminateProcess: terminateProcess
         )
     }
 
@@ -324,7 +347,10 @@ private struct SpikeProcessRow: View {
             valueText: process.valueText,
             accent: accent,
             fraction: process.fraction,
-            accessibilityValue: process.valueText
+            accessibilityValue: process.valueText,
+            isPinned: false,
+            togglePinned: nil,
+            terminateProcess: nil
         )
     }
 
@@ -347,8 +373,31 @@ private struct ProcessUsageRow: View {
     let accent: Color
     let fraction: Double
     let accessibilityValue: String
+    let isPinned: Bool
+    let togglePinned: (() -> Void)?
+    let terminateProcess: (() -> Void)?
 
     var body: some View {
+        rowContent
+            .modifier(ProcessPinInteraction(isPinned: isPinned, togglePinned: togglePinned))
+            .modifier(ProcessRowContextMenu(
+                copyPID: copyPID,
+                terminateProcess: terminateProcess
+            ))
+            .frame(height: 24)
+            .padding(.horizontal, 4)
+            .background {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(isPinned ? accent.opacity(0.14) : .clear)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .stroke(isPinned ? accent.opacity(0.28) : .clear, lineWidth: 1)
+            }
+            .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var rowContent: some View {
         HStack(spacing: 8) {
             ProcessIcon(pid: pid)
 
@@ -359,6 +408,13 @@ private struct ProcessUsageRow: View {
                     .truncationMode(.middle)
 
                 ProcessIDText(pid: pid)
+
+                if isPinned {
+                    Image(systemName: "pin.fill")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(accent)
+                        .accessibilityHidden(true)
+                }
             }
 
             Spacer(minLength: 8)
@@ -382,10 +438,69 @@ private struct ProcessUsageRow: View {
                 .frame(width: 72, height: 3)
             }
         }
-        .frame(height: 24)
-        .padding(.horizontal, 4)
-        .background(.clear, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
-        .accessibilityLabel("\(name), PID \(pid), \(accessibilityValue)")
+    }
+
+    private var accessibilityLabel: String {
+        let pinText = isPinned ? "\(L10n.popoverProcessPinned), " : ""
+        return "\(pinText)\(name), PID \(pid), \(accessibilityValue)"
+    }
+
+    private func copyPID() {
+        let pasteboard = NSPasteboard.general
+        pasteboard.clearContents()
+        pasteboard.setString(String(pid), forType: .string)
+    }
+}
+
+private struct ProcessPinInteraction: ViewModifier {
+    let isPinned: Bool
+    let togglePinned: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if let togglePinned {
+            content
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    togglePinned()
+                }
+                .help(isPinned ? L10n.popoverProcessUnpin : L10n.popoverProcessPin)
+        } else {
+            content
+        }
+    }
+}
+
+private struct ProcessRowContextMenu: ViewModifier {
+    let copyPID: (() -> Void)?
+    let terminateProcess: (() -> Void)?
+
+    func body(content: Content) -> some View {
+        if copyPID != nil || terminateProcess != nil {
+            content.contextMenu {
+                if let copyPID {
+                    Button {
+                        copyPID()
+                    } label: {
+                        Label(L10n.popoverProcessCopyPID, systemImage: "doc.on.doc")
+                    }
+                }
+
+                if copyPID != nil, terminateProcess != nil {
+                    Divider()
+                }
+
+                if let terminateProcess {
+                    Button(role: .destructive) {
+                        terminateProcess()
+                    } label: {
+                        Label(L10n.popoverProcessTerminate, systemImage: "xmark.circle")
+                    }
+                }
+            }
+            .accessibilityHint(L10n.popoverProcessContextMenuHint)
+        } else {
+            content
+        }
     }
 }
 
@@ -393,26 +508,14 @@ private struct ProcessIDText: View {
     let pid: Int
 
     var body: some View {
-        Button {
-            copyPID()
-        } label: {
-            Text("\(pid)")
-                .font(.system(size: 9, design: .monospaced))
-                .foregroundStyle(.tertiary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(L10n.popoverProcessCopyPID)
-        .accessibilityLabel("PID \(pid)")
-        .accessibilityHint(L10n.popoverProcessCopyPID)
-    }
-
-    private func copyPID() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(String(pid), forType: .string)
+        Text("\(pid)")
+            .font(.system(size: 9, design: .monospaced))
+            .foregroundStyle(.tertiary)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .help(L10n.popoverProcessContextMenuHint)
+            .accessibilityLabel("PID \(pid)")
+            .accessibilityHint(L10n.popoverProcessContextMenuHint)
     }
 }
 

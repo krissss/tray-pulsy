@@ -265,6 +265,12 @@ enum L10n {
             "popover.process.showCPU": "Show CPU processes",
             "popover.process.showMemory": "Show memory processes",
             "popover.process.copyPID": "Copy PID",
+            "popover.process.pin": "Pin process",
+            "popover.process.unpin": "Unpin process",
+            "popover.process.pinned": "Pinned",
+            "popover.process.terminate": "Kill process",
+            "popover.process.terminateFailed": "Could not kill PID %@",
+            "popover.process.contextMenuHint": "Right-click for process actions",
             "popover.process.cpuHeader": "% CPU",
             "popover.process.memoryHeader": "Memory / %",
             "popover.network.topProcesses": "Top Processes",
@@ -514,6 +520,12 @@ enum L10n {
             "popover.process.showCPU": "显示 CPU 进程",
             "popover.process.showMemory": "显示内存进程",
             "popover.process.copyPID": "复制 PID",
+            "popover.process.pin": "置顶进程",
+            "popover.process.unpin": "取消置顶进程",
+            "popover.process.pinned": "已置顶",
+            "popover.process.terminate": "杀进程",
+            "popover.process.terminateFailed": "无法杀死 PID %@",
+            "popover.process.contextMenuHint": "右键打开进程操作",
             "popover.process.cpuHeader": "% CPU",
             "popover.process.memoryHeader": "内存 / %",
             "popover.network.topProcesses": "进程排行",
@@ -827,6 +839,15 @@ enum L10n {
     static var popoverCPUProcessesToggle: String { tr("popover.process.showCPU", "显示 CPU 进程") }
     static var popoverMemoryProcessesToggle: String { tr("popover.process.showMemory", "显示内存进程") }
     static var popoverProcessCopyPID: String { tr("popover.process.copyPID", "复制 PID") }
+    static var popoverProcessPin: String { tr("popover.process.pin", "置顶进程") }
+    static var popoverProcessUnpin: String { tr("popover.process.unpin", "取消置顶进程") }
+    static var popoverProcessPinned: String { tr("popover.process.pinned", "已置顶") }
+    static var popoverProcessTerminate: String { tr("popover.process.terminate", "杀进程") }
+    static var popoverProcessContextMenuHint: String { tr("popover.process.contextMenuHint", "右键打开进程操作") }
+    static func popoverProcessTerminateFailed(_ pid: Int) -> String {
+        tr("popover.process.terminateFailed", "无法杀死 PID %@")
+            .replacingOccurrences(of: "%@", with: String(pid))
+    }
     static var popoverProcessCPUHeader: String { tr("popover.process.cpuHeader", "% CPU") }
     static var popoverProcessMemoryHeader: String { tr("popover.process.memoryHeader", "内存 / %") }
     static var popoverNetworkTopProcesses: String { tr("popover.network.topProcesses", "进程排行") }

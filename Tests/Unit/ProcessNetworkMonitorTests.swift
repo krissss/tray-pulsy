@@ -107,4 +107,62 @@ struct ProcessNetworkMonitorTests {
         #expect(ProcessNetworkReader.sortedProcesses(processes, by: .total, limit: 3).map(\.pid) == [3, 2, 1])
         #expect(ProcessNetworkReader.sortedProcesses(processes, by: .activity, limit: 3).map(\.pid) == [2, 1, 3])
     }
+
+    @Test("inactive pinned network usage can remain visible")
+    func inactivePinnedNetworkUsage() {
+        let previous = [
+            42: RawProcessNetworkSample(pid: 42, name: "Pinned", downloadBytes: 1_000, uploadBytes: 100),
+        ]
+        let current = RawProcessNetworkSample(pid: 42, name: "Pinned", downloadBytes: 1_000, uploadBytes: 100)
+
+        let usage = ProcessNetworkReader.usage(
+            for: current,
+            previous: previous,
+            elapsed: 1,
+            includesInactive: true
+        )
+
+        #expect(usage?.pid == 42)
+        #expect(usage?.downloadBytesPerSec == 0)
+        #expect(usage?.uploadBytesPerSec == 0)
+    }
+
+    @Test("visible network processes keep pinned process first within limit")
+    func visibleNetworkProcessesPinSelectedProcess() {
+        let ranked = [
+            ProcessNetworkUsage(pid: 1, name: "Download", downloadBytesPerSec: 5_000, uploadBytesPerSec: 0),
+            ProcessNetworkUsage(pid: 2, name: "Upload", downloadBytesPerSec: 0, uploadBytesPerSec: 6_000),
+            ProcessNetworkUsage(pid: 3, name: "Balanced", downloadBytesPerSec: 3_500, uploadBytesPerSec: 3_500),
+        ]
+        let pinned = ProcessNetworkUsage(pid: 9, name: "Pinned", downloadBytesPerSec: 0, uploadBytesPerSec: 0)
+
+        let processes = ProcessNetworkReader.visibleProcesses(
+            rankedProcesses: ranked,
+            pinnedProcesses: [pinned],
+            limit: 3
+        )
+
+        #expect(processes.map(\.pid) == [9, 1, 2])
+    }
+
+    @Test("visible network processes keep multiple pinned processes in click order")
+    func visibleNetworkProcessesPinMultipleProcesses() {
+        let ranked = [
+            ProcessNetworkUsage(pid: 1, name: "Download", downloadBytesPerSec: 5_000, uploadBytesPerSec: 0),
+            ProcessNetworkUsage(pid: 2, name: "Upload", downloadBytesPerSec: 0, uploadBytesPerSec: 6_000),
+            ProcessNetworkUsage(pid: 3, name: "Balanced", downloadBytesPerSec: 3_500, uploadBytesPerSec: 3_500),
+        ]
+        let pinned = [
+            ProcessNetworkUsage(pid: 9, name: "Pinned A", downloadBytesPerSec: 0, uploadBytesPerSec: 0),
+            ProcessNetworkUsage(pid: 8, name: "Pinned B", downloadBytesPerSec: 100, uploadBytesPerSec: 0),
+        ]
+
+        let processes = ProcessNetworkReader.visibleProcesses(
+            rankedProcesses: ranked,
+            pinnedProcesses: pinned,
+            limit: 3
+        )
+
+        #expect(processes.map(\.pid) == [9, 8, 1])
+    }
 }

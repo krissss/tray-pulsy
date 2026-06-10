@@ -96,4 +96,43 @@ struct ProcessResourceMonitorTests {
         #expect(processes[0].cpuPercent == 50)
         #expect(processes[1].cpuPercent == 25)
     }
+
+    @Test("visible processes keep pinned process first within limit")
+    func visibleProcessesPinSelectedProcess() {
+        let ranked = [
+            ProcessResourceUsage(pid: 1, name: "Top", cpuPercent: 90, memoryBytes: 100),
+            ProcessResourceUsage(pid: 2, name: "Second", cpuPercent: 80, memoryBytes: 100),
+            ProcessResourceUsage(pid: 3, name: "Third", cpuPercent: 70, memoryBytes: 100),
+        ]
+        let pinned = ProcessResourceUsage(pid: 9, name: "Pinned", cpuPercent: 1, memoryBytes: 50)
+
+        let processes = ProcessResourceReader.visibleProcesses(
+            rankedProcesses: ranked,
+            pinnedProcesses: [pinned],
+            limit: 3
+        )
+
+        #expect(processes.map(\.pid) == [9, 1, 2])
+    }
+
+    @Test("visible processes keep multiple pinned processes in click order")
+    func visibleProcessesPinMultipleProcesses() {
+        let ranked = [
+            ProcessResourceUsage(pid: 1, name: "Top", cpuPercent: 90, memoryBytes: 100),
+            ProcessResourceUsage(pid: 2, name: "Second", cpuPercent: 80, memoryBytes: 100),
+            ProcessResourceUsage(pid: 3, name: "Third", cpuPercent: 70, memoryBytes: 100),
+        ]
+        let pinned = [
+            ProcessResourceUsage(pid: 9, name: "Pinned A", cpuPercent: 1, memoryBytes: 50),
+            ProcessResourceUsage(pid: 8, name: "Pinned B", cpuPercent: 2, memoryBytes: 60),
+        ]
+
+        let processes = ProcessResourceReader.visibleProcesses(
+            rankedProcesses: ranked,
+            pinnedProcesses: pinned,
+            limit: 3
+        )
+
+        #expect(processes.map(\.pid) == [9, 8, 1])
+    }
 }

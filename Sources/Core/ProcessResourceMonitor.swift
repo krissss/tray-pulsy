@@ -139,22 +139,16 @@ enum ProcessResourceReader {
         limit: Int
     ) -> [ProcessResourceUsage] {
         guard elapsed > 0 else { return [] }
-        let cpuCapacity = Double(max(1, processorCount))
         let active = current.compactMap { sample -> ProcessResourceUsage? in
-            guard let currentTime = sample.cpuTime,
-                  let previousTime = previous[sample.pid]?.cpuTime else {
-                return nil
-            }
-            let percent = max(0, currentTime - previousTime) / elapsed / cpuCapacity * 100
+            guard let process = activeCPUProcess(
+                sample,
+                previous: previous,
+                elapsed: elapsed,
+                processorCount: processorCount
+            ) else { return nil }
+            let percent = process.cpuPercent
             guard percent > 0 else { return nil }
-            return ProcessResourceUsage(
-                pid: sample.pid,
-                name: sample.name,
-                cpuPercent: percent,
-                memoryBytes: sample.memoryBytes,
-                memoryPercent: sample.memoryPercent,
-                cpuTime: sample.cpuTime
-            )
+            return process
         }
 
         return Array(active.sorted {
@@ -162,6 +156,30 @@ enum ProcessResourceReader {
             if $0.memoryBytes != $1.memoryBytes { return $0.memoryBytes > $1.memoryBytes }
             return $0.name.localizedStandardCompare($1.name) == .orderedAscending
         }.prefix(limit))
+    }
+
+    static func activeCPUProcess(
+        _ sample: ProcessResourceUsage,
+        previous: [Int: ProcessResourceUsage],
+        elapsed: TimeInterval,
+        processorCount: Int = ProcessInfo.processInfo.activeProcessorCount
+    ) -> ProcessResourceUsage? {
+        guard elapsed > 0,
+              let currentTime = sample.cpuTime,
+              let previousTime = previous[sample.pid]?.cpuTime else {
+            return nil
+        }
+
+        let cpuCapacity = Double(max(1, processorCount))
+        let percent = max(0, currentTime - previousTime) / elapsed / cpuCapacity * 100
+        return ProcessResourceUsage(
+            pid: sample.pid,
+            name: sample.name,
+            cpuPercent: percent,
+            memoryBytes: sample.memoryBytes,
+            memoryPercent: sample.memoryPercent,
+            cpuTime: sample.cpuTime
+        )
     }
 
     static func topProcesses(
@@ -189,6 +207,23 @@ enum ProcessResourceReader {
             }
             return lhs.name.localizedStandardCompare(rhs.name) == .orderedAscending
         }.prefix(limit))
+    }
+
+    static func visibleProcesses(
+        rankedProcesses: [ProcessResourceUsage],
+        pinnedProcesses: [ProcessResourceUsage],
+        limit: Int
+    ) -> [ProcessResourceUsage] {
+        guard !pinnedProcesses.isEmpty else {
+            return Array(rankedProcesses.prefix(limit))
+        }
+
+        let pinnedPIDs = Set(pinnedProcesses.map(\.pid))
+        let remainingLimit = max(0, limit - pinnedProcesses.count)
+        let remaining = rankedProcesses
+            .filter { !pinnedPIDs.contains($0.pid) }
+            .prefix(remainingLimit)
+        return pinnedProcesses + remaining
     }
 
     private static func processName(from command: String, fallbackPID pid: Int) -> String {
@@ -238,6 +273,7 @@ final class ProcessResourceMonitor {
     private(set) var processes: [ProcessResourceUsage] = []
     private(set) var isSampling: Bool = false
     private(set) var errorMessage: String?
+    private(set) var pinnedProcessIDs: [Int] = []
 
     @ObservationIgnored private let kind: ProcessResourceKind
     @ObservationIgnored private var sampleTask: Task<Void, Never>?
@@ -245,6 +281,8 @@ final class ProcessResourceMonitor {
     @ObservationIgnored private var previousSamples: [Int: ProcessResourceUsage] = [:]
     @ObservationIgnored private var previousSampleDate: Date?
     @ObservationIgnored private var cancellationContext: ProcessCancellationContext?
+    @ObservationIgnored private var pinnedProcessesByPID: [Int: ProcessResourceUsage] = [:]
+    @ObservationIgnored private var rankedProcesses: [ProcessResourceUsage] = []
 
     init(kind: ProcessResourceKind) {
         self.kind = kind
@@ -262,8 +300,11 @@ final class ProcessResourceMonitor {
         isSampling = true
         errorMessage = nil
         processes = []
+        rankedProcesses = []
         previousSamples = [:]
         previousSampleDate = nil
+        pinnedProcessIDs = []
+        pinnedProcessesByPID = [:]
 
         let context = ProcessCancellationContext()
         cancellationContext = context
@@ -285,8 +326,35 @@ final class ProcessResourceMonitor {
         isSampling = false
         errorMessage = nil
         processes = []
+        rankedProcesses = []
         previousSamples = [:]
         previousSampleDate = nil
+        pinnedProcessIDs = []
+        pinnedProcessesByPID = [:]
+    }
+
+    func togglePinnedProcess(_ process: ProcessResourceUsage) {
+        errorMessage = nil
+        if pinnedProcessIDs.contains(process.pid) {
+            removePinnedProcess(pid: process.pid)
+        } else {
+            pinnedProcessIDs.append(process.pid)
+            pinnedProcessesByPID[process.pid] = process
+        }
+        refreshVisibleProcesses()
+    }
+
+    func terminateProcess(pid: Int) {
+        removePinnedProcess(pid: pid)
+        processes.removeAll { $0.pid == pid }
+        rankedProcesses.removeAll { $0.pid == pid }
+
+        switch ProcessTerminator.terminate(pid: pid) {
+        case .success:
+            errorMessage = nil
+        case .failure:
+            errorMessage = L10n.popoverProcessTerminateFailed(pid)
+        }
     }
 
     private func sampleOnce(cancellationContext: ProcessCancellationContext) async {
@@ -306,26 +374,78 @@ final class ProcessResourceMonitor {
         case .success(let samples):
             errorMessage = nil
             let now = Date()
+            let samplesByPID = Dictionary(uniqueKeysWithValues: samples.map { ($0.pid, $0) })
             switch kind {
             case .cpu:
                 if let previousSampleDate {
-                    processes = ProcessResourceReader.activeCPUProcesses(
+                    let elapsed = now.timeIntervalSince(previousSampleDate)
+                    rankedProcesses = ProcessResourceReader.activeCPUProcesses(
                         current: samples,
                         previous: previousSamples,
-                        elapsed: now.timeIntervalSince(previousSampleDate),
+                        elapsed: elapsed,
                         limit: limit
                     )
+                    updatePinnedProcesses(from: samplesByPID, elapsed: elapsed)
                 } else {
-                    processes = ProcessResourceReader.topProcesses(samples, kind: kind, limit: limit)
+                    rankedProcesses = ProcessResourceReader.topProcesses(samples, kind: kind, limit: limit)
+                    updatePinnedProcesses(from: samplesByPID, elapsed: nil)
                 }
-                previousSamples = Dictionary(uniqueKeysWithValues: samples.map { ($0.pid, $0) })
+                refreshVisibleProcesses()
+                previousSamples = samplesByPID
                 previousSampleDate = now
             case .memory:
-                processes = ProcessResourceReader.topProcesses(samples, kind: kind, limit: limit)
+                rankedProcesses = ProcessResourceReader.topProcesses(samples, kind: kind, limit: limit)
+                updatePinnedProcesses(from: samplesByPID, elapsed: nil)
+                refreshVisibleProcesses()
             }
         case .failure(let error):
             errorMessage = error.localizedDescription
             processes = []
+            rankedProcesses = []
         }
+    }
+
+    private func updatePinnedProcesses(
+        from samplesByPID: [Int: ProcessResourceUsage],
+        elapsed: TimeInterval?
+    ) {
+        guard !pinnedProcessIDs.isEmpty else {
+            pinnedProcessesByPID = [:]
+            return
+        }
+
+        var nextPinnedIDs: [Int] = []
+        var nextPinnedProcesses: [Int: ProcessResourceUsage] = [:]
+        for pid in pinnedProcessIDs {
+            guard let sample = samplesByPID[pid] else { continue }
+            nextPinnedIDs.append(pid)
+            if kind == .cpu,
+               let elapsed,
+               let activeProcess = ProcessResourceReader.activeCPUProcess(
+                   sample,
+                   previous: previousSamples,
+                   elapsed: elapsed
+               ) {
+                nextPinnedProcesses[pid] = activeProcess
+            } else {
+                nextPinnedProcesses[pid] = sample
+            }
+        }
+        pinnedProcessIDs = nextPinnedIDs
+        pinnedProcessesByPID = nextPinnedProcesses
+    }
+
+    private func refreshVisibleProcesses() {
+        let pinnedProcesses = pinnedProcessIDs.compactMap { pinnedProcessesByPID[$0] }
+        processes = ProcessResourceReader.visibleProcesses(
+            rankedProcesses: rankedProcesses,
+            pinnedProcesses: pinnedProcesses,
+            limit: limit
+        )
+    }
+
+    private func removePinnedProcess(pid: Int) {
+        pinnedProcessIDs.removeAll { $0 == pid }
+        pinnedProcessesByPID[pid] = nil
     }
 }

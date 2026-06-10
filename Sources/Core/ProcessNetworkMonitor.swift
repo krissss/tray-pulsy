@@ -175,19 +175,34 @@ enum ProcessNetworkReader {
         elapsed: TimeInterval
     ) -> [ProcessNetworkUsage] {
         let elapsed = max(elapsed, 0.1)
-        return aggregateSamplesByPID(samples).values.compactMap { sample -> ProcessNetworkUsage? in
-            guard let previous = previousSamples[sample.pid] else { return nil }
-            let downloadDelta = max(Int64(0), sample.downloadBytes - previous.downloadBytes)
-            let uploadDelta = max(Int64(0), sample.uploadBytes - previous.uploadBytes)
-            guard downloadDelta > 0 || uploadDelta > 0 else { return nil }
-
-            return ProcessNetworkUsage(
-                pid: sample.pid,
-                name: sample.name,
-                downloadBytesPerSec: Int64(Double(downloadDelta) / elapsed),
-                uploadBytesPerSec: Int64(Double(uploadDelta) / elapsed)
+        return aggregateSamplesByPID(samples).values.compactMap { sample in
+            usage(
+                for: sample,
+                previous: previousSamples,
+                elapsed: elapsed,
+                includesInactive: false
             )
         }
+    }
+
+    static func usage(
+        for sample: RawProcessNetworkSample,
+        previous previousSamples: [Int: RawProcessNetworkSample],
+        elapsed: TimeInterval,
+        includesInactive: Bool
+    ) -> ProcessNetworkUsage? {
+        guard let previous = previousSamples[sample.pid] else { return nil }
+        let elapsed = max(elapsed, 0.1)
+        let downloadDelta = max(Int64(0), sample.downloadBytes - previous.downloadBytes)
+        let uploadDelta = max(Int64(0), sample.uploadBytes - previous.uploadBytes)
+        guard includesInactive || downloadDelta > 0 || uploadDelta > 0 else { return nil }
+
+        return ProcessNetworkUsage(
+            pid: sample.pid,
+            name: sample.name,
+            downloadBytesPerSec: Int64(Double(downloadDelta) / elapsed),
+            uploadBytesPerSec: Int64(Double(uploadDelta) / elapsed)
+        )
     }
 
     static func sortedProcesses(
@@ -207,6 +222,23 @@ enum ProcessNetworkReader {
                 return compare(lhs, rhs, primary: \.totalBytesPerSec, secondary: \.downloadBytesPerSec)
             }
         }.prefix(limit))
+    }
+
+    static func visibleProcesses(
+        rankedProcesses: [ProcessNetworkUsage],
+        pinnedProcesses: [ProcessNetworkUsage],
+        limit: Int
+    ) -> [ProcessNetworkUsage] {
+        guard !pinnedProcesses.isEmpty else {
+            return Array(rankedProcesses.prefix(limit))
+        }
+
+        let pinnedPIDs = Set(pinnedProcesses.map(\.pid))
+        let remainingLimit = max(0, limit - pinnedProcesses.count)
+        let remaining = rankedProcesses
+            .filter { !pinnedPIDs.contains($0.pid) }
+            .prefix(remainingLimit)
+        return pinnedProcesses + remaining
     }
 
     private static func compareActivity(_ lhs: ProcessNetworkUsage, _ rhs: ProcessNetworkUsage) -> Bool {
@@ -303,6 +335,7 @@ final class ProcessNetworkMonitor {
     private(set) var processes: [ProcessNetworkUsage] = []
     private(set) var isSampling: Bool = false
     private(set) var errorMessage: String?
+    private(set) var pinnedProcessIDs: [Int] = []
     var sortMode: ProcessNetworkSortMode = .activity {
         didSet { refreshVisibleProcesses() }
     }
@@ -314,6 +347,7 @@ final class ProcessNetworkMonitor {
     @ObservationIgnored private var limit: Int = 8
     @ObservationIgnored private var completedSampleCount = 0
     @ObservationIgnored private var cancellationContext: ProcessCancellationContext?
+    @ObservationIgnored private var pinnedProcessesByPID: [Int: ProcessNetworkUsage] = [:]
 
     deinit {
         sampleTask?.cancel()
@@ -331,6 +365,8 @@ final class ProcessNetworkMonitor {
         previousSamples.removeAll()
         previousSampleDate = nil
         completedSampleCount = 0
+        pinnedProcessIDs = []
+        pinnedProcessesByPID = [:]
 
         let context = ProcessCancellationContext()
         cancellationContext = context
@@ -356,6 +392,32 @@ final class ProcessNetworkMonitor {
         previousSamples.removeAll()
         previousSampleDate = nil
         completedSampleCount = 0
+        pinnedProcessIDs = []
+        pinnedProcessesByPID = [:]
+    }
+
+    func togglePinnedProcess(_ process: ProcessNetworkUsage) {
+        errorMessage = nil
+        if pinnedProcessIDs.contains(process.pid) {
+            removePinnedProcess(pid: process.pid)
+        } else {
+            pinnedProcessIDs.append(process.pid)
+            pinnedProcessesByPID[process.pid] = process
+        }
+        refreshVisibleProcesses()
+    }
+
+    func terminateProcess(pid: Int) {
+        removePinnedProcess(pid: pid)
+        processes.removeAll { $0.pid == pid }
+        activeProcesses.removeAll { $0.pid == pid }
+
+        switch ProcessTerminator.terminate(pid: pid) {
+        case .success:
+            errorMessage = nil
+        case .failure:
+            errorMessage = L10n.popoverProcessTerminateFailed(pid)
+        }
     }
 
     private func sampleOnce(cancellationContext: ProcessCancellationContext) async {
@@ -398,18 +460,68 @@ final class ProcessNetworkMonitor {
         guard let previousDate = previousSampleDate, !previousSamples.isEmpty else {
             processes = []
             activeProcesses = []
+            updatePinnedProcesses(from: current, elapsed: nil)
+            refreshVisibleProcesses()
             return
         }
 
+        let elapsed = now.timeIntervalSince(previousDate)
         activeProcesses = ProcessNetworkReader.activeProcesses(
             current: samples,
             previous: previousSamples,
-            elapsed: now.timeIntervalSince(previousDate)
+            elapsed: elapsed
         )
+        updatePinnedProcesses(from: current, elapsed: elapsed)
         refreshVisibleProcesses()
     }
 
     private func refreshVisibleProcesses() {
-        processes = ProcessNetworkReader.sortedProcesses(activeProcesses, by: sortMode, limit: limit)
+        let ranked = ProcessNetworkReader.sortedProcesses(activeProcesses, by: sortMode, limit: limit)
+        let pinnedProcesses = pinnedProcessIDs.compactMap { pinnedProcessesByPID[$0] }
+        processes = ProcessNetworkReader.visibleProcesses(
+            rankedProcesses: ranked,
+            pinnedProcesses: pinnedProcesses,
+            limit: limit
+        )
+    }
+
+    private func updatePinnedProcesses(
+        from samplesByPID: [Int: RawProcessNetworkSample],
+        elapsed: TimeInterval?
+    ) {
+        guard !pinnedProcessIDs.isEmpty else {
+            pinnedProcessesByPID = [:]
+            return
+        }
+
+        var nextPinnedIDs: [Int] = []
+        var nextPinnedProcesses: [Int: ProcessNetworkUsage] = [:]
+        for pid in pinnedProcessIDs {
+            guard let sample = samplesByPID[pid] else { continue }
+            nextPinnedIDs.append(pid)
+            if let elapsed,
+               let usage = ProcessNetworkReader.usage(
+                   for: sample,
+                   previous: previousSamples,
+                   elapsed: elapsed,
+                   includesInactive: true
+               ) {
+                nextPinnedProcesses[pid] = usage
+            } else {
+                nextPinnedProcesses[pid] = ProcessNetworkUsage(
+                    pid: sample.pid,
+                    name: sample.name,
+                    downloadBytesPerSec: 0,
+                    uploadBytesPerSec: 0
+                )
+            }
+        }
+        pinnedProcessIDs = nextPinnedIDs
+        pinnedProcessesByPID = nextPinnedProcesses
+    }
+
+    private func removePinnedProcess(pid: Int) {
+        pinnedProcessIDs.removeAll { $0 == pid }
+        pinnedProcessesByPID[pid] = nil
     }
 }
