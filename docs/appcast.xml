@@ -6,25 +6,17 @@
         <description>TrayPulsy release updates</description>
         <language>en</language>
         <item>
-            <title>TrayPulsy 1.3.1</title>
-            <sparkle:version>1.3.1</sparkle:version>
-            <sparkle:shortVersionString>1.3.1</sparkle:shortVersionString>
+            <title>TrayPulsy 1.4.0</title>
+            <sparkle:version>1.4.0</sparkle:version>
+            <sparkle:shortVersionString>1.4.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:fullReleaseNotesLink>https://krissss.github.io/tray-pulsy/CHANGELOG.md</sparkle:fullReleaseNotesLink>
-            <pubDate>Wed, 10 Jun 2026 06:28:34 +0000</pubDate>
-            <description><![CDATA[<b>Added</b>
-        <ul>
-        <li>支持 Debug 多实例调试</li>
-        <li>update: 支持跨版本更新日志展示</li>
-        </ul>
-        <b>Fixed</b>
-        <ul>
-        <li>修复自动检查更新不生效的问题</li>
-        </ul>]]></description>
+            <pubDate>Wed, 10 Jun 2026 10:19:52 +0000</pubDate>
+            <description><![CDATA[See the full changelog for details.]]></description>
             <enclosure
-                url="https://github.com/krissss/tray-pulsy/releases/download/v1.3.1/TrayPulsy-v1.3.1.zip"
-                sparkle:edSignature="PW1hh/GYByhV+XMbENZ/DGk1fFyOmUwyaClDxpqsQ2GjWVtWj5Zb/RtwCjX2QfZh0ecGPmAIGHquv4NBWFfJDg=="
-                length="5073299"
+                url="https://github.com/krissss/tray-pulsy/releases/download/v1.4.0/TrayPulsy-v1.4.0.zip"
+                sparkle:edSignature="nIKuxF75k2da0/kZRVtZKPosBWhLr9fgMibZ6MIJQOjWojQfjwN/vbfx7Oe9oSJvljJAlvtV0rwktzxDKOHMBg=="
+                length="5123224"
                 type="application/octet-stream"
             />
         </item>
