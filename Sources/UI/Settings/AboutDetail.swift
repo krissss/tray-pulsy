@@ -37,7 +37,7 @@ struct AboutDetail: View {
             Section {
                 Toggle(isOn: Binding(
                     get: { updateManager.automaticallyChecksForUpdates },
-                    set: { updateManager.automaticallyChecksForUpdates = $0; updateManager.updater.automaticallyChecksForUpdates = $0 }
+                    set: { updateManager.setAutomaticallyChecksForUpdates($0) }
                 )) {
                     SettingsRowLabel(
                         title: L10n.updateAutoCheckToggle,
@@ -48,7 +48,7 @@ struct AboutDetail: View {
 
                 Toggle(isOn: Binding(
                     get: { updateManager.automaticallyDownloadsUpdates },
-                    set: { updateManager.automaticallyDownloadsUpdates = $0; updateManager.updater.automaticallyDownloadsUpdates = $0 }
+                    set: { updateManager.setAutomaticallyDownloadsUpdates($0) }
                 )) {
                     SettingsRowLabel(
                         title: L10n.updateAutoDownloadToggle,
@@ -59,7 +59,7 @@ struct AboutDetail: View {
 
                 Picker(selection: Binding(
                     get: { UpdateCheckInterval.from(seconds: updateManager.updateCheckInterval) },
-                    set: { updateManager.updateCheckInterval = $0.seconds; updateManager.updater.updateCheckInterval = $0.seconds }
+                    set: { updateManager.setUpdateCheckInterval($0.seconds) }
                 )) {
                     ForEach(UpdateCheckInterval.allCases, id: \.rawValue) { interval in
                         Text(interval.displayName).tag(interval)

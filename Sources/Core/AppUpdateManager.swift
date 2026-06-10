@@ -6,13 +6,12 @@ import SwiftUI
 
 // MARK: - App Update Manager
 
-/// Manages app updates using Sparkle's standard UI.
-/// Uses `SPUStandardUpdaterController` so Sparkle handles update dialogs natively.
+/// Manages app updates using Sparkle with TrayPulsy's custom update UI.
 ///
 /// Uses `@Observable` so SwiftUI tracks property changes through `@Environment(AppState.self)`.
 /// Sparkle's KVO publishers sync state into stored properties that Observation can track.
 @MainActor
-final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDriverDelegate {
+final class AppUpdateManager: NSObject, SPUUpdaterDelegate {
     // MARK: - Observable State (synced from Sparkle via KVO)
 
     var canCheckForUpdates = false
@@ -30,15 +29,13 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
         ProcessInfo.processInfo.processName == "xctest"
     @ObservationIgnored private static let sparkleIsAvailable =
         Bundle.main.bundleIdentifier != nil && !isRunningTests
-    @ObservationIgnored private(set) lazy var updaterController: SPUStandardUpdaterController = {
-        SPUStandardUpdaterController(
-            startingUpdater: false,
-            updaterDelegate: self,
-            userDriverDelegate: self
-        )
-    }()
-
-    var updater: SPUUpdater { updaterController.updater }
+    @ObservationIgnored private lazy var userDriver = SparkleUpdateUserDriver()
+    @ObservationIgnored private(set) lazy var updater = SPUUpdater(
+        hostBundle: Bundle.main,
+        applicationBundle: Bundle.main,
+        userDriver: userDriver,
+        delegate: self
+    )
 
     override init() {
         super.init()
@@ -47,7 +44,7 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
             canCheckForUpdates = true
             return
         }
-        _ = updaterController  // force lazy init to register delegates
+        _ = updater  // force lazy init to keep delegates and user driver alive
         configureCancellables()
         startUpdaterIfNeeded()
         // Sparkle recommends calling checkForUpdatesInBackground() right after
@@ -60,6 +57,24 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
         syncFromSparkle()
     }
 
+    func setAutomaticallyChecksForUpdates(_ isEnabled: Bool) {
+        automaticallyChecksForUpdates = isEnabled
+        guard Self.sparkleIsAvailable else { return }
+        updater.automaticallyChecksForUpdates = isEnabled
+    }
+
+    func setAutomaticallyDownloadsUpdates(_ isEnabled: Bool) {
+        automaticallyDownloadsUpdates = isEnabled
+        guard Self.sparkleIsAvailable else { return }
+        updater.automaticallyDownloadsUpdates = isEnabled
+    }
+
+    func setUpdateCheckInterval(_ interval: TimeInterval) {
+        updateCheckInterval = interval
+        guard Self.sparkleIsAvailable else { return }
+        updater.updateCheckInterval = interval
+    }
+
     // MARK: - Public API
 
     func checkForUpdates() {
@@ -70,6 +85,7 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
             return
         }
         startUpdaterIfNeeded()
+        guard updaterStarted else { return }
         updater.checkForUpdates()
     }
 
@@ -77,6 +93,7 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
     /// Sparkle doesn't miss the scheduled window.
     func resetUpdateCycle() {
         guard Self.sparkleIsAvailable else { return }
+        guard updaterStarted else { return }
         updater.resetUpdateCycle()
     }
 
@@ -115,8 +132,12 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
 
     private func startUpdaterIfNeeded() {
         guard !updaterStarted else { return }
-        updaterStarted = true
-        updaterController.startUpdater()
+        do {
+            try updater.start()
+            updaterStarted = true
+        } catch {
+            print("[Sparkle] failed to start updater: \(error)")
+        }
     }
 
     /// Read current values from Sparkle into local stored properties.
@@ -146,16 +167,6 @@ final class AppUpdateManager: NSObject, SPUUpdaterDelegate, SPUStandardUserDrive
         print("[Sparkle] didAbortWithError: \(error)")
     }
 
-    // MARK: - SPUStandardUserDriverDelegate
-
-    nonisolated var supportsGentleScheduledUpdateReminders: Bool { false }
-
-    nonisolated func standardUserDriverWillShowModalAlert() {
-        // Menu-bar only app (.accessory) won't bring windows to front automatically
-        DispatchQueue.main.async {
-            NSApp.activate(ignoringOtherApps: true)
-        }
-    }
 }
 
 // MARK: - Update Check Interval

@@ -77,7 +77,7 @@ jobs:
 
           # Build new appcast item — Python handles XML safely
           python3 -c "
-          import re, html
+          import re, html, textwrap
           ver = '$VER'
           ver_num = '$VERSION_NUM'
           ed_sig = '$ED_SIG'
@@ -121,26 +121,36 @@ jobs:
           # Escape CDATA terminator inside notes
           notes_html = notes_html.replace(']]>', ']]]]><![CDATA[>')
 
-          item = f'''              <item>
-                  <title>TrayPulsy {ver_num}</title>
-                  <sparkle:version>{ver_num}</sparkle:version>
-                  <sparkle:shortVersionString>{ver_num}</sparkle:shortVersionString>
-                  <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-                  <pubDate>{date_str}</pubDate>
-                  <description><![CDATA[{notes_html}]]></description>
-                  <enclosure
-                      url=\"https://github.com/krissss/tray-pulsy/releases/download/{ver}/TrayPulsy-{ver}.zip\"
-                      sparkle:edSignature=\"{ed_sig}\"
-                      length=\"{length}\"
-                      type=\"application/octet-stream\"
-                  />
-              </item>'''
+          item = textwrap.dedent(f'''\
+          <item>
+              <title>TrayPulsy {ver_num}</title>
+              <sparkle:version>{ver_num}</sparkle:version>
+              <sparkle:shortVersionString>{ver_num}</sparkle:shortVersionString>
+              <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+              <sparkle:fullReleaseNotesLink>https://krissss.github.io/tray-pulsy/CHANGELOG.md</sparkle:fullReleaseNotesLink>
+              <pubDate>{date_str}</pubDate>
+              <description><![CDATA[{notes_html}]]></description>
+              <enclosure
+                  url=\"https://github.com/krissss/tray-pulsy/releases/download/{ver}/TrayPulsy-{ver}.zip\"
+                  sparkle:edSignature=\"{ed_sig}\"
+                  length=\"{length}\"
+                  type=\"application/octet-stream\"
+              />
+          </item>''').rstrip()
 
-          with open('docs/appcast.xml', 'r') as f:
-              content = f.read()
-          content = re.sub(r'<!--.*?-->', '', content, flags=re.DOTALL)
-          content = content.replace('</channel>', item + '\n    </channel>')
-          content = re.sub(r'\n{3,}', '\n\n', content)
+          content = '\n'.join([
+              '<?xml version=\"1.0\" encoding=\"utf-8\"?>',
+              '<rss version=\"2.0\" xmlns:sparkle=\"http://www.andymatuschak.org/xml-namespaces/sparkle\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\">',
+              '    <channel>',
+              '        <title>TrayPulsy Update Feed</title>',
+              '        <link>https://krissss.github.io/tray-pulsy/appcast.xml</link>',
+              '        <description>TrayPulsy release updates</description>',
+              '        <language>en</language>',
+              textwrap.indent(item, '        '),
+              '    </channel>',
+              '</rss>',
+              '',
+          ])
           with open('docs/appcast.xml', 'w') as f:
               f.write(content)
           "

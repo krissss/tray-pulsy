@@ -296,6 +296,29 @@ enum L10n {
             "update.autoDownload.toggle": "Automatically download updates",
             "update.lastChecked": "Last checked: %@",
             "update.neverChecked": "Never",
+            "update.dialog.title": "TrayPulsy Update",
+            "update.dialog.availableTitle": "TrayPulsy %@ is available",
+            "update.dialog.versionRange": "Current %@ → Latest %@",
+            "update.dialog.checking": "Checking for updates...",
+            "update.dialog.changesHeader": "What's changed",
+            "update.dialog.downloadedMessage": "The update has already been downloaded.",
+            "update.dialog.downloading": "Downloading update...",
+            "update.dialog.extracting": "Preparing update...",
+            "update.dialog.readyTitle": "Ready to install",
+            "update.dialog.readyMessage": "The update is ready. TrayPulsy will relaunch after installation.",
+            "update.dialog.installing": "Installing update...",
+            "update.dialog.installedTitle": "Update installed",
+            "update.dialog.installedMessage": "The update has been installed.",
+            "update.dialog.noUpdateTitle": "You're up to date",
+            "update.dialog.noUpdateMessage": "TrayPulsy is already on the latest version.",
+            "update.dialog.errorTitle": "Update failed",
+            "update.dialog.errorMessage": "TrayPulsy couldn't complete the update check.",
+            "update.dialog.install": "Install Update",
+            "update.dialog.installAndRelaunch": "Install and Relaunch",
+            "update.dialog.later": "Later",
+            "update.dialog.skip": "Skip This Version",
+            "update.dialog.cancel": "Cancel",
+            "update.dialog.ok": "OK",
         ],
 
         "zh-Hans": [
@@ -521,6 +544,29 @@ enum L10n {
             "update.autoDownload.toggle": "自动下载更新",
             "update.lastChecked": "上次检查：%@",
             "update.neverChecked": "从未",
+            "update.dialog.title": "TrayPulsy 更新",
+            "update.dialog.availableTitle": "TrayPulsy %@ 可用",
+            "update.dialog.versionRange": "当前 %@ → 最新 %@",
+            "update.dialog.checking": "正在检查更新...",
+            "update.dialog.changesHeader": "更新内容",
+            "update.dialog.downloadedMessage": "更新已下载完成。",
+            "update.dialog.downloading": "正在下载更新...",
+            "update.dialog.extracting": "正在准备更新...",
+            "update.dialog.readyTitle": "可以安装了",
+            "update.dialog.readyMessage": "更新已准备好。安装完成后 TrayPulsy 会重新启动。",
+            "update.dialog.installing": "正在安装更新...",
+            "update.dialog.installedTitle": "更新已安装",
+            "update.dialog.installedMessage": "更新已安装完成。",
+            "update.dialog.noUpdateTitle": "已是最新版本",
+            "update.dialog.noUpdateMessage": "TrayPulsy 已经是最新版本。",
+            "update.dialog.errorTitle": "更新失败",
+            "update.dialog.errorMessage": "TrayPulsy 无法完成更新检查。",
+            "update.dialog.install": "安装更新",
+            "update.dialog.installAndRelaunch": "安装并重启",
+            "update.dialog.later": "稍后",
+            "update.dialog.skip": "跳过此版本",
+            "update.dialog.cancel": "取消",
+            "update.dialog.ok": "好",
 
             // Pulsy Color Theme
             "pulsy.color.fire": "火焰",
@@ -813,4 +859,27 @@ enum L10n {
     static var updateAutoDownloadToggle: String { tr("update.autoDownload.toggle", "自动下载更新") }
     static var updateLastChecked:       String { tr("update.lastChecked", "上次检查：%@") }
     static var updateNeverChecked:      String { tr("update.neverChecked", "从未") }
+    static var updateDialogTitle:       String { tr("update.dialog.title", "TrayPulsy 更新") }
+    static var updateDialogAvailableTitle: String { tr("update.dialog.availableTitle", "TrayPulsy %@ 可用") }
+    static var updateDialogVersionRange: String { tr("update.dialog.versionRange", "当前 %@ → 最新 %@") }
+    static var updateDialogChecking:    String { tr("update.dialog.checking", "正在检查更新...") }
+    static var updateDialogChangesHeader: String { tr("update.dialog.changesHeader", "更新内容") }
+    static var updateDialogDownloadedMessage: String { tr("update.dialog.downloadedMessage", "更新已下载完成。") }
+    static var updateDialogDownloading: String { tr("update.dialog.downloading", "正在下载更新...") }
+    static var updateDialogExtracting:  String { tr("update.dialog.extracting", "正在准备更新...") }
+    static var updateDialogReadyTitle:  String { tr("update.dialog.readyTitle", "可以安装了") }
+    static var updateDialogReadyMessage: String { tr("update.dialog.readyMessage", "更新已准备好。安装完成后 TrayPulsy 会重新启动。") }
+    static var updateDialogInstalling:  String { tr("update.dialog.installing", "正在安装更新...") }
+    static var updateDialogInstalledTitle: String { tr("update.dialog.installedTitle", "更新已安装") }
+    static var updateDialogInstalledMessage: String { tr("update.dialog.installedMessage", "更新已安装完成。") }
+    static var updateDialogNoUpdateTitle: String { tr("update.dialog.noUpdateTitle", "已是最新版本") }
+    static var updateDialogNoUpdateMessage: String { tr("update.dialog.noUpdateMessage", "TrayPulsy 已经是最新版本。") }
+    static var updateDialogErrorTitle:  String { tr("update.dialog.errorTitle", "更新失败") }
+    static var updateDialogErrorMessage: String { tr("update.dialog.errorMessage", "TrayPulsy 无法完成更新检查。") }
+    static var updateDialogInstall:     String { tr("update.dialog.install", "安装更新") }
+    static var updateDialogInstallAndRelaunch: String { tr("update.dialog.installAndRelaunch", "安装并重启") }
+    static var updateDialogLater:       String { tr("update.dialog.later", "稍后") }
+    static var updateDialogSkip:        String { tr("update.dialog.skip", "跳过此版本") }
+    static var updateDialogCancel:      String { tr("update.dialog.cancel", "取消") }
+    static var updateDialogOK:          String { tr("update.dialog.ok", "好") }
 }
