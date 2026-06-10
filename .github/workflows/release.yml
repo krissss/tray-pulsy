@@ -3,9 +3,18 @@ name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to package, for example v1.3.1'
+        required: true
+        type: string
 
 permissions:
   contents: write
+
+env:
+  RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
 jobs:
   test:
@@ -20,6 +29,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          ref: ${{ env.RELEASE_TAG }}
 
       - name: Cache SPM dependencies
         uses: actions/cache@v4
@@ -33,7 +43,7 @@ jobs:
         run: make app
 
       - name: Package ZIP
-        run: ditto -c -k --sequesterRsrc --keepParent TrayPulsy.app TrayPulsy-${{ github.ref_name }}.zip
+        run: ditto -c -k --sequesterRsrc --keepParent TrayPulsy.app TrayPulsy-${{ env.RELEASE_TAG }}.zip
 
       - name: Sign update with Sparkle
         id: sparkle_sign
@@ -42,31 +52,16 @@ jobs:
         run: |
           SIGN_UPDATE=$(make print-sparkle-sign-update)
           # Sign the zip — pipe private key via stdin, no Keychain needed
-          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" TrayPulsy-${{ github.ref_name }}.zip --ed-key-file - 2>&1)
+          SIGNATURE=$(echo -n "$SPARKLE_PRIVATE_KEY" | "$SIGN_UPDATE" TrayPulsy-${{ env.RELEASE_TAG }}.zip --ed-key-file - 2>&1)
           echo "signature=$SIGNATURE" >> "$GITHUB_OUTPUT"
 
           # Get file size
-          SIZE=$(stat -f%z TrayPulsy-${{ github.ref_name }}.zip)
+          SIZE=$(stat -f%z TrayPulsy-${{ env.RELEASE_TAG }}.zip)
           echo "length=$SIZE" >> "$GITHUB_OUTPUT"
-
-      - name: Extract release notes from CHANGELOG
-        run: |
-          VER="${{ github.ref_name }}"
-          VERSION_NUM="${VER#v}"
-          python3 -c "
-          import re
-          with open('CHANGELOG.md') as f:
-              content = f.read()
-          m = re.search(r'^## \[${VERSION_NUM}\].*?\n(.*?)(?=^## \[|\Z)', content, re.MULTILINE | re.DOTALL)
-          section = m.group(1).strip() if m else ''
-          lines = [l for l in section.split('\n') if not l.startswith('[')]
-          with open('/tmp/release_notes.md', 'w') as f:
-              f.write('\n'.join(lines).strip() + '\n')
-          "
 
       - name: Update appcast.xml
         run: |
-          VER="${{ github.ref_name }}"
+          VER="${{ env.RELEASE_TAG }}"
           VERSION_NUM="${VER#v}"
           SIGNATURE="${{ steps.sparkle_sign.outputs.signature }}"
           LENGTH="${{ steps.sparkle_sign.outputs.length }}"
@@ -77,49 +72,15 @@ jobs:
 
           # Build new appcast item — Python handles XML safely
           python3 -c "
-          import re, html, textwrap
+          import html, textwrap
           ver = '$VER'
           ver_num = '$VERSION_NUM'
           ed_sig = '$ED_SIG'
           length = '$LENGTH'
           date_str = '$DATE'
 
-          with open('/tmp/release_notes.md') as f:
-              notes = f.read().strip()
-
-          # Convert Markdown to simple HTML for Sparkle's update dialog
-          lines = notes.split('\n')
-          html_parts = []
-          in_list = False
-          for line in lines:
-              stripped = line.strip()
-              if not stripped:
-                  if in_list:
-                      html_parts.append('</ul>')
-                      in_list = False
-                  continue
-              m = re.match(r'^#{1,3}\s+(.*)', stripped)
-              if m:
-                  if in_list:
-                      html_parts.append('</ul>')
-                      in_list = False
-                  html_parts.append(f'<b>{html.escape(m.group(1))}</b>')
-              elif re.match(r'^[-*]\s+', stripped):
-                  if not in_list:
-                      html_parts.append('<ul>')
-                      in_list = True
-                  text = re.sub(r'^[-*]\s+', '', stripped)
-                  html_parts.append(f'<li>{html.escape(text)}</li>')
-              else:
-                  if in_list:
-                      html_parts.append('</ul>')
-                      in_list = False
-                  html_parts.append(html.escape(stripped))
-          if in_list:
-              html_parts.append('</ul>')
-          notes_html = '\n'.join(html_parts)
-          # Escape CDATA terminator inside notes
-          notes_html = notes_html.replace(']]>', ']]]]><![CDATA[>')
+          # The custom update UI reads full version details from docs/CHANGELOG.md.
+          notes_html = html.escape('See the full changelog for details.')
 
           item = textwrap.dedent(f'''\
           <item>
@@ -166,12 +127,12 @@ jobs:
           git checkout -B main origin/main
           cp /tmp/appcast_new.xml docs/appcast.xml
           git add docs/appcast.xml
-          git diff --cached --quiet || git commit -m "chore: update appcast.xml for ${{ github.ref_name }}"
+          git diff --cached --quiet || git commit -m "chore: update appcast.xml for ${RELEASE_TAG}"
           git push origin main
 
       - name: Package DMG
         run: |
-          DMG=TrayPulsy-${{ github.ref_name }}.dmg
+          DMG=TrayPulsy-${{ env.RELEASE_TAG }}.dmg
           DMG_STAGING=TrayPulsy-dmg-staging
           mkdir -p "$DMG_STAGING"
           ditto TrayPulsy.app "$DMG_STAGING/TrayPulsy.app"
@@ -182,23 +143,23 @@ jobs:
       - name: Generate checksums
         id: checksum
         run: |
-          ZIP_SHA=$(shasum -a 256 TrayPulsy-${{ github.ref_name }}.zip | cut -d ' ' -f 1)
-          DMG_SHA=$(shasum -a 256 TrayPulsy-${{ github.ref_name }}.dmg | cut -d ' ' -f 1)
+          ZIP_SHA=$(shasum -a 256 TrayPulsy-${{ env.RELEASE_TAG }}.zip | cut -d ' ' -f 1)
+          DMG_SHA=$(shasum -a 256 TrayPulsy-${{ env.RELEASE_TAG }}.dmg | cut -d ' ' -f 1)
           echo "zip_sha=$ZIP_SHA" >> "$GITHUB_OUTPUT"
           echo "dmg_sha=$DMG_SHA" >> "$GITHUB_OUTPUT"
 
-      - name: Create Release
+      - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
-          body_path: /tmp/release_notes.md
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
-            TrayPulsy-${{ github.ref_name }}.zip
-            TrayPulsy-${{ github.ref_name }}.dmg
+            TrayPulsy-${{ env.RELEASE_TAG }}.zip
+            TrayPulsy-${{ env.RELEASE_TAG }}.dmg
 
       - name: Update Homebrew Tap
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          VERSION: ${{ github.ref_name }}
+          VERSION: ${{ env.RELEASE_TAG }}
           SHA256: ${{ steps.checksum.outputs.dmg_sha }}
         run: |
           VER="${VERSION#v}"
