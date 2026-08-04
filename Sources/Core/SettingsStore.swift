@@ -40,11 +40,6 @@ extension Defaults.Keys {
     // 开机启动
     static let launchAtStartup = Key<Bool>("traypulsy_launchAtStartup", default: false)
 
-    // 保持唤醒
-    static let keepAwakeEnabled = Key<Bool>("traypulsy_keepAwakeEnabled", default: false)
-    static let keepAwakeDuration = Key<KeepAwakeDuration>("traypulsy_keepAwakeDuration", default: .hour1)
-    static let keepAwakeExpiresAt = Key<Double>("traypulsy_keepAwakeExpiresAt", default: 0)
-
     // 主题
     static let theme = Key<ThemeMode>("traypulsy_theme", default: .system)
 
@@ -145,42 +140,6 @@ enum FloatingWindowMetricsLayout: String, CaseIterable, Defaults.Serializable, I
         case .horizontal: return L10n.floatingWindowLayoutHorizontal
         case .vertical:   return L10n.floatingWindowLayoutVertical
         }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MARK: - Keep Awake Duration
-// ═══════════════════════════════════════════════════════════════
-
-enum KeepAwakeDuration: String, CaseIterable, Defaults.Serializable {
-    case min30 = "30m"
-    case hour1 = "1h"
-    case hours2 = "2h"
-    case hours4 = "4h"
-    case untilTurnedOff = "untilTurnedOff"
-
-    var displayName: String {
-        switch self {
-        case .min30:          return L10n.keepAwakeDuration30m
-        case .hour1:          return L10n.keepAwakeDuration1h
-        case .hours2:         return L10n.keepAwakeDuration2h
-        case .hours4:         return L10n.keepAwakeDuration4h
-        case .untilTurnedOff: return L10n.keepAwakeDurationUntilOff
-        }
-    }
-
-    var expirationInterval: TimeInterval? {
-        switch self {
-        case .min30:          return 30 * 60
-        case .hour1:          return 60 * 60
-        case .hours2:         return 2 * 60 * 60
-        case .hours4:         return 4 * 60 * 60
-        case .untilTurnedOff: return nil
-        }
-    }
-
-    func expirationDate(from startDate: Date) -> Date? {
-        expirationInterval.map { startDate.addingTimeInterval($0) }
     }
 }
 

@@ -97,36 +97,6 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(Defaults[.onlineSkinManifestURL], "")
     }
 
-    // MARK: - KeepAwakeDuration
-
-    func testKeepAwakeDefaults_areSafe() {
-        Defaults[.keepAwakeEnabled] = false
-        Defaults[.keepAwakeDuration] = .hour1
-        Defaults[.keepAwakeExpiresAt] = 0
-
-        XCTAssertFalse(Defaults[.keepAwakeEnabled])
-        XCTAssertEqual(Defaults[.keepAwakeDuration], .hour1)
-        XCTAssertEqual(Defaults[.keepAwakeExpiresAt], 0)
-    }
-
-    func testKeepAwakeDuration_expirationIntervals() {
-        XCTAssertEqual(KeepAwakeDuration.min30.expirationInterval, 1_800)
-        XCTAssertEqual(KeepAwakeDuration.hour1.expirationInterval, 3_600)
-        XCTAssertEqual(KeepAwakeDuration.hours2.expirationInterval, 7_200)
-        XCTAssertEqual(KeepAwakeDuration.hours4.expirationInterval, 14_400)
-        XCTAssertNil(KeepAwakeDuration.untilTurnedOff.expirationInterval)
-    }
-
-    func testKeepAwakeDuration_expirationDate() {
-        let start = Date(timeIntervalSince1970: 1_000)
-        XCTAssertEqual(KeepAwakeDuration.hour1.expirationDate(from: start)?.timeIntervalSince1970, 4_600)
-        XCTAssertNil(KeepAwakeDuration.untilTurnedOff.expirationDate(from: start))
-    }
-
-    func testKeepAwakeDuration_allCases() {
-        XCTAssertEqual(KeepAwakeDuration.allCases.count, 5)
-    }
-
     // MARK: - SampleInterval.seconds
 
     func testSampleInterval_seconds() {

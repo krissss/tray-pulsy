@@ -97,7 +97,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     @MainActor func applicationWillTerminate(_ notification: Notification) {
         statusBarController?.stop()
-        appState?.stopKeepAwakeAssertion()
         appState?.systemMonitor.history.flush()
         appState?.flushSpikeEvents()
         releaseInstanceLock()
@@ -106,13 +105,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @MainActor @objc private func handleSleep() {
         appState?.systemMonitor.history.flush()
         appState?.flushSpikeEvents()
-        appState?.suspendKeepAwakeAssertion()
         statusBarController?.pause()
     }
 
     @MainActor @objc private func handleWake() {
         statusBarController?.resume()
         appState?.updateManager.resetUpdateCycle()
-        appState?.resumeKeepAwakeAssertion()
     }
 }

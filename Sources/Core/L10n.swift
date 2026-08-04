@@ -209,15 +209,6 @@ enum L10n {
             "general.startup.header": "Startup",
             "general.startup.toggle": "Launch at Login",
             "general.startup.footer": "Automatically launch %@ in the menu bar at login.",
-            "general.keepAwake.header": "Power",
-            "general.keepAwake.toggle": "Keep Awake",
-            "general.keepAwake.duration": "Duration",
-            "general.keepAwake.footer": "Prevents idle system sleep while enabled. The display can still turn off; manual sleep and lid close still work.",
-            "keepAwakeDuration.30m": "30 min",
-            "keepAwakeDuration.1h": "1 hour",
-            "keepAwakeDuration.2h": "2 hours",
-            "keepAwakeDuration.4h": "4 hours",
-            "keepAwakeDuration.untilOff": "Until turned off",
             "general.language.header": "Language",
             "general.language.system": "System",
 
@@ -497,15 +488,6 @@ enum L10n {
             "general.startup.header": "启动",
             "general.startup.toggle": "开机自动启动",
             "general.startup.footer": "登录时自动在菜单栏启动 %@。",
-            "general.keepAwake.header": "电源",
-            "general.keepAwake.toggle": "保持唤醒",
-            "general.keepAwake.duration": "持续时间",
-            "general.keepAwake.footer": "开启后会防止系统因空闲自动休眠；显示器仍可关闭，手动休眠和合盖仍会生效。",
-            "keepAwakeDuration.30m": "30 分钟",
-            "keepAwakeDuration.1h": "1 小时",
-            "keepAwakeDuration.2h": "2 小时",
-            "keepAwakeDuration.4h": "4 小时",
-            "keepAwakeDuration.untilOff": "直到手动关闭",
             "general.language.header": "语言",
             "general.language.system": "跟随系统",
 
@@ -797,15 +779,6 @@ enum L10n {
     static var generalStartupHeader: String { tr("general.startup.header", "启动") }
     static var generalStartupToggle: String { tr("general.startup.toggle", "开机自动启动") }
     static var generalStartupFooter: String { tr("general.startup.footer", "登录时自动在菜单栏启动 %@。") }
-    static var generalKeepAwakeHeader: String { tr("general.keepAwake.header", "电源") }
-    static var generalKeepAwakeToggle: String { tr("general.keepAwake.toggle", "保持唤醒") }
-    static var generalKeepAwakeDuration: String { tr("general.keepAwake.duration", "持续时间") }
-    static var generalKeepAwakeFooter: String { tr("general.keepAwake.footer", "开启后会防止系统因空闲自动休眠；显示器仍可关闭，手动休眠和合盖仍会生效。") }
-    static var keepAwakeDuration30m: String { tr("keepAwakeDuration.30m", "30 分钟") }
-    static var keepAwakeDuration1h: String { tr("keepAwakeDuration.1h", "1 小时") }
-    static var keepAwakeDuration2h: String { tr("keepAwakeDuration.2h", "2 小时") }
-    static var keepAwakeDuration4h: String { tr("keepAwakeDuration.4h", "4 小时") }
-    static var keepAwakeDurationUntilOff: String { tr("keepAwakeDuration.untilOff", "直到手动关闭") }
     static var generalLanguageHeader: String { tr("general.language.header", "语言") }
     static var generalLanguageSystem:  String { tr("general.language.system", "跟随系统") }
 
