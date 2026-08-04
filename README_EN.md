@@ -38,6 +38,7 @@ brew install --cask tray-pulsy
 | 📊 **Live Monitoring** | Menu bar popover and Overview panel show live status and history charts |
 | 🧭 **Process Rankings** | Popover and Overview show top CPU, memory, and network processes with network sort modes |
 | 🩺 **Spike Diagnostics** | Automatically records sudden CPU, memory, or network jumps and samples top processes on demand |
+| ☕ **Keep Awake** | Prevent idle system sleep for 30 minutes, 1/2/4 hours, or until manually turned off |
 | 🎛️ **Customization** | Configure skins, themes, speed source, frame rate limit, status metrics, and launch at login |
 | 🔄 **Auto Update** | Sparkle 2 integration for checking, downloading, installing, and restarting into updates |
 | ♿ **Accessibility** | VoiceOver support with accessible status labels |

@@ -4,6 +4,8 @@ import SwiftUI
 
 struct GeneralDetail: View {
     @Default(.launchAtStartup) private var launchAtStartup
+    @Default(.keepAwakeEnabled) private var keepAwakeEnabled
+    @Default(.keepAwakeDuration) private var keepAwakeDuration
     @Default(.language) private var language
 
     var body: some View {
@@ -23,6 +25,33 @@ struct GeneralDetail: View {
                 Text(L10n.generalStartupHeader)
             } footer: {
                 Text(String(format: L10n.generalStartupFooter, AppConstants.appName))
+            }
+
+            Section {
+                Toggle(isOn: $keepAwakeEnabled) {
+                    SettingsRowLabel(
+                        title: L10n.generalKeepAwakeToggle,
+                        systemImage: "moon.zzz.fill",
+                        color: .orange
+                    )
+                }
+
+                Picker(selection: $keepAwakeDuration) {
+                    ForEach(KeepAwakeDuration.allCases, id: \.rawValue) { duration in
+                        Text(duration.displayName).tag(duration)
+                    }
+                } label: {
+                    SettingsRowLabel(
+                        title: L10n.generalKeepAwakeDuration,
+                        systemImage: "timer",
+                        color: .orange
+                    )
+                }
+                .disabled(!keepAwakeEnabled)
+            } header: {
+                Text(L10n.generalKeepAwakeHeader)
+            } footer: {
+                Text(L10n.generalKeepAwakeFooter)
             }
 
             Section {

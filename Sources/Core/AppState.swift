@@ -15,6 +15,7 @@ final class AppState {
     let skinManager: SkinManager
     let updateManager: AppUpdateManager
     let onlineSkinCatalog: OnlineSkinCatalog
+    let sleepPreventer: SleepPreventer
 
     /// Ring buffer of metric snapshots for sparkline / trend charts.
     var metricsHistory: MetricsHistory { systemMonitor.history }
@@ -56,22 +57,26 @@ final class AppState {
         systemMonitor: SystemMonitor,
         skinManager: SkinManager,
         updateManager: AppUpdateManager,
-        onlineSkinCatalog: OnlineSkinCatalog = AppState.defaultOnlineSkinCatalog
+        onlineSkinCatalog: OnlineSkinCatalog = AppState.defaultOnlineSkinCatalog,
+        sleepPreventer: SleepPreventer = SleepPreventer()
     ) {
         self.systemMonitor = systemMonitor
         self.skinManager = skinManager
         self.updateManager = updateManager
         self.onlineSkinCatalog = onlineSkinCatalog
+        self.sleepPreventer = sleepPreventer
         self.spikeHistory = MetricSpikeHistory(limit: Defaults[.spikeEventLimit].count)
     }
 
     func activate() {
         systemMonitor.start()
         setupDefaultsObservers()
+        syncKeepAwakeSettings(recalculateExpiration: false)
     }
 
     func deactivate() {
         systemMonitor.stop()
+        sleepPreventer.stop()
         defaultsObservers.forEach { $0.invalidate() }
         defaultsObservers.removeAll()
         spikeSampleTasks.values.forEach { $0.cancel() }
@@ -98,6 +103,16 @@ final class AppState {
             Defaults.observe(.speedSource) { [weak self] _ in
                 MainActor.assumeIsolated {
                     self?.onMetricsConfigChanged?()
+                }
+            },
+            Defaults.observe(.keepAwakeEnabled) { [weak self] change in
+                MainActor.assumeIsolated {
+                    self?.syncKeepAwakeSettings(recalculateExpiration: change.newValue)
+                }
+            },
+            Defaults.observe(.keepAwakeDuration) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.syncKeepAwakeSettings(recalculateExpiration: Defaults[.keepAwakeEnabled])
                 }
             },
             Defaults.observe(.fpsLimit) { [weak self] change in
@@ -219,6 +234,56 @@ final class AppState {
     // ═════════════════════════════════════════════════════════
     // MARK: - Helpers
     // ═════════════════════════════════════════════════════════
+
+    func suspendKeepAwakeAssertion() {
+        sleepPreventer.suspend()
+    }
+
+    func resumeKeepAwakeAssertion() {
+        syncKeepAwakeSettings(recalculateExpiration: false)
+    }
+
+    func stopKeepAwakeAssertion() {
+        sleepPreventer.stop()
+    }
+
+    private func syncKeepAwakeSettings(recalculateExpiration: Bool) {
+        guard Defaults[.keepAwakeEnabled] else {
+            Defaults[.keepAwakeExpiresAt] = 0
+            sleepPreventer.stop()
+            return
+        }
+
+        let duration = Defaults[.keepAwakeDuration]
+        var expiresAt = keepAwakeExpirationDate
+        let needsExpirationSeed = expiresAt == nil && duration.expirationInterval != nil
+
+        if recalculateExpiration || needsExpirationSeed {
+            expiresAt = duration.expirationDate(from: Date())
+            Defaults[.keepAwakeExpiresAt] = expiresAt?.timeIntervalSince1970 ?? 0
+        }
+
+        if let expiresAt, expiresAt <= Date() {
+            handleKeepAwakeExpired()
+            return
+        }
+
+        sleepPreventer.apply(enabled: true, expiresAt: expiresAt) { [weak self] in
+            self?.handleKeepAwakeExpired()
+        }
+    }
+
+    private var keepAwakeExpirationDate: Date? {
+        let timestamp = Defaults[.keepAwakeExpiresAt]
+        guard timestamp > 0 else { return nil }
+        return Date(timeIntervalSince1970: timestamp)
+    }
+
+    private func handleKeepAwakeExpired() {
+        Defaults[.keepAwakeEnabled] = false
+        Defaults[.keepAwakeExpiresAt] = 0
+        sleepPreventer.stop()
+    }
 
     /// Only read the metrics we actually need.
     func updateEnabledMetrics(settingsOpen: Bool) {

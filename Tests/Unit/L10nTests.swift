@@ -126,6 +126,12 @@ struct L10nTests {
         #expect(!L10n.perfSpikeLimitLabel.isEmpty)
         #expect(!L10n.spikeEventLimit12.isEmpty)
         #expect(!L10n.generalStartupHeader.isEmpty)
+        #expect(!L10n.generalKeepAwakeHeader.isEmpty)
+        #expect(!L10n.generalKeepAwakeToggle.isEmpty)
+        #expect(!L10n.generalKeepAwakeDuration.isEmpty)
+        #expect(!L10n.generalKeepAwakeFooter.isEmpty)
+        #expect(!L10n.keepAwakeDuration1h.isEmpty)
+        #expect(!L10n.keepAwakeDurationUntilOff.isEmpty)
         #expect(!L10n.aboutInfoHeader.isEmpty)
         #expect(!L10n.accSkinPreview.isEmpty)
         #expect(!L10n.windowTitle.isEmpty)
@@ -173,6 +179,9 @@ struct L10nTests {
             "settings.skin.online.install", "settings.skin.online.delete", "settings.skin.online.installed",
             "settings.skin.online.loading", "settings.skin.online.empty", "settings.skin.online.author",
             "settings.skin.online.source", "settings.skin.online.preview",
+            "general.keepAwake.header", "general.keepAwake.toggle", "general.keepAwake.duration",
+            "general.keepAwake.footer", "keepAwakeDuration.30m", "keepAwakeDuration.1h",
+            "keepAwakeDuration.2h", "keepAwakeDuration.4h", "keepAwakeDuration.untilOff",
             "theme.system", "theme.light", "theme.dark",
             "window.title",
         ])
@@ -291,6 +300,10 @@ struct L10nTests {
 
         for limit in SpikeEventLimit.allCases {
             #expect(!limit.displayName.isEmpty)
+        }
+
+        for duration in KeepAwakeDuration.allCases {
+            #expect(!duration.displayName.isEmpty)
         }
     }
 }
