@@ -304,7 +304,9 @@ final class SkinManagerTests: XCTestCase {
 
         let img = manager.frame(for: "indexed", frameIndex: 1)
         XCTAssertNotNil(img)
-        XCTAssertEqual(img?.size.width, 18)
+        // Frames keep their TRUE pixel size (see loadFrames): helper PNGs are 1×1,
+        // so width must be 1 — not a forced 18×18 square anymore.
+        XCTAssertEqual(img?.size.width, 1)
     }
 
     func testFrame_outOfBounds_returnsNil() {

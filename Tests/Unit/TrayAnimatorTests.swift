@@ -233,7 +233,11 @@ final class TrayAnimatorTests: XCTestCase {
 
     // MARK: - Helpers
 
+    /// Uses 10 frames so the low-frame fallback (count < 5 → min loop 0.12s)
+    /// never triggers: these tests exercise the base formula & multipliers,
+    /// not the fallback. A single frame would force every interval to 0.12.
     private func makeAnimator() -> TrayAnimator {
-        TrayAnimator(initialFrames: [NSImage(size: NSSize(width: 18, height: 18))])
+        let frames = (0..<10).map { _ in NSImage(size: NSSize(width: 18, height: 18)) }
+        return TrayAnimator(initialFrames: frames)
     }
 }
