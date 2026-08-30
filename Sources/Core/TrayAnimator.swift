@@ -77,10 +77,30 @@ final class TrayAnimator: @unchecked Sendable {
     /// Linear mapping scaled by fpsLimit.rateMultiplier:
     ///   fps40 (1.0x): ~10fps idle → ~40fps at 75%+
     ///   fps10 (4.0x): ~2.5fps idle → ~10fps at 75%+
+    /// 低帧兜底：帧数少于 lowFrameThreshold 时，强制最小整圈时长 minLoopDuration，
+    /// 避免低帧皮肤频闪。仅影响低帧皮肤；≥ threshold 的高帧皮肤观感与改动前完全一致。
     func computeInterval() -> TimeInterval {
         let normalizedValue = reverseAnimationSpeed ? 100.0 - currentValue : currentValue
         let base = max(0.025, 0.10 - 0.12 * (normalizedValue / 100.0))
-        return base * fpsLimit.rateMultiplier * skinAnimationSpeed.intervalMultiplier
+        var interval = base * fpsLimit.rateMultiplier * skinAnimationSpeed.intervalMultiplier
+
+        let lowFrameThreshold = 5
+        // Min loop for low-frame skins: 0.12s (was 0.25s, originally 0.4s).
+        // 0.4s pinned 2-frame to 5 FPS / 4-frame to 10 FPS (slower than idle,
+        // not load-responsive). 0.25s raised to 8/16 FPS but still felt slow at
+        // high load. 0.12s raises the cap to ~17 FPS (2-frame) / ~33 FPS
+        // (4-frame): brisk at high load while still avoiding the worst strobe
+        // (a 2-frame flip at 40 FPS). Tune downwards (e.g. 0.08 → 25 FPS for
+        // 2-frame) only if you can tolerate more flicker.
+        let minLoopDuration: TimeInterval = 0.12
+        let count = frames.count
+        if count > 0, count < lowFrameThreshold {
+            let loop = interval * Double(count)
+            if loop < minLoopDuration {
+                interval = minLoopDuration / Double(count)
+            }
+        }
+        return interval
     }
 
     private func maybeRestartTimer() {

@@ -142,7 +142,27 @@ final class StatusBarView: NSView {
         // 1. Draw animation frame (left side)
         if let frame = currentFrame {
             let iconY = (menuBarHeight - iconSize) / 2
-            frame.draw(in: NSRect(x: 0, y: iconY, width: iconSize, height: iconSize))
+            let box = NSRect(x: 0, y: iconY, width: iconSize, height: iconSize)
+            let src = frame.size
+            if src.width > 0, src.height > 0 {
+                // Contain within the icon box, preserving aspect ratio so
+                // non-square sprites are not stretched.
+                let fit = min(box.width / src.width, box.height / src.height)
+                let destW = src.width * fit
+                let destH = src.height * fit
+                let drawRect = NSRect(
+                    x: box.origin.x + (box.width - destW) / 2,
+                    y: box.origin.y + (box.height - destH) / 2,
+                    width: destW,
+                    height: destH
+                )
+                // Nearest-neighbour keeps retro pixel-art sprites crisp.
+                let ctx = NSGraphicsContext.current
+                let prevInterp = ctx?.imageInterpolation
+                ctx?.imageInterpolation = .none
+                frame.draw(in: drawRect)
+                ctx?.imageInterpolation = prevInterp ?? .none
+            }
         }
 
         // 2. Draw cached metric strings (zero allocation in draw)

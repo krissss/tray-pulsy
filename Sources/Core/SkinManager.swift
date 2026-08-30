@@ -233,8 +233,14 @@ final class SkinManager: @unchecked Sendable {
 
             let frames = pngs.compactMap { name -> NSImage? in
                 let url = URL(fileURLWithPath: (dirPath as NSString).appendingPathComponent(name))
-                let img = NSImage(contentsOf: url)
-                img?.size = NSSize(width: 18, height: 18)
+                guard let img = NSImage(contentsOf: url) else { return nil }
+                // Preserve the image's TRUE pixel dimensions so aspect ratio is
+                // correct when drawn. Previously we forced size = 18×18, which
+                // discarded the real ratio and stretched non-square sprites
+                // (e.g. Mario 15×21, Mega Man 25×24) into a square → distortion.
+                if let cg = img.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                    img.size = NSSize(width: cg.width, height: cg.height)
+                }
                 return img
             }
             if !frames.isEmpty { return frames }

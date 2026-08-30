@@ -700,7 +700,14 @@ private struct OnlineSkinPreview: View {
                     didFail = true
                     return
                 }
-                image.size = NSSize(width: 18, height: 18)
+                // Preserve the image's TRUE pixel dimensions so aspect ratio is
+                // correct when drawn. Previously we forced 18×18, which discarded
+                // the real ratio and stretched non-square sprites (Mario 15×21,
+                // Mega Man 25×24) into a square → distortion. Mirrors the fix in
+                // SkinManager.loadFrames so online + local skins render identically.
+                if let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) {
+                    image.size = NSSize(width: cg.width, height: cg.height)
+                }
                 frames.append(image)
                 if previewImage == nil {
                     previewImage = image
