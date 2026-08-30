@@ -146,10 +146,18 @@ final class StatusBarView: NSView {
             let src = frame.size
             if src.width > 0, src.height > 0 {
                 // Contain within the icon box, preserving aspect ratio so
-                // non-square sprites are not stretched.
-                let fit = min(box.width / src.width, box.height / src.height)
-                let destW = src.width * fit
-                let destH = src.height * fit
+                // non-square sprites are not stretched. ALSO CAP the upscale so
+                // small sprites keep their RELATIVE size instead of being blown
+                // up to fill the box: a 15px Mario must look smaller than a 38px
+                // Sonic. This mirrors the web preview (preview.js) which renders
+                // `natural × min(K=3, CAP=92/w, CAP/h)` — i.e. the "max native
+                // size left at 1:1" is 92/3 ≈ 30.67px. We scale that reference
+                // to this box via the same ratio, so every sprite occupies the
+                // same fraction of its display box as it does in the web gallery.
+                // Same relative sizing as every other surface + the web preview.
+                let dest = SkinSizing.displaySize(source: src, box: box.size)
+                let destW = dest.width
+                let destH = dest.height
                 let drawRect = NSRect(
                     x: box.origin.x + (box.width - destW) / 2,
                     y: box.origin.y + (box.height - destH) / 2,

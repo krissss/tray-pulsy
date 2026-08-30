@@ -18,10 +18,16 @@ struct SkinThumbnail: View {
             ZStack(alignment: .topTrailing) {
                 Group {
                     if let image = thumbnailImage {
-                        Image(nsImage: image)
-                            .resizable()
-                            .interpolation(.none)
-                            .aspectRatio(contentMode: .fit)
+                        GeometryReader { geo in
+                            let src = image.size
+                            let size = SkinSizing.displaySize(source: src, box: geo.size)
+                            Image(nsImage: image)
+                                .resizable()
+                                .interpolation(.none)
+                                .aspectRatio(contentMode: .fit)
+                                .frame(width: size.width, height: size.height)
+                                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        }
                     } else {
                         Image(systemName: "photo")
                             .font(.title3)

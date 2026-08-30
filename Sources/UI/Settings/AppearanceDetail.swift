@@ -637,10 +637,16 @@ private struct OnlineSkinPreview: View {
     var body: some View {
         ZStack {
             if let previewImage {
-                Image(nsImage: previewImage)
-                    .resizable()
-                    .interpolation(.none)
-                    .aspectRatio(contentMode: .fit)
+                GeometryReader { geo in
+                    let src = previewImage.size
+                    let size = SkinSizing.displaySize(source: src, box: geo.size)
+                    Image(nsImage: previewImage)
+                        .resizable()
+                        .interpolation(.none)
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: size.width, height: size.height)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
             } else if didFail {
                 Image(systemName: "photo.badge.exclamationmark")
                     .font(.title3)

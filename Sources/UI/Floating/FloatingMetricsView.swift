@@ -184,6 +184,28 @@ final class FloatingSkinFrameView: NSImageView {
         guard image !== self.image else { return }
         self.image = image
     }
+
+    override func draw(_ dirtyRect: NSRect) {
+        guard let image = self.image else { return }
+        let box = bounds
+        let src = image.size
+        guard src.width > 0, src.height > 0 else { return }
+        // Same relative sizing as every other surface + the web preview.
+        let dest = SkinSizing.displaySize(source: src, box: box.size)
+        let destW = dest.width
+        let destH = dest.height
+        let drawRect = NSRect(
+            x: (box.width - destW) / 2,
+            y: (box.height - destH) / 2,
+            width: destW,
+            height: destH
+        )
+        let ctx = NSGraphicsContext.current
+        let prev = ctx?.imageInterpolation
+        ctx?.imageInterpolation = .none
+        image.draw(in: drawRect)
+        ctx?.imageInterpolation = prev ?? .none
+    }
 }
 
 enum FloatingMetricsLayoutMetrics {

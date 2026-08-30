@@ -74,10 +74,16 @@ private struct SkinPreviewSection: View {
         HStack(spacing: 24) {
             Group {
                 if let currentFrame {
-                    Image(nsImage: currentFrame)
-                        .resizable()
-                        .interpolation(.none)
-                        .aspectRatio(contentMode: .fit)
+                    GeometryReader { geo in
+                        let src = currentFrame.size
+                        let size = SkinSizing.displaySize(source: src, box: geo.size)
+                        Image(nsImage: currentFrame)
+                            .resizable()
+                            .interpolation(.none)
+                            .aspectRatio(contentMode: .fit)
+                            .frame(width: size.width, height: size.height)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    }
                 } else {
                     Image(systemName: "questionmark")
                         .font(.largeTitle)
