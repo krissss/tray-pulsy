@@ -7,10 +7,10 @@
 
 皮肤帧渲染尺寸必须和 [tray-pulsy-skins](https://github.com/krissss/tray-pulsy-skins) 的网页预览保持一致，否则同一皮肤在「在线预览 / 状态栏 / 浮窗 / 设置页 / 总览页」大小会脱节。**完整规则见该仓库 `AGENTS.md`**，此处为 AI 改动渲染代码时的硬性约束：
 
-- 统一常量（与 skins 仓库 `preview.js` 的 `SCALE_K=3 / DISPLAY_CAP=92 / MAX_FILL=0.8` 等价），**集中定义在 `Sources/Core/SkinSizing.swift` 的 `SkinSizing` 枚举**，不要在各渲染面再复制一份：
+- 统一常量（与 skins 仓库 `preview.js` 的 `SCALE_K=3 / DISPLAY_CAP=92 / MAX_FILL=1.0` 等价），**集中定义在 `Sources/Core/SkinSizing.swift` 的 `SkinSizing` 枚举**，不要在各渲染面再复制一份：
   ```text
   SkinSizing.refScale = 3.0 / 92.0   // == SCALE_K / DISPLAY_CAP
-  SkinSizing.maxFill  = 0.8          // 最长边最多占框的 80%
+  SkinSizing.maxFill  = 1.0          // 最长边最多占满框
   ```
 - 缩放公式（box 为渲染面目标盒子，src 为真实像素尺寸）：
   ```text

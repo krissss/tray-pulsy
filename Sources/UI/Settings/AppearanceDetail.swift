@@ -260,8 +260,8 @@ private extension SkinDetail {
                 onlineCatalogStatus(L10n.skinOnlineEmpty, systemImage: "tray", color: .secondary)
             } else {
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 172, maximum: 240), spacing: 10)],
-                    spacing: 10
+                    columns: [GridItem(.adaptive(minimum: 196, maximum: 280), spacing: 12)],
+                    spacing: 12
                 ) {
                     ForEach(catalog.skins) { item in
                         OnlineSkinTile(item: item, previewLoad: previewLoad)
@@ -502,7 +502,7 @@ private struct OnlineSkinTile: View {
     private var isInstalling: Bool { catalog.isInstalling(item.id) }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 9) {
+        HStack(alignment: .center, spacing: 10) {
             ZStack(alignment: .bottomTrailing) {
                 OnlineSkinPreview(item: item, previewLoad: previewLoad)
 
@@ -527,6 +527,7 @@ private struct OnlineSkinTile: View {
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.primary)
                         .lineLimit(1)
+                        .truncationMode(.middle)
                         .minimumScaleFactor(0.75)
 
                     if isInstalled {
@@ -543,6 +544,7 @@ private struct OnlineSkinTile: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
 
             VStack(spacing: 6) {
@@ -587,11 +589,18 @@ private struct OnlineSkinTile: View {
                     .buttonStyle(.plain)
                     .help(L10n.skinOnlineSource)
                     .accessibilityLabel(L10n.skinOnlineSource)
+                } else {
+                    // Keep the action column at a stable height when a catalog
+                    // entry has no source URL.
+                    Color.clear
+                        .frame(width: 26, height: 22)
+                        .accessibilityHidden(true)
                 }
             }
+            .frame(width: 28)
         }
         .padding(9)
-        .frame(minHeight: 72)
+        .frame(height: 78)
         .background {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
                 .fill(isInstalled ? Color.accentColor.opacity(0.06) : .secondary.opacity(0.04))

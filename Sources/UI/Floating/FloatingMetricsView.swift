@@ -161,6 +161,13 @@ struct FloatingSkinFrameRepresentable: NSViewRepresentable {
 }
 
 final class FloatingSkinFrameView: NSImageView {
+    override var intrinsicContentSize: NSSize {
+        NSSize(
+            width: FloatingMetricsLayoutMetrics.skinSize,
+            height: FloatingMetricsLayoutMetrics.skinSize
+        )
+    }
+
     init() {
         super.init(frame: NSRect(
             x: 0,
@@ -171,6 +178,7 @@ final class FloatingSkinFrameView: NSImageView {
         imageAlignment = .alignCenter
         imageScaling = .scaleProportionallyUpOrDown
         wantsLayer = true
+        layer?.masksToBounds = true
     }
 
     required init?(coder: NSCoder) {
@@ -178,6 +186,7 @@ final class FloatingSkinFrameView: NSImageView {
         imageAlignment = .alignCenter
         imageScaling = .scaleProportionallyUpOrDown
         wantsLayer = true
+        layer?.masksToBounds = true
     }
 
     func setFrameImage(_ image: NSImage?) {
