@@ -6,17 +6,17 @@
         <description>TrayPulsy release updates</description>
         <language>en</language>
         <item>
-            <title>TrayPulsy 1.5.0</title>
-            <sparkle:version>1.5.0</sparkle:version>
-            <sparkle:shortVersionString>1.5.0</sparkle:shortVersionString>
+            <title>TrayPulsy 1.6.0</title>
+            <sparkle:version>1.6.0</sparkle:version>
+            <sparkle:shortVersionString>1.6.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <sparkle:fullReleaseNotesLink>https://krissss.github.io/tray-pulsy/CHANGELOG.md</sparkle:fullReleaseNotesLink>
-            <pubDate>Sun, 30 Aug 2026 15:57:25 +0000</pubDate>
+            <pubDate>Mon, 31 Aug 2026 10:51:32 +0000</pubDate>
             <description><![CDATA[See the full changelog for details.]]></description>
             <enclosure
-                url="https://github.com/krissss/tray-pulsy/releases/download/v1.5.0/TrayPulsy-v1.5.0.zip"
-                sparkle:edSignature="hGIxMYWUJZHCSr+u75ygwoDQ1IrRTckvDOMSXMMF8aUjw8aIS35N43JFLUCCyaHZwQRluMZQXas6dQj2X+FWBA=="
-                length="5134604"
+                url="https://github.com/krissss/tray-pulsy/releases/download/v1.6.0/TrayPulsy-v1.6.0.zip"
+                sparkle:edSignature="ZmVrriUPX6MBNyik8d9NWC7IgQvcmSIqNBww3X/AqLhmzJsmIkL7XNar87vbzPZy0Gij7HwWemPkzKpao1UtAA=="
+                length="5163546"
                 type="application/octet-stream"
             />
         </item>
