@@ -97,6 +97,21 @@ final class SettingsStoreTests: XCTestCase {
         XCTAssertEqual(Defaults[.onlineSkinManifestURL], "")
     }
 
+    func testWindowVisibilityPolicyRequiresFloatingWindowToHideStatusBarIcon() {
+        XCTAssertTrue(WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+            floatingWindowEnabled: false,
+            requested: false
+        ))
+        XCTAssertFalse(WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+            floatingWindowEnabled: true,
+            requested: false
+        ))
+        XCTAssertTrue(WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+            floatingWindowEnabled: true,
+            requested: true
+        ))
+    }
+
     // MARK: - SampleInterval.seconds
 
     func testSampleInterval_seconds() {

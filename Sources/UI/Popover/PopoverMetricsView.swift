@@ -17,7 +17,6 @@ struct PopoverMetricsView: View {
     @Default(.thresholds) private var thresholds
     @Default(.historyDuration) private var historyDuration
     @Default(.metricMonitorItems) private var metricMonitorItems
-    @Default(.floatingWindowEnabled) private var floatingWindowEnabled
     @State private var cpuProcessMonitor = ProcessResourceMonitor(kind: .cpu)
     @State private var memoryProcessMonitor = ProcessResourceMonitor(kind: .memory)
     @State private var processNetworkMonitor = ProcessNetworkMonitor()
@@ -32,7 +31,6 @@ struct PopoverMetricsView: View {
             PopoverHeader(
                 skinName: skinDisplayName,
                 speedSource: speedSource,
-                floatingWindowEnabled: $floatingWindowEnabled,
                 openMainWindow: openMainWindow,
                 quit: { NSApp.terminate(nil) }
             )
@@ -227,7 +225,6 @@ private enum ProcessSection {
 private struct PopoverHeader: View {
     let skinName: String
     let speedSource: SpeedSource
-    @Binding var floatingWindowEnabled: Bool
     let openMainWindow: () -> Void
     let quit: () -> Void
 
@@ -255,19 +252,6 @@ private struct PopoverHeader: View {
             Spacer(minLength: 8)
 
             HStack(spacing: 6) {
-                Button {
-                    floatingWindowEnabled.toggle()
-                } label: {
-                    Label(floatingWindowHelp, systemImage: "rectangle.on.rectangle")
-                        .labelStyle(.iconOnly)
-                        .frame(width: 24, height: 24)
-                }
-                .buttonStyle(.glass)
-                .controlSize(.small)
-                .foregroundStyle(floatingWindowEnabled ? Color.accentColor : Color.secondary)
-                .help(floatingWindowHelp)
-                .accessibilityLabel(floatingWindowHelp)
-
                 Button(action: openMainWindow) {
                     Label(L10n.popoverOpenMainWindow, systemImage: "macwindow")
                         .labelStyle(.iconOnly)
@@ -292,10 +276,6 @@ private struct PopoverHeader: View {
         }
         .padding(10)
         .background(.quaternary.opacity(0.5), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
-    }
-
-    private var floatingWindowHelp: String {
-        floatingWindowEnabled ? L10n.floatingWindowHide : L10n.floatingWindowToggle
     }
 
     @ViewBuilder

@@ -53,6 +53,7 @@ enum L10n {
             "tab.overview": "Overview",
             "tab.skin": "Skins",
             "tab.metrics": "Metrics",
+            "tab.floating": "Floating Window",
             "tab.performance": "Performance",
             "tab.general": "General",
             "tab.about": "About",
@@ -165,6 +166,7 @@ enum L10n {
             "settings.metrics.spikeDelta.description": "Records a spike only when the confirmed jump is at least this large.",
             "settings.floating.header": "Floating Window",
             "settings.floating.toggle": "Show Floating Window",
+            "settings.floating.statusBarIcon": "Show Menu Bar Icon",
             "settings.floating.alwaysOnTop": "Keep Above Other Windows",
             "settings.floating.showSkin": "Show Skin Animation",
             "settings.floating.layout": "Metric Layout",
@@ -173,7 +175,9 @@ enum L10n {
             "settings.floating.backgroundColor": "Background Color",
             "settings.floating.textColor": "Text Color",
             "settings.floating.backgroundOpacity": "Background Opacity",
-            "settings.floating.footer": "Controls the compact HUD window. Choose which metrics appear from the metric rows below.",
+            "settings.floating.footer": "Controls the compact HUD window. Turning it off always restores the menu bar icon.",
+            "settings.floating.metrics.header": "Floating Window Metrics",
+            "settings.floating.metrics.footer": "Choose which metrics appear in the floating window. Turning off the last metric also turns off the floating window.",
             "settings.floating.hide": "Hide Floating Window",
 
             // Performance Settings
@@ -332,6 +336,7 @@ enum L10n {
             "tab.overview": "概览",
             "tab.skin": "皮肤",
             "tab.metrics": "指标",
+            "tab.floating": "悬浮窗",
             "tab.performance": "性能",
             "tab.general": "通用",
             "tab.about": "关于",
@@ -444,6 +449,7 @@ enum L10n {
             "settings.metrics.spikeDelta.description": "二次确认后的跳升至少达到这个值，才会记录一次尖峰。",
             "settings.floating.header": "悬浮窗",
             "settings.floating.toggle": "显示悬浮窗",
+            "settings.floating.statusBarIcon": "显示状态栏图标",
             "settings.floating.alwaysOnTop": "保持在其他窗口上方",
             "settings.floating.showSkin": "显示皮肤动画",
             "settings.floating.layout": "指标布局",
@@ -452,7 +458,9 @@ enum L10n {
             "settings.floating.backgroundColor": "背景色",
             "settings.floating.textColor": "字体颜色",
             "settings.floating.backgroundOpacity": "背景透明度",
-            "settings.floating.footer": "控制紧凑 HUD 窗口；要显示哪些指标，请在下方指标行里勾选悬浮窗。",
+            "settings.floating.footer": "控制紧凑 HUD 窗口；关闭悬浮窗后会自动恢复状态栏图标。",
+            "settings.floating.metrics.header": "悬浮窗指标",
+            "settings.floating.metrics.footer": "选择要显示在悬浮窗中的指标；关闭最后一个指标也会关闭悬浮窗。",
             "settings.floating.hide": "隐藏悬浮窗",
 
             // Performance Settings
@@ -611,6 +619,7 @@ enum L10n {
     static var tabOverview:    String { tr("tab.overview", "概览") }
     static var tabSkin:        String { tr("tab.skin", "皮肤") }
     static var tabMetrics:     String { tr("tab.metrics", "指标") }
+    static var tabFloating:    String { tr("tab.floating", "悬浮窗") }
     static var tabPerformance: String { tr("tab.performance", "性能") }
     static var tabGeneral:     String { tr("tab.general", "通用") }
     static var tabAbout:       String { tr("tab.about", "关于") }
@@ -732,6 +741,7 @@ enum L10n {
     static func metricsCriticalThreshold(_ value: String) -> String { String(format: tr("settings.metrics.criticalThreshold", "红色 %@"), value) }
     static var floatingWindowHeader: String { tr("settings.floating.header", "悬浮窗") }
     static var floatingWindowToggle: String { tr("settings.floating.toggle", "显示悬浮窗") }
+    static var floatingWindowStatusBarIcon: String { tr("settings.floating.statusBarIcon", "显示状态栏图标") }
     static var floatingWindowAlwaysOnTop: String { tr("settings.floating.alwaysOnTop", "保持在其他窗口上方") }
     static var floatingWindowShowSkin: String { tr("settings.floating.showSkin", "显示皮肤动画") }
     static var floatingWindowLayout: String { tr("settings.floating.layout", "指标布局") }
@@ -740,7 +750,9 @@ enum L10n {
     static var floatingWindowBackgroundColor: String { tr("settings.floating.backgroundColor", "背景色") }
     static var floatingWindowTextColor: String { tr("settings.floating.textColor", "字体颜色") }
     static var floatingWindowBackgroundOpacity: String { tr("settings.floating.backgroundOpacity", "背景透明度") }
-    static var floatingWindowFooter: String { tr("settings.floating.footer", "显示紧凑的实时 HUD，可包含皮肤动画和 label/value 指标。") }
+    static var floatingWindowFooter: String { tr("settings.floating.footer", "控制紧凑 HUD 窗口；关闭悬浮窗后会自动恢复状态栏图标。") }
+    static var floatingWindowMetricsHeader: String { tr("settings.floating.metrics.header", "悬浮窗指标") }
+    static var floatingWindowMetricsFooter: String { tr("settings.floating.metrics.footer", "选择要显示在悬浮窗中的指标；关闭最后一个指标也会关闭悬浮窗。") }
     static var floatingWindowHide: String { tr("settings.floating.hide", "隐藏悬浮窗") }
 
     // MARK: - Performance Settings

@@ -35,7 +35,6 @@ struct FloatingMetricsView: View {
                 Button(L10n.floatingWindowHide, action: hideWindow)
             }
             .contentShape(Rectangle())
-            .onTapGesture(count: 2, perform: openSettings)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(L10n.floatingWindowHeader)
     }

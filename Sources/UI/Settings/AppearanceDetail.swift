@@ -889,14 +889,36 @@ private struct PulsySliderRow: View {
 // ═══════════════════════════════════════════════════════════════
 
 struct MetricsDetail: View {
-    @Default(.thresholds) private var thresholds
+    var body: some View {
+        SettingsFormPage {
+            Section {
+                ForEach(MetricDisplayItem.allCases) { item in
+                    MetricRowView(item: item)
+                }
+            } header: {
+                Text(L10n.metricsHeader)
+            } footer: {
+                Text(L10n.metricsFooter)
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MARK: - 悬浮窗 Tab
+// ═══════════════════════════════════════════════════════════════
+
+struct FloatingWindowDetail: View {
     @Default(.floatingWindowEnabled) private var floatingWindowEnabled
+    @Default(.statusBarIconEnabled) private var statusBarIconEnabled
     @Default(.floatingWindowAlwaysOnTop) private var floatingWindowAlwaysOnTop
     @Default(.floatingWindowShowsSkin) private var floatingWindowShowsSkin
     @Default(.floatingWindowMetricsLayout) private var floatingWindowMetricsLayout
     @Default(.floatingWindowBackgroundColor) private var floatingWindowBackgroundColor
     @Default(.floatingWindowBackgroundOpacity) private var floatingWindowBackgroundOpacity
     @Default(.floatingWindowTextColor) private var floatingWindowTextColor
+    @Default(.floatingWindowMetricItems) private var floatingWindowMetricItems
+    @Default(.metricMonitorItems) private var metricMonitorItems
 
     private var floatingWindowBackgroundColorBinding: Binding<Color> {
         Binding(
@@ -919,6 +941,30 @@ struct MetricsDetail: View {
         )
     }
 
+    private var statusBarIconBinding: Binding<Bool> {
+        Binding(
+            get: {
+                WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+                    floatingWindowEnabled: floatingWindowEnabled,
+                    requested: statusBarIconEnabled
+                )
+            },
+            set: { isEnabled in
+                guard floatingWindowEnabled else {
+                    statusBarIconEnabled = true
+                    return
+                }
+                statusBarIconEnabled = isEnabled
+            }
+        )
+    }
+
+    private var selectedFloatingMetricItems: Set<MetricDisplayItem> {
+        floatingWindowEnabled && floatingWindowMetricItems.isEmpty
+            ? Defaults.Keys.defaultFloatingWindowMetricItems
+            : floatingWindowMetricItems
+    }
+
     var body: some View {
         SettingsFormPage {
             Section {
@@ -929,6 +975,15 @@ struct MetricsDetail: View {
                         color: .teal
                     )
                 }
+
+                Toggle(isOn: statusBarIconBinding) {
+                    SettingsRowLabel(
+                        title: L10n.floatingWindowStatusBarIcon,
+                        systemImage: "menubar.rectangle",
+                        color: .teal
+                    )
+                }
+                .disabled(!floatingWindowEnabled)
 
                 if floatingWindowEnabled {
                     Toggle(isOn: $floatingWindowAlwaysOnTop) {
@@ -1005,14 +1060,59 @@ struct MetricsDetail: View {
 
             Section {
                 ForEach(MetricDisplayItem.allCases) { item in
-                    MetricRowView(item: item)
+                    Toggle(isOn: floatingMetricBinding(for: item)) {
+                        SettingsRowLabel(
+                            title: item.displayName,
+                            systemImage: item.chartIcon,
+                            color: Color(nsColor: item.accentColor)
+                        )
+                    }
                 }
             } header: {
-                Text(L10n.metricsHeader)
+                Text(L10n.floatingWindowMetricsHeader)
             } footer: {
-                Text(L10n.metricsFooter)
+                Text(L10n.floatingWindowMetricsFooter)
             }
         }
+        .onAppear {
+            normalizeWindowVisibilitySettings()
+        }
+        .onChange(of: floatingWindowEnabled) {
+            normalizeWindowVisibilitySettings()
+        }
+    }
+
+    private func normalizeWindowVisibilitySettings() {
+        let normalized = WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+            floatingWindowEnabled: floatingWindowEnabled,
+            requested: statusBarIconEnabled
+        )
+        if statusBarIconEnabled != normalized {
+            statusBarIconEnabled = normalized
+        }
+    }
+
+    private func floatingMetricBinding(for item: MetricDisplayItem) -> Binding<Bool> {
+        Binding(
+            get: {
+                floatingWindowEnabled && selectedFloatingMetricItems.contains(item)
+            },
+            set: { isEnabled in
+                var items = selectedFloatingMetricItems
+                if isEnabled {
+                    items.insert(item)
+                    floatingWindowMetricItems = items
+                    metricMonitorItems.insert(item)
+                    floatingWindowEnabled = true
+                } else {
+                    items.remove(item)
+                    floatingWindowMetricItems = items
+                    if items.isEmpty {
+                        floatingWindowEnabled = false
+                    }
+                }
+            }
+        )
     }
 }
 
@@ -1023,20 +1123,12 @@ private struct MetricRowView: View {
     @Default(.speedSource) private var speedSource
     @Default(.metricMonitorItems) private var metricMonitorItems
     @Default(.metricDisplayItems) private var metricDisplayItems
-    @Default(.floatingWindowEnabled) private var floatingWindowEnabled
-    @Default(.floatingWindowMetricItems) private var floatingWindowMetricItems
     @Default(.thresholds) private var thresholds
     @Default(.spikeDeltas) private var spikeDeltas
     @State private var isAdvancedExpanded = false
 
     private var isMonitored: Bool {
         metricMonitorItems.contains(item)
-    }
-
-    private var selectedFloatingMetricItems: Set<MetricDisplayItem> {
-        floatingWindowEnabled && floatingWindowMetricItems.isEmpty
-            ? Defaults.Keys.defaultFloatingWindowMetricItems
-            : floatingWindowMetricItems
     }
 
     private var mode: MetricManagementMode {
@@ -1057,12 +1149,6 @@ private struct MetricRowView: View {
                 case .off:
                     metricMonitorItems.remove(item)
                     metricDisplayItems.remove(item)
-                    var items = selectedFloatingMetricItems
-                    items.remove(item)
-                    floatingWindowMetricItems = items
-                    if items.isEmpty {
-                        floatingWindowEnabled = false
-                    }
                     if item.requiredMetric == speedSource.requiredMetric,
                        let nextSource = SpeedSource.firstAvailable(in: metricMonitorItems) {
                         speedSource = nextSource
@@ -1076,29 +1162,6 @@ private struct MetricRowView: View {
                 case .menuBar:
                     metricMonitorItems.insert(item)
                     metricDisplayItems.insert(item)
-                }
-            }
-        )
-    }
-
-    private var floatingMetricBinding: Binding<Bool> {
-        Binding(
-            get: {
-                floatingWindowEnabled && selectedFloatingMetricItems.contains(item)
-            },
-            set: { isEnabled in
-                var items = selectedFloatingMetricItems
-                if isEnabled {
-                    items.insert(item)
-                    floatingWindowMetricItems = items
-                    metricMonitorItems.insert(item)
-                    floatingWindowEnabled = true
-                } else {
-                    items.remove(item)
-                    floatingWindowMetricItems = items
-                    if items.isEmpty {
-                        floatingWindowEnabled = false
-                    }
                 }
             }
         )
@@ -1163,10 +1226,7 @@ private struct MetricRowView: View {
         HStack(spacing: 12) {
             metricLabel
             Spacer(minLength: 16)
-            HStack(spacing: 10) {
-                floatingMetricToggle
-                modePicker
-            }
+            modePicker
         }
     }
 
@@ -1188,17 +1248,6 @@ private struct MetricRowView: View {
         .labelsHidden()
         .controlSize(.small)
         .frame(width: 220)
-    }
-
-    private var floatingMetricToggle: some View {
-        Toggle(isOn: floatingMetricBinding) {
-            Text(L10n.metricsFloatingWindow)
-                .lineLimit(1)
-        }
-        .toggleStyle(.checkbox)
-        .controlSize(.small)
-        .fixedSize(horizontal: true, vertical: false)
-        .accessibilityLabel("\(item.displayName) \(L10n.metricsFloatingWindow)")
     }
 
     private var isPercent: Bool {

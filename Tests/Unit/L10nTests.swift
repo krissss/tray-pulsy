@@ -75,6 +75,7 @@ struct L10nTests {
 
         #expect(!L10n.tabOverview.isEmpty)
         #expect(!L10n.tabSkin.isEmpty)
+        #expect(!L10n.tabFloating.isEmpty)
         #expect(!L10n.speedCpu.isEmpty)
         #expect(!L10n.metricCpu.isEmpty)
         #expect(!L10n.fps10.isEmpty)
@@ -112,6 +113,7 @@ struct L10nTests {
         #expect(!L10n.metricsCriticalThreshold("90%").isEmpty)
         #expect(!L10n.floatingWindowHeader.isEmpty)
         #expect(!L10n.floatingWindowToggle.isEmpty)
+        #expect(!L10n.floatingWindowStatusBarIcon.isEmpty)
         #expect(!L10n.floatingWindowAlwaysOnTop.isEmpty)
         #expect(!L10n.floatingWindowShowSkin.isEmpty)
         #expect(!L10n.floatingWindowLayout.isEmpty)
@@ -121,6 +123,8 @@ struct L10nTests {
         #expect(!L10n.floatingWindowTextColor.isEmpty)
         #expect(!L10n.floatingWindowBackgroundOpacity.isEmpty)
         #expect(!L10n.floatingWindowFooter.isEmpty)
+        #expect(!L10n.floatingWindowMetricsHeader.isEmpty)
+        #expect(!L10n.floatingWindowMetricsFooter.isEmpty)
         #expect(!L10n.floatingWindowHide.isEmpty)
         #expect(!L10n.perfSourceLabel.isEmpty)
         #expect(!L10n.perfSpikeLimitLabel.isEmpty)
@@ -159,7 +163,7 @@ struct L10nTests {
         Defaults[.language] = .en
         L10n.reload()
         let enKeys = Set([
-            "tab.overview", "tab.skin", "tab.metrics", "tab.performance", "tab.general", "tab.about",
+            "tab.overview", "tab.skin", "tab.metrics", "tab.floating", "tab.performance", "tab.general", "tab.about",
             "speed.cpu", "speed.gpu", "speed.memory", "speed.disk",
             "metric.cpu", "metric.gpu", "metric.memory", "metric.disk", "metric.netDown", "metric.netUp",
             "fps.10", "fps.20", "fps.30", "fps.40",

@@ -31,6 +31,7 @@ final class AppState {
     var onExternalSkinPathChanged: (() -> Void)?
     var onSkinLibraryChanged: (() -> Void)?
     var onFloatingWindowConfigChanged: (() -> Void)?
+    var onStatusBarIconConfigChanged: (() -> Void)?
 
     private static var defaultOnlineSkinCatalog: OnlineSkinCatalog {
         let saved = Defaults[.onlineSkinManifestURL].trimmingCharacters(in: .whitespacesAndNewlines)
@@ -66,6 +67,7 @@ final class AppState {
     }
 
     func activate() {
+        normalizeWindowVisibilitySettings()
         systemMonitor.start()
         setupDefaultsObservers()
     }
@@ -134,8 +136,28 @@ final class AppState {
             },
             Defaults.observe(.floatingWindowEnabled) { [weak self] _ in
                 MainActor.assumeIsolated {
+                    let normalized = WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+                        floatingWindowEnabled: Defaults[.floatingWindowEnabled],
+                        requested: Defaults[.statusBarIconEnabled]
+                    )
+                    if Defaults[.statusBarIconEnabled] != normalized {
+                        Defaults[.statusBarIconEnabled] = normalized
+                    }
                     self?.onFloatingWindowConfigChanged?()
                     self?.onMetricsConfigChanged?()
+                }
+            },
+            Defaults.observe(.statusBarIconEnabled) { [weak self] change in
+                MainActor.assumeIsolated {
+                    let normalized = WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+                        floatingWindowEnabled: Defaults[.floatingWindowEnabled],
+                        requested: change.newValue
+                    )
+                    if change.newValue != normalized {
+                        Defaults[.statusBarIconEnabled] = normalized
+                        return
+                    }
+                    self?.onStatusBarIconConfigChanged?()
                 }
             },
             Defaults.observe(.floatingWindowAlwaysOnTop) { [weak self] _ in
@@ -219,6 +241,16 @@ final class AppState {
     // ═════════════════════════════════════════════════════════
     // MARK: - Helpers
     // ═════════════════════════════════════════════════════════
+
+    private func normalizeWindowVisibilitySettings() {
+        let normalized = WindowVisibilityPolicy.normalizedStatusBarIconEnabled(
+            floatingWindowEnabled: Defaults[.floatingWindowEnabled],
+            requested: Defaults[.statusBarIconEnabled]
+        )
+        if Defaults[.statusBarIconEnabled] != normalized {
+            Defaults[.statusBarIconEnabled] = normalized
+        }
+    }
 
     /// Only read the metrics we actually need.
     func updateEnabledMetrics(settingsOpen: Bool) {

@@ -7,7 +7,7 @@ import SwiftUI
 ///   LEFT CLICK  → Toggle metrics popover
 ///   RIGHT CLICK → Open native Settings window (Cmd+,)
 @MainActor
-final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
+final class StatusBarController: NSObject, NSWindowDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
     private let appState: AppState
     private var animator: TrayAnimator!
@@ -16,19 +16,15 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
     private var floatingPanelController: FloatingMetricsPanelController?
     private let statusBarView = StatusBarView()
     private var lastDisplayedMetricText: String = ""
-
-    private lazy var popover: NSPopover = {
-        let p = NSPopover()
-        p.contentSize = NSSize(width: 336, height: 520)
-        p.behavior = .transient
-        p.animates = true
-        p.delegate = self
-        return p
-    }()
-
-    /// Global mouse-move monitor for auto-hiding popover when mouse leaves.
-    private var globalMouseMonitor: Any?
-    private var autoHideTask: Task<Void, Never>?
+    private lazy var metricsPopoverPresenter = MetricsPopoverPresenter(
+        systemMonitor: appState.systemMonitor,
+        updateEnabledMetrics: { [weak self] in
+            self?.updateEnabledMetrics()
+        },
+        openMainWindow: { [weak self] in
+            self?.openSettings()
+        }
+    )
 
     init(appState: AppState) {
         self.appState = appState
@@ -61,8 +57,9 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         animator.setReverseAnimationSpeed(Defaults[.reverseAnimationSpeed])
         animator.setSkinAnimationSpeed(Defaults[.skinAnimationSpeed])
 
-        // 5. Configure button: any click → open settings
+        // 5. Configure button: left click toggles the popover, right click opens settings
         setupButton()
+        syncStatusBarIcon()
 
         // 6. Start animator and update loop
         animator.start()
@@ -89,6 +86,9 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         }
         appState.onFloatingWindowConfigChanged = { [weak self] in
             self?.syncFloatingWindow()
+        }
+        appState.onStatusBarIconConfigChanged = { [weak self] in
+            self?.syncStatusBarIcon()
         }
         appState.onPulsyConfigChanged = { [weak self] in
             self?.animator.updateFrames(self?.appState.regeneratePulsyFrames() ?? [])
@@ -120,6 +120,7 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
         animator.stop()
         updateTask?.cancel()
         updateTask = nil
+        metricsPopoverPresenter.close()
         floatingPanelController?.close()
         floatingPanelController = nil
         settingsWindow?.close()
@@ -166,88 +167,8 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
     // ═════════════════════════════════════════════════════════
 
     private func togglePopover() {
-        if popover.isShown {
-            popover.performClose(nil)
-        } else {
-            guard let button = statusItem.button else { return }
-            updateEnabledMetrics()
-            // Create fresh content each time to avoid holding SwiftUI tree in memory
-            popover.contentViewController = NSHostingController(
-                rootView: PopoverMetricsView(
-                    systemMonitor: monitor,
-                    openMainWindow: { [weak self] in
-                        self?.openSettingsFromPopover()
-                    }
-                )
-            )
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
-        }
-    }
-
-    private func openSettingsFromPopover() {
-        popover.performClose(nil)
-        openSettings()
-    }
-
-    // MARK: - NSPopoverDelegate
-
-    func popoverDidShow(_ notification: Notification) {
-        startMouseExitMonitor()
-    }
-
-    func popoverDidClose(_ notification: Notification) {
-        stopMouseExitMonitor()
-        // Release SwiftUI view tree to free memory
-        popover.contentViewController = nil
-        updateEnabledMetrics()
-    }
-
-    // MARK: - Mouse Exit Auto-Hide
-
-    private func startMouseExitMonitor() {
-        stopMouseExitMonitor()
-        globalMouseMonitor = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in
-            MainActor.assumeIsolated {
-                self?.handleGlobalMouseMoved()
-            }
-        }
-    }
-
-    private func stopMouseExitMonitor() {
-        if let monitor = globalMouseMonitor {
-            NSEvent.removeMonitor(monitor)
-            globalMouseMonitor = nil
-        }
-        autoHideTask?.cancel()
-        autoHideTask = nil
-    }
-
-    private func handleGlobalMouseMoved() {
-        guard popover.isShown else { return }
-        guard let window = popover.contentViewController?.view.window else { return }
-
-        let mouseLoc = NSEvent.mouseLocation
-        let popoverFrame = window.frame
-        // Give a small margin so the user can comfortably interact with the popover edges
-        let expandedFrame = popoverFrame.insetBy(dx: -4, dy: -4)
-
-        if !expandedFrame.contains(mouseLoc) {
-            autoHideTask?.cancel()
-            autoHideTask = Task { [weak self] in
-                try? await Task.sleep(for: .milliseconds(800))
-                guard let self, !Task.isCancelled else { return }
-                // Re-check before actually closing
-                guard let window = self.popover.contentViewController?.view.window else { return }
-                let loc = NSEvent.mouseLocation
-                if !window.frame.insetBy(dx: -4, dy: -4).contains(loc) {
-                    self.popover.performClose(nil)
-                }
-            }
-        } else {
-            // Mouse is back inside — cancel any pending close
-            autoHideTask?.cancel()
-            autoHideTask = nil
-        }
+        guard let button = statusItem.button else { return }
+        metricsPopoverPresenter.toggle(anchor: button, preferredEdge: .minY)
     }
 
     /// Keep NSStatusItem.length in sync with StatusBarView's required width.
@@ -371,7 +292,8 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
                 appState: appState,
                 openSettings: { [weak self] in
                     self?.openSettingsFromFloatingWindow()
-                }
+                },
+                popoverPresenter: metricsPopoverPresenter
             )
             floatingPanelController = controller
             controller.show()
@@ -382,6 +304,10 @@ final class StatusBarController: NSObject, NSWindowDelegate, NSPopoverDelegate {
             floatingPanelController = nil
             updateEnabledMetrics()
         }
+    }
+
+    private func syncStatusBarIcon() {
+        statusItem.isVisible = Defaults[.statusBarIconEnabled]
     }
 
     /// Force-refresh metric display (called by observers when settings change).

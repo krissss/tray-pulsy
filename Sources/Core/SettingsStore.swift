@@ -54,6 +54,7 @@ extension Defaults.Keys {
 
     // 悬浮窗
     static let floatingWindowEnabled = Key<Bool>("traypulsy_floatingWindowEnabled", default: false)
+    static let statusBarIconEnabled = Key<Bool>("traypulsy_statusBarIconEnabled", default: true)
     static let floatingWindowAlwaysOnTop = Key<Bool>("traypulsy_floatingWindowAlwaysOnTop", default: true)
     static let floatingWindowShowsSkin = Key<Bool>("traypulsy_floatingWindowShowsSkin", default: true)
     static let floatingWindowMetricsLayout = Key<FloatingWindowMetricsLayout>(
@@ -114,6 +115,15 @@ extension Defaults.Keys {
     static let pulsyLineWidth             = Key<Double>("traypulsy_pulsyLineWidth", default: 1.5)
     static let pulsyGlowIntensity         = Key<Double>("traypulsy_pulsyGlowIntensity", default: 1.0)
     static let pulsyAmplitudeSensitivity  = Key<Double>("traypulsy_pulsyAmplitudeSensitivity", default: 1.0)
+}
+
+enum WindowVisibilityPolicy {
+    static func normalizedStatusBarIconEnabled(
+        floatingWindowEnabled: Bool,
+        requested: Bool
+    ) -> Bool {
+        floatingWindowEnabled ? requested : true
+    }
 }
 
 struct FloatingWindowPlacement: Codable, Defaults.Serializable, Sendable, Equatable {
