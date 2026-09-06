@@ -175,6 +175,13 @@ final class FloatingMetricsPanelController: NSObject, NSWindowDelegate {
                 pendingSingleClickTask = nil
                 popoverPresenter.close()
                 openSettings()
+            } else if popoverPresenter.isShown {
+                // Popover is currently open and survived the click → close it immediately.
+                // (The floating path anchors with `.semitransient`, so the click on the
+                // floater does NOT auto-dismiss before this handler runs.)
+                pendingSingleClickTask?.cancel()
+                pendingSingleClickTask = nil
+                popoverPresenter.close()
             } else {
                 scheduleSingleClick(for: panel)
             }
@@ -271,18 +278,37 @@ final class FloatingMetricsPanelController: NSObject, NSWindowDelegate {
 
         let gap: CGFloat = 4
         var frame = window.frame
-        let targetY: CGFloat
-        if showsBelow {
-            targetY = panel.frame.minY - gap - frame.height
-        } else {
-            targetY = panel.frame.maxY + gap
+        let visibleFrame = screen.visibleFrame
+
+        // MARK: - Vertical
+        // 下方：pop 顶边贴在浮窗底边之上（pop 底 = 浮窗底 - gap - 高）
+        let belowMinY = panel.frame.minY - gap - frame.height
+        // 上方：pop 底边贴在浮窗顶边之上
+        let aboveMinY = panel.frame.maxY + gap
+
+        var targetY = showsBelow ? belowMinY : aboveMinY
+        func fits(_ y: CGFloat) -> Bool {
+            y >= visibleFrame.minY && y + frame.height <= visibleFrame.maxY
+        }
+        if !fits(targetY) {
+            let alternate = showsBelow ? aboveMinY : belowMinY
+            targetY = fits(alternate) ? alternate : max(visibleFrame.minY, min(targetY, visibleFrame.maxY - frame.height))
         }
 
-        let visibleFrame = screen.visibleFrame
-        guard targetY >= visibleFrame.minY,
-              targetY + frame.height <= visibleFrame.maxY else { return }
+        // MARK: - Horizontal positioning
+        // 理想为与浮窗水平中心对齐；当浮窗贴近某侧屏幕边缘导致居中溢出时，
+        // 把 pop 贴到浮窗的外侧边缘，而不是让它被 AppKit 夹回屏幕中央而与浮窗错位。
+        let w = frame.width
+        let maxMinX = visibleFrame.maxX - w
+        var targetX = panel.frame.midX - w / 2
+        if targetX < visibleFrame.minX {
+            targetX = max(visibleFrame.minX, panel.frame.minX)
+        } else if targetX > maxMinX {
+            targetX = min(maxMinX, panel.frame.maxX - w)
+        }
 
-        guard abs(frame.minY - targetY) > 0.5 else { return }
+        guard abs(frame.minX - targetX) > 0.5 || abs(frame.minY - targetY) > 0.5 else { return }
+        frame.origin.x = targetX
         frame.origin.y = targetY
         window.setFrame(frame, display: true)
     }
