@@ -29,4 +29,6 @@
 
 # Screenshots
 screenshot*.png
-.gitnexus
+
+# agent
+.workbuddy

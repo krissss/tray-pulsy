@@ -68,7 +68,7 @@ final class FloatingMetricsPanelController: NSObject, NSWindowDelegate {
 
     func reloadContent() {
         guard let panel else { return }
-        let hostingView = NSHostingView(
+        let hostingView = DraggableHostingView(
             rootView: FloatingMetricsView(
                 systemMonitor: appState.systemMonitor,
                 skinFrameView: skinFrameView,
@@ -398,4 +398,31 @@ final class FloatingMetricsPanelController: NSObject, NSWindowDelegate {
 /// A transparent, non-interactive anchor with a predictable coordinate system.
 private final class FloatingPopoverAnchorView: NSView {
     override var isFlipped: Bool { false }
+}
+
+/// A hosting view that hands left-mouse drags over to the window (`performDrag`).
+///
+/// The floater is a borderless, non-activating panel whose content is SwiftUI, and it used to
+/// rely purely on `NSPanel.isMovableByWindowBackground`. Starting with macOS 27 the SwiftUI
+/// hosting view consumes the mouse-down itself (for its own gesture pipeline), so AppKit never
+/// enters its background-drag session and the floater can no longer be dragged.
+///
+/// Evidence (probe on macOS 27 with a borderless + `.nonactivatingPanel` window,
+/// `isMovableByWindowBackground = true`, driven by real HID events):
+///   - contentView = plain `NSView` → window moves (the AppKit path itself is fine);
+///   - contentView = `NSHostingView` → window does NOT move, and the mouse-down is already
+///     claimed before AppKit's drag path runs;
+///   - overriding only `mouseDownCanMoveWindow` to return `true` on the hosting view is NOT
+///     enough — 100% of a real drag produces 0px of movement;
+///   - overriding `mouseDown` to call `window?.performDrag(with:)` moves the window again.
+///
+/// Control-click is passed through to SwiftUI so `.contextMenu` keeps working.
+final class DraggableHostingView<Content: View>: NSHostingView<Content> {
+    override func mouseDown(with event: NSEvent) {
+        guard !event.modifierFlags.contains(.control) else {
+            super.mouseDown(with: event)
+            return
+        }
+        window?.performDrag(with: event)
+    }
 }
