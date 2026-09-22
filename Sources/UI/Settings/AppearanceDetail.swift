@@ -983,9 +983,11 @@ struct FloatingWindowDetail: View {
     }
 
     private var selectedFloatingMetricItems: Set<MetricDisplayItem> {
-        floatingWindowEnabled && floatingWindowMetricItems.isEmpty
-            ? Defaults.Keys.defaultFloatingWindowMetricItems
-            : floatingWindowMetricItems
+        FloatingMetricsSelection.resolvedItems(
+            stored: floatingWindowMetricItems,
+            monitored: metricMonitorItems,
+            fallbackWhenEmpty: floatingWindowEnabled
+        )
     }
 
     var body: some View {
@@ -1083,6 +1085,9 @@ struct FloatingWindowDetail: View {
 
             Section {
                 ForEach(MetricDisplayItem.allCases) { item in
+                    // 未监控的指标不能勾选：勾了也不会被采样/展示。
+                    // 开关本身不代表「不在悬浮窗里」——状态照旧显示，只是禁用，
+                    // 这样在指标 Tab 重新启用后，这里会自动恢复成原来的勾选。
                     Toggle(isOn: floatingMetricBinding(for: item)) {
                         SettingsRowLabel(
                             title: item.displayName,
@@ -1090,6 +1095,8 @@ struct FloatingWindowDetail: View {
                             color: Color(nsColor: item.accentColor)
                         )
                     }
+                    .disabled(!metricMonitorItems.contains(item))
+                    .help(metricMonitorItems.contains(item) ? "" : L10n.floatingWindowMetricNotMonitored)
                 }
             } header: {
                 Text(L10n.floatingWindowMetricsHeader)
@@ -1118,14 +1125,20 @@ struct FloatingWindowDetail: View {
     private func floatingMetricBinding(for item: MetricDisplayItem) -> Binding<Bool> {
         Binding(
             get: {
-                floatingWindowEnabled && selectedFloatingMetricItems.contains(item)
+                // 显示状态由 FloatingMetricsSelection 单点决定：未监控的项显示的是
+                // 「用户勾过什么」（会被保留），监控中的项显示「现在是否真的展示」。
+                FloatingMetricsSelection.toggleState(
+                    for: item,
+                    stored: floatingWindowMetricItems,
+                    monitored: metricMonitorItems,
+                    windowEnabled: floatingWindowEnabled
+                )
             },
             set: { isEnabled in
                 var items = selectedFloatingMetricItems
                 if isEnabled {
                     items.insert(item)
                     floatingWindowMetricItems = items
-                    metricMonitorItems.insert(item)
                     floatingWindowEnabled = true
                 } else {
                     items.remove(item)
@@ -1168,10 +1181,22 @@ private struct MetricRowView: View {
         Binding(
             get: { mode },
             set: { newMode in
-                switch newMode {
-                case .off:
-                    metricMonitorItems.remove(item)
-                    metricDisplayItems.remove(item)
+                // 三态只写「监控」与「菜单栏显示」两个键（见 MetricMonitoringPolicy：
+                // 它的签名里根本没有悬浮窗参数）。悬浮窗列表与总开关由悬浮窗页独占，
+                // 所以「关闭」不会丢掉用户在那边勾选的内容，重新启用后自动恢复。
+                let selection = MetricMonitoringPolicy.apply(
+                    newMode,
+                    to: item,
+                    monitored: metricMonitorItems,
+                    displayed: metricDisplayItems
+                )
+                if selection.monitored != metricMonitorItems {
+                    metricMonitorItems = selection.monitored
+                }
+                if selection.displayed != metricDisplayItems {
+                    metricDisplayItems = selection.displayed
+                }
+                if newMode == .off {
                     if item.requiredMetric == speedSource.requiredMetric,
                        let nextSource = SpeedSource.firstAvailable(in: metricMonitorItems) {
                         speedSource = nextSource
@@ -1179,12 +1204,6 @@ private struct MetricRowView: View {
                     withAnimation(ContainedExpansionMotion.layoutAnimation(expanding: false)) {
                         isAdvancedExpanded = false
                     }
-                case .monitorOnly:
-                    metricMonitorItems.insert(item)
-                    metricDisplayItems.remove(item)
-                case .menuBar:
-                    metricMonitorItems.insert(item)
-                    metricDisplayItems.insert(item)
                 }
             }
         )
@@ -1309,21 +1328,6 @@ private struct MetricRowView: View {
 
 }
 
-private enum MetricManagementMode: String, CaseIterable, Identifiable {
-    case off
-    case monitorOnly
-    case menuBar
-
-    var id: Self { self }
-
-    var label: String {
-        switch self {
-        case .off:         return L10n.metricsModeOff
-        case .monitorOnly: return L10n.metricsModeMonitorOnly
-        case .menuBar:     return L10n.metricsModeMenuBar
-        }
-    }
-}
 
 // MARK: - Threshold Sliders
 

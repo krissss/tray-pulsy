@@ -272,15 +272,13 @@ final class AppState {
         )
     }
 
+    /// 需要采样的指标：指标 Tab 中处于「仅监控 / 菜单栏」的项。
+    ///
+    /// 只信任 `metricMonitorItems`。悬浮窗列表不再并进来——它是监控集合的子集
+    /// （由 `FloatingMetricsSelection` 保证），并集会让「关闭」停不掉采样，
+    /// 与 `settings.metrics.footer` 承诺的「关闭会停止采样并隐藏指标」相矛盾。
     private func effectiveMonitoredItems() -> Set<MetricDisplayItem> {
-        var items = Defaults[.metricMonitorItems]
-        if Defaults[.floatingWindowEnabled] {
-            let floatingItems = Defaults[.floatingWindowMetricItems].isEmpty
-                ? Defaults.Keys.defaultFloatingWindowMetricItems
-                : Defaults[.floatingWindowMetricItems]
-            items.formUnion(floatingItems)
-        }
-        return items
+        Defaults[.metricMonitorItems]
     }
 
     private func normalizeSpeedSource(for monitoredItems: Set<MetricDisplayItem>) {

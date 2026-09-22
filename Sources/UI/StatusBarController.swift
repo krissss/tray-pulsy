@@ -84,6 +84,10 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         appState.onMetricsConfigChanged = { [weak self] in
             self?.updateEnabledMetrics()
             self?.refreshMetricDisplay()
+            // 悬浮窗展示的指标是「悬浮窗列表 ∩ 监控中指标」，所以监控集合变化也会
+            // 改变展示项数、甚至改变面板是否显示。尺寸不变时是空操作。
+            self?.floatingPanelController?.applyWindowSettings()
+            self?.syncFloatingWindowVisibility()
         }
         appState.onFloatingWindowConfigChanged = { [weak self] in
             self?.syncFloatingWindow()
@@ -341,7 +345,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     private func syncFloatingWindow() {
-        if Defaults[.floatingWindowEnabled] {
+        if shouldShowFloatingWindow() {
             let controller = floatingPanelController ?? FloatingMetricsPanelController(
                 appState: appState,
                 openSettings: { [weak self] in
@@ -358,6 +362,26 @@ final class StatusBarController: NSObject, NSWindowDelegate {
             floatingPanelController = nil
             updateEnabledMetrics()
         }
+    }
+
+    /// 悬浮窗是否显示 = 总开关打开 **且** 确实有可展示的指标。
+    ///
+    /// 指标 Tab 把某项设为「关闭」不会改动悬浮窗设置，所以会出现「总开关开着、
+    /// 但没有任何可展示项」——此时暂时隐藏面板，而不是替用户关掉总开关；
+    /// 该项重新启用后面板自动回来。
+    private func shouldShowFloatingWindow() -> Bool {
+        FloatingMetricsSelection.shouldShowPanel(
+            windowEnabled: Defaults[.floatingWindowEnabled],
+            stored: Defaults[.floatingWindowMetricItems],
+            monitored: Defaults[.metricMonitorItems]
+        )
+    }
+
+    /// 监控集合变化可能让悬浮窗从「有内容」变成「没内容」或反过来。
+    /// 只在显示状态真的翻转时才动面板，避免阈值拖动等高频改动反复重建面板。
+    private func syncFloatingWindowVisibility() {
+        guard shouldShowFloatingWindow() != (floatingPanelController?.isVisible == true) else { return }
+        syncFloatingWindow()
     }
 
     private func syncStatusBarIcon() {

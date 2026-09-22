@@ -158,7 +158,7 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "Metrics",
-            "settings.metrics.footer": "Off stops sampling and hides the metric. Monitor keeps history, charts, and spike diagnostics. Menu Bar shows it next to the icon. Floating shows it in the HUD.",
+            "settings.metrics.footer": "Off stops sampling and hides the metric everywhere, but keeps its Floating Window selection — turning the metric back on restores it automatically. Monitor keeps history, charts, and spike diagnostics. Menu Bar shows it next to the icon. Which monitored metrics appear in the HUD is picked on the Floating Window tab.",
             "settings.metrics.mode.picker": "Mode",
             "settings.metrics.mode.off": "Off",
             "settings.metrics.mode.monitorOnly": "Monitor",
@@ -184,7 +184,8 @@ enum L10n {
             "settings.floating.backgroundOpacity": "Background Opacity",
             "settings.floating.footer": "Controls the compact HUD window. Turning it off always restores the menu bar icon.",
             "settings.floating.metrics.header": "Floating Window Metrics",
-            "settings.floating.metrics.footer": "Choose which metrics appear in the floating window. Turning off the last metric also turns off the floating window.",
+            "settings.floating.metrics.footer": "Choose which metrics appear in the floating window. Metrics turned off on the Metrics tab are disabled here, but their selection is kept and comes back once you re-enable them; if none of the selected metrics are available, the floating window hides for now. Turning off the last switch also turns off the floating window.",
+            "settings.floating.metrics.notMonitored.help": "This metric is turned off on the Metrics tab — enable it there first.",
             "settings.floating.hide": "Hide Floating Window",
 
             // Menu Bar Color
@@ -446,7 +447,7 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "指标",
-            "settings.metrics.footer": "关闭会停止采样并隐藏指标；仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁；悬浮窗会显示到 HUD 中。",
+            "settings.metrics.footer": "关闭会停止采样并在各处隐藏指标，但保留它在悬浮窗里的勾选——重新启用后自动恢复。仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。悬浮窗展示哪几项，在「悬浮窗」页从正在监控的指标中选择。",
             "settings.metrics.mode.picker": "模式",
             "settings.metrics.mode.off": "关闭",
             "settings.metrics.mode.monitorOnly": "仅监控",
@@ -472,7 +473,8 @@ enum L10n {
             "settings.floating.backgroundOpacity": "背景透明度",
             "settings.floating.footer": "控制紧凑 HUD 窗口；关闭悬浮窗后会自动恢复状态栏图标。",
             "settings.floating.metrics.header": "悬浮窗指标",
-            "settings.floating.metrics.footer": "选择要显示在悬浮窗中的指标；关闭最后一个指标也会关闭悬浮窗。",
+            "settings.floating.metrics.footer": "选择要显示在悬浮窗中的指标。在「指标」页关闭的指标，这里的开关会变为禁用，但勾选会被保留——重新启用后自动恢复；勾选项都没在监控时悬浮窗会暂时隐藏。关闭最后一个开关也会关闭悬浮窗。",
+            "settings.floating.metrics.notMonitored.help": "该指标已在「指标」页关闭，请先在那里启用。",
             "settings.floating.hide": "隐藏悬浮窗",
 
             // Menu Bar Color
@@ -744,7 +746,7 @@ enum L10n {
     // MARK: - Metrics Settings
 
     static var metricsHeader: String { tr("settings.metrics.header", "指标") }
-    static var metricsFooter: String { tr("settings.metrics.footer", "关闭会停止采样并隐藏指标；仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。") }
+    static var metricsFooter: String { tr("settings.metrics.footer", "关闭会停止采样并在各处隐藏指标，但保留它在悬浮窗里的勾选——重新启用后自动恢复。仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。悬浮窗展示哪几项，在「悬浮窗」页从正在监控的指标中选择。") }
     static var metricsModePickerLabel: String { tr("settings.metrics.mode.picker", "模式") }
     static var metricsModeOff: String { tr("settings.metrics.mode.off", "关闭") }
     static var metricsModeMonitorOnly: String { tr("settings.metrics.mode.monitorOnly", "仅监控") }
@@ -770,7 +772,8 @@ enum L10n {
     static var floatingWindowBackgroundOpacity: String { tr("settings.floating.backgroundOpacity", "背景透明度") }
     static var floatingWindowFooter: String { tr("settings.floating.footer", "控制紧凑 HUD 窗口；关闭悬浮窗后会自动恢复状态栏图标。") }
     static var floatingWindowMetricsHeader: String { tr("settings.floating.metrics.header", "悬浮窗指标") }
-    static var floatingWindowMetricsFooter: String { tr("settings.floating.metrics.footer", "选择要显示在悬浮窗中的指标；关闭最后一个指标也会关闭悬浮窗。") }
+    static var floatingWindowMetricsFooter: String { tr("settings.floating.metrics.footer", "选择要显示在悬浮窗中的指标。在「指标」页关闭的指标，这里的开关会变为禁用，但勾选会被保留——重新启用后自动恢复；勾选项都没在监控时悬浮窗会暂时隐藏。关闭最后一个开关也会关闭悬浮窗。") }
+    static var floatingWindowMetricNotMonitored: String { tr("settings.floating.metrics.notMonitored.help", "该指标已在「指标」页关闭，请先在那里启用。") }
     static var floatingWindowHide: String { tr("settings.floating.hide", "隐藏悬浮窗") }
 
     // MARK: - Menu Bar (状态栏) 文字颜色

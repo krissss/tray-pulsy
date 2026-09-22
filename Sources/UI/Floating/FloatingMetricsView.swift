@@ -9,6 +9,7 @@ struct FloatingMetricsView: View {
     let hideWindow: () -> Void
 
     @Default(.floatingWindowMetricItems) private var floatingWindowMetricItems
+    @Default(.metricMonitorItems) private var metricMonitorItems
     @Default(.floatingWindowMetricsLayout) private var metricsLayout
     @Default(.floatingWindowShowsSkin) private var showsSkin
     @Default(.floatingWindowBackgroundColor) private var backgroundColor
@@ -17,9 +18,11 @@ struct FloatingMetricsView: View {
     @Default(.thresholds) private var thresholds
 
     private var items: [MetricDisplayItem] {
-        let selected = floatingWindowMetricItems.isEmpty
-            ? Defaults.Keys.defaultFloatingWindowMetricItems
-            : floatingWindowMetricItems
+        let selected = FloatingMetricsSelection.resolvedItems(
+            stored: floatingWindowMetricItems,
+            monitored: metricMonitorItems,
+            fallbackWhenEmpty: true
+        )
         return MetricDisplayItem.allCases.filter { selected.contains($0) }
     }
 

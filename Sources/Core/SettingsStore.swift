@@ -132,6 +132,122 @@ enum WindowVisibilityPolicy {
     }
 }
 
+/// 悬浮窗列表与「受监控指标」之间的约束。
+///
+/// 指标 Tab 设为「关闭」会停止采样并隐藏指标（见 `settings.metrics.footer`），
+/// 因此悬浮窗只能展示正在监控的指标——否则会出现「已关闭却仍在刷新」的假象：
+/// 数据继续跳，而设置页显示为关闭。
+///
+/// 但「不能展示」不等于「要替用户丢掉选择」：指标 Tab 的「关闭」**不改动悬浮窗的
+/// 任何设置**（既不改列表也不关总开关），只让该项在悬浮窗页的开关变成禁用。
+/// 于是该项重新启用时，悬浮窗会自动恢复到用户原先的勾选状态。
+///
+/// 所有需要知道「悬浮窗实际展示哪些指标」的地方都必须走这里
+/// （悬浮窗视图、悬浮窗面板尺寸、设置页开关、面板可见性），不要各自复制一份解析逻辑。
+enum FloatingMetricsSelection {
+    /// 悬浮窗实际展示（因而也需要采样）的指标。
+    ///
+    /// - Parameters:
+    ///   - stored: `floatingWindowMetricItems` 中保存的列表。
+    ///   - monitored: 指标 Tab 中处于「仅监控 / 菜单栏」的指标。
+    ///   - fallbackWhenEmpty: `stored` 为空时是否回退到默认指标集合。
+    ///     悬浮窗开启时为 `true`（与 SettingsStore 默认值一致，避免空 HUD），
+    ///     关闭时为 `false`（设置页开关应显示为全关）。
+    static func resolvedItems(
+        stored: Set<MetricDisplayItem>,
+        monitored: Set<MetricDisplayItem>,
+        fallbackWhenEmpty: Bool
+    ) -> Set<MetricDisplayItem> {
+        let selected = (fallbackWhenEmpty && stored.isEmpty)
+            ? Defaults.Keys.defaultFloatingWindowMetricItems
+            : stored
+        return selected.intersection(monitored)
+    }
+
+    /// 悬浮窗面板是否应当显示。
+    ///
+    /// 总开关之外还要看「是否真有可展示的指标」：指标 Tab 把某项设为「关闭」时不再
+    /// 改动悬浮窗设置，所以总开关可能是开着的、而列表里没有任何可展示项。这时把面板
+    /// **暂时隐藏**，而不是把用户的总开关关掉——重新启用该项后面板自动回来，
+    /// 位置与勾选都不会丢。
+    static func shouldShowPanel(
+        windowEnabled: Bool,
+        stored: Set<MetricDisplayItem>,
+        monitored: Set<MetricDisplayItem>
+    ) -> Bool {
+        guard windowEnabled else { return false }
+        return !resolvedItems(stored: stored, monitored: monitored, fallbackWhenEmpty: true).isEmpty
+    }
+
+    /// 悬浮窗页里某个开关的显示状态。
+    ///
+    /// - 监控中：显示「现在是否真的展示它」= 总开关开着且它落在展示集合里。
+    /// - 未监控：开关会被禁用，此时显示的是**用户勾过什么**（列表里有没有它），
+    ///   而不是展示集合——用展示集合求交后会显示成未勾选，与「勾选会被保留、
+    ///   重新启用后自动恢复」的说法自相矛盾。
+    static func toggleState(
+        for item: MetricDisplayItem,
+        stored: Set<MetricDisplayItem>,
+        monitored: Set<MetricDisplayItem>,
+        windowEnabled: Bool
+    ) -> Bool {
+        guard monitored.contains(item) else { return stored.contains(item) }
+        return windowEnabled
+            && resolvedItems(stored: stored, monitored: monitored, fallbackWhenEmpty: windowEnabled)
+                .contains(item)
+    }
+}
+
+/// 指标 Tab 每个指标的三态选择。
+enum MetricManagementMode: String, CaseIterable, Identifiable {
+    case off
+    case monitorOnly
+    case menuBar
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .off:         return L10n.metricsModeOff
+        case .monitorOnly: return L10n.metricsModeMonitorOnly
+        case .menuBar:     return L10n.metricsModeMenuBar
+        }
+    }
+}
+
+/// 三态选择写入的状态。
+///
+/// 注意签名里**没有任何悬浮窗参数**，这是有意的：指标 Tab 的「关闭」不得改动悬浮窗设置
+/// （列表与总开关都由悬浮窗页独占管理），所以重新启用监控时用户原先的勾选还在。
+/// 悬浮窗页那边由 `FloatingMetricsSelection` 负责把「未监控」表现为开关禁用。
+enum MetricMonitoringPolicy {
+    struct Selection: Equatable {
+        var monitored: Set<MetricDisplayItem>
+        var displayed: Set<MetricDisplayItem>
+    }
+
+    static func apply(
+        _ mode: MetricManagementMode,
+        to item: MetricDisplayItem,
+        monitored: Set<MetricDisplayItem>,
+        displayed: Set<MetricDisplayItem>
+    ) -> Selection {
+        var selection = Selection(monitored: monitored, displayed: displayed)
+        switch mode {
+        case .off:
+            selection.monitored.remove(item)
+            selection.displayed.remove(item)
+        case .monitorOnly:
+            selection.monitored.insert(item)
+            selection.displayed.remove(item)
+        case .menuBar:
+            selection.monitored.insert(item)
+            selection.displayed.insert(item)
+        }
+        return selection
+    }
+}
+
 struct FloatingWindowPlacement: Codable, Defaults.Serializable, Sendable, Equatable {
     var x: Double
     var y: Double

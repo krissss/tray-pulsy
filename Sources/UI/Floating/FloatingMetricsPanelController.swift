@@ -368,9 +368,11 @@ final class FloatingMetricsPanelController: NSObject, NSWindowDelegate {
     }
 
     static func contentSize() -> NSSize {
-        let selectedItems = Defaults[.floatingWindowMetricItems].isEmpty
-            ? Defaults.Keys.defaultFloatingWindowMetricItems
-            : Defaults[.floatingWindowMetricItems]
+        let selectedItems = FloatingMetricsSelection.resolvedItems(
+            stored: Defaults[.floatingWindowMetricItems],
+            monitored: Defaults[.metricMonitorItems],
+            fallbackWhenEmpty: true
+        )
         let count = max(selectedItems.count, 1)
         let showsSkin = Defaults[.floatingWindowShowsSkin]
         let padding = FloatingMetricsLayoutMetrics.padding * 2
