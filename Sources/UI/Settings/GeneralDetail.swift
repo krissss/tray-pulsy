@@ -5,6 +5,7 @@ import SwiftUI
 struct GeneralDetail: View {
     @Default(.launchAtStartup) private var launchAtStartup
     @Default(.language) private var language
+    @Default(.theme) private var theme
 
     var body: some View {
         SettingsFormPage {
@@ -42,6 +43,25 @@ struct GeneralDetail: View {
             }
             .onChange(of: language) {
                 language.apply()
+            }
+
+            Section {
+                Picker(selection: $theme) {
+                    ForEach(ThemeMode.allCases, id: \.rawValue) { mode in
+                        Text(mode.displayName).tag(mode)
+                    }
+                } label: {
+                    SettingsRowLabel(
+                        title: L10n.generalAppearanceHeader,
+                        systemImage: "circle.lefthalf.filled",
+                        color: .purple
+                    )
+                }
+            } header: {
+                Text(L10n.generalAppearanceHeader)
+            }
+            .onChange(of: theme) {
+                theme.apply()
             }
         }
     }

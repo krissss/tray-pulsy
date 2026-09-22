@@ -126,6 +126,11 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         settingsWindow?.close()
         settingsWindow = nil
         NotificationCenter.default.removeObserver(self, name: L10n.languageDidChangeNotification, object: nil)
+        DistributedNotificationCenter.default().removeObserver(
+            self,
+            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil
+        )
     }
 
     nonisolated func pause() {
@@ -147,9 +152,50 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.image = NSImage()  // clear native image — StatusBarView handles all drawing
         button.addSubview(statusBarView)
+        pinStatusItemToSystemAppearance()
+        DistributedNotificationCenter.default().addObserver(
+            self,
+            selector: #selector(handleSystemAppearanceChange),
+            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
+            object: nil
+        )
         // Defer to avoid layoutSubtreeIfNeeded recursion during initial layout
         DispatchQueue.main.async { [weak self] in
             self?.syncStatusItemLength()
+        }
+    }
+
+    // ═════════════════════════════════════════════════════════
+    // MARK: - Menu Bar Appearance
+    // ═════════════════════════════════════════════════════════
+
+    /// The status item is drawn on the SYSTEM menu bar, so it must always follow the
+    /// system appearance — never the in-app override chosen in General ▸ Appearance.
+    ///
+    /// `NSStatusItem.button` inherits `NSApp.appearance` (verified: forcing the app to
+    /// dark while macOS is light turns the button's effective appearance from
+    /// `VibrantLight` into `VibrantDark`). `StatusBarView` draws its metric text with
+    /// `NSColor.labelColor`, which resolves to black on light vibrancy and white on
+    /// dark vibrancy — so an app-level override would render white text on a light
+    /// menu bar (or black text on a dark one), i.e. an invisible status item.
+    /// Pinning the button's appearance keeps the menu bar chrome tied to the system.
+    private func pinStatusItemToSystemAppearance() {
+        statusItem.button?.appearance = NSAppearance(
+            named: Self.isSystemDark ? .vibrantDark : .vibrantLight
+        )
+    }
+
+    /// `AppleInterfaceStyle` is only present while the system is in dark mode.
+    private static var isSystemDark: Bool {
+        UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
+    }
+
+    @objc private func handleSystemAppearanceChange() {
+        // Distributed notifications may arrive off the main thread.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            self.pinStatusItemToSystemAppearance()
+            self.statusBarView.needsDisplay = true
         }
     }
 

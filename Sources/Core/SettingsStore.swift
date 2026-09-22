@@ -326,6 +326,20 @@ enum ThemeMode: String, CaseIterable, Defaults.Serializable {
         case .dark:   return true
         }
     }
+
+    /// Apply this theme to the whole app UI (settings window, popover, floating panel).
+    /// `.system` clears the override so the app follows the macOS appearance again.
+    /// - Note: this affects only the app's own chrome — skin sprite frames are never
+    ///   recolored, and the menu bar status item is deliberately pinned to the system
+    ///   appearance (see `StatusBarView`) so its text stays legible on the menu bar.
+    @MainActor
+    func apply() {
+        switch self {
+        case .system: NSApp.appearance = nil
+        case .light:  NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:   NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
 }
 
 // ═══════════════════════════════════════════════════════════════

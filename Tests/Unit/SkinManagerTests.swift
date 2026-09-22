@@ -54,6 +54,56 @@ final class SkinManagerTests: XCTestCase {
         return dir
     }
 
+    /// Create an opaque, solid-color PNG at the given path.
+    ///
+    /// `createPNG` above produces a fully transparent placeholder — fine for counting
+    /// frames, but useless when asserting on color, so color tests use this instead.
+    private func createOpaquePNG(at path: String, red: UInt8, green: UInt8, blue: UInt8) {
+        let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: 2, pixelsHigh: 2,
+            bitsPerSample: 8, samplesPerPixel: 4,
+            hasAlpha: true, isPlanar: false,
+            colorSpaceName: .deviceRGB, bytesPerRow: 8, bitsPerPixel: 32
+        )!
+        if let data = rep.bitmapData {
+            for i in stride(from: 0, to: 16, by: 4) {
+                data[i] = red
+                data[i + 1] = green
+                data[i + 2] = blue
+                data[i + 3] = 255
+            }
+        }
+        let png = rep.representation(using: .png, properties: [:])!
+        FileManager.default.createFile(atPath: path, contents: png)
+    }
+
+    /// Average color of all pixels with meaningful alpha, in sRGB (components 0…1).
+    private func averageOpaqueColor(of image: NSImage) -> (r: Double, g: Double, b: Double)? {
+        guard let cg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return nil }
+        let w = cg.width, h = cg.height
+        var buf = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(
+            data: &buf, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        ctx.draw(cg, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        var n = 0.0, r = 0.0, g = 0.0, b = 0.0
+        for i in stride(from: 0, to: w * h * 4, by: 4) {
+            let a = Double(buf[i + 3]) / 255
+            guard a > 0.02 else { continue }
+            // Un-premultiply to recover the authored color.
+            r += min(1, Double(buf[i]) / 255 / a)
+            g += min(1, Double(buf[i + 1]) / 255 / a)
+            b += min(1, Double(buf[i + 2]) / 255 / a)
+            n += 1
+        }
+        guard n > 0 else { return nil }
+        return (r / n, g / n, b / n)
+    }
+
     // MARK: - SkinInfo
 
     func testSkinInfo_equality() {
@@ -238,7 +288,7 @@ final class SkinManagerTests: XCTestCase {
         XCTAssertEqual(pulsy?.displayName, "Pulsy")
     }
 
-    // MARK: - setSkin / setTheme
+    // MARK: - setSkin
 
     func testSetSkin() {
         let original = manager.currentSkin
@@ -247,17 +297,6 @@ final class SkinManagerTests: XCTestCase {
         XCTAssertEqual(manager.currentSkin.id, "test_skin")
         // Restore
         manager.setSkin(original)
-    }
-
-    func testSetTheme_clearsCache() {
-        // Load frames to populate cache
-        let f1 = manager.frames()
-        manager.setTheme(.light)
-        // Cache was cleared — next call should recompute (but still return frames)
-        let f2 = manager.frames()
-        XCTAssertEqual(f1.count, f2.count)
-        // Restore
-        manager.setTheme(.system)
     }
 
     // MARK: - frames(for:) with external skin path
@@ -340,42 +379,31 @@ final class SkinManagerTests: XCTestCase {
         XCTAssertTrue(after.contains(where: { $0.id == "zzz_new" }))
     }
 
-    // MARK: - dark theme rendering
+    // MARK: - appearance independence
 
-    func testFrames_darkTheme_recolors() {
-        createSkinDir(name: "darktest", frameCount: 1)
+    /// Regression guard: sprite frames used to be pushed through
+    /// `CIColorControls(brightness: -1.0, saturation: 0)` whenever the app was in
+    /// dark mode, which crushed every skin into a solid black silhouette. Frames must
+    /// now be delivered exactly as authored, so a saturated source color stays intact.
+    func testFrames_areNotRecoloredPerAppearance() {
+        let dir = createSkinDir(name: "colortest", frameCount: 0)
+        createOpaquePNG(at: dir + "/frame0.png", red: 255, green: 60, blue: 120)
         Defaults[.externalSkinPath] = tempDir
         manager.reload()
 
-        manager.setTheme(.light)
-        let lightFrames = manager.frames(for: SkinInfo(id: "darktest", displayName: "darktest"))
+        let skin = SkinInfo(id: "colortest", displayName: "colortest")
+        let frames = manager.frames(for: skin)
+        XCTAssertEqual(frames.count, 1)
 
-        manager.setTheme(.dark)
-        let darkFrames = manager.frames(for: SkinInfo(id: "darktest", displayName: "darktest"))
-
-        // Both should return frames; dark theme should produce different images
-        XCTAssertEqual(lightFrames.count, 1)
-        XCTAssertEqual(darkFrames.count, 1)
-        // Not the same object (cache was cleared by setTheme)
-        XCTAssertFalse(lightFrames[0] === darkFrames[0])
+        guard let rgb = averageOpaqueColor(of: frames[0]) else {
+            return XCTFail("Could not read pixel data from the loaded frame")
+        }
+        XCTAssertEqual(rgb.r, 1.0, accuracy: 0.02, "red channel was altered — frame got recolored")
+        XCTAssertEqual(rgb.g, 60.0 / 255.0, accuracy: 0.02, "green channel was altered — frame got recolored")
+        XCTAssertEqual(rgb.b, 120.0 / 255.0, accuracy: 0.02, "blue channel was altered — frame got recolored")
     }
 
     // MARK: - Pulsy virtual skin
-
-    func testFrames_pulsy_skipsDarkMode() {
-        let pulsy = SkinInfo(id: "pulsy", displayName: "Pulsy")
-
-        manager.setTheme(.light)
-        let lightFrames = manager.frames(for: pulsy)
-
-        manager.setTheme(.dark)
-        let darkFrames = manager.frames(for: pulsy)
-
-        // Pulsy skips dark-mode inversion — frames should have same count
-        // (they are regenerated per cache-key so objects differ, but pixel content is identical)
-        XCTAssertEqual(lightFrames.count, darkFrames.count)
-        XCTAssertEqual(lightFrames.count, PulsySkinRenderer.frameCount)
-    }
 
     func testFrames_pulsy_returnsFrames() {
         let pulsy = SkinInfo(id: "pulsy", displayName: "Pulsy")

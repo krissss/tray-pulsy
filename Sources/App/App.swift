@@ -1,3 +1,4 @@
+import Defaults
 import ServiceManagement
 import SwiftUI
 
@@ -55,7 +56,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var appState: AppState!
     private var statusBarController: StatusBarController?
 
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    @MainActor func applicationDidFinishLaunching(_ notification: Notification) {
         // ── 1️⃣ Single instance guard ──
         if enforcesSingleInstance && !acquireInstanceLock() {
             print("⚠️ \(AppConstants.appName) is already running")
@@ -65,22 +66,25 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // ── 2️⃣ Hide Dock icon & menu bar presence ──
         NSApp.setActivationPolicy(.accessory)
 
-        // ── 3️⃣ Create centralized state ──
+        // ── 3️⃣ Restore the saved appearance override (General ▸ Appearance) ──
+        Defaults[.theme].apply()
+
+        // ── 4️⃣ Create centralized state ──
         appState = AppState(
             systemMonitor: SystemMonitor(),
             skinManager: SkinManager(),
             updateManager: AppUpdateManager()
         )
 
-        // ── 4️⃣ Start SystemMonitor first, then status bar ──
+        // ── 5️⃣ Start SystemMonitor first, then status bar ──
         appState.activate()
         statusBarController = StatusBarController(appState: appState)
         statusBarController?.start()
 
-        // ── 5️⃣ Register for launch-at-login ──
+        // ── 6️⃣ Register for launch-at-login ──
         _ = SMAppService.mainApp
 
-        // ── 6️⃣ Handle sleep/wake to pause/resume animation ──
+        // ── 7️⃣ Handle sleep/wake to pause/resume animation ──
         NSWorkspace.shared.notificationCenter.addObserver(
             self,
             selector: #selector(handleSleep),

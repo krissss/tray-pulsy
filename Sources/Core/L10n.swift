@@ -215,6 +215,7 @@ enum L10n {
             "general.startup.footer": "Automatically launch %@ in the menu bar at login.",
             "general.language.header": "Language",
             "general.language.system": "System",
+            "general.appearance.header": "Appearance",
 
             // About
             "about.info.header": "Info",
@@ -498,6 +499,7 @@ enum L10n {
             "general.startup.footer": "登录时自动在菜单栏启动 %@。",
             "general.language.header": "语言",
             "general.language.system": "跟随系统",
+            "general.appearance.header": "外观",
 
             // About
             "about.info.header": "信息",
@@ -793,6 +795,7 @@ enum L10n {
     static var generalStartupFooter: String { tr("general.startup.footer", "登录时自动在菜单栏启动 %@。") }
     static var generalLanguageHeader: String { tr("general.language.header", "语言") }
     static var generalLanguageSystem:  String { tr("general.language.system", "跟随系统") }
+    static var generalAppearanceHeader: String { tr("general.appearance.header", "外观") }
 
     // MARK: - About
 

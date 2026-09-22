@@ -1,5 +1,4 @@
 import AppKit
-import CoreImage
 import Defaults
 import Observation
 
@@ -31,9 +30,7 @@ final class SkinManager: @unchecked Sendable {
     private(set) var allSkins: [SkinInfo]
 
     private(set) var currentSkin: SkinInfo
-    private var currentTheme: ThemeMode = .system
     private let frameCache = NSCache<NSString, NSArray>()
-    @ObservationIgnored private lazy var ciContext = CIContext(options: [.useSoftwareRenderer: false])
 
     init() {
         let skins = Self.discoverSkins(externalPath: Defaults[.externalSkinPath])
@@ -69,7 +66,6 @@ final class SkinManager: @unchecked Sendable {
     }
 
     func setSkin(_ s: SkinInfo) { currentSkin = s }
-    func setTheme(_ t: ThemeMode) { currentTheme = t; clearCache() }
 
     /// Build PulsyConfig from current Defaults.
     static func currentPulsyConfig() -> PulsyConfig {
@@ -82,28 +78,30 @@ final class SkinManager: @unchecked Sendable {
         )
     }
 
-    /// Returns cached or freshly-themed frames for the given (or current) skin.
+    /// Returns cached frames for the given (or current) skin.
+    ///
+    /// Frames are delivered exactly as authored — sprite art is never recolored
+    /// per appearance mode, so every render surface stays identical to the
+    /// web preview in tray-pulsy-skins.
     func frames(for skin: SkinInfo? = nil) -> [NSImage] {
         let s = skin ?? currentSkin
         // Pulsy frames are always regenerated (config may have changed) — skip cache
         if s.id == "pulsy" {
             return loadFrames(for: s.id)
         }
-        let key = "\(s.id):\(themeHash)" as NSString
+        let key = s.id as NSString
         if let cached = frameCache.object(forKey: key) { return cached as! [NSImage] }
         let base = loadFrames(for: s.id)
         guard !base.isEmpty else {
             // Skin frames not found — fall back to default
-            let catKey = "\(Self.defaultSkinID):\(themeHash)" as NSString
+            let catKey = Self.defaultSkinID as NSString
             if let cached = frameCache.object(forKey: catKey) { return cached as! [NSImage] }
             let catFrames = loadFrames(for: Self.defaultSkinID)
-            let themed = applyCurrentTheme(to: catFrames)
-            frameCache.setObject(themed as NSArray, forKey: catKey)
-            return themed
+            frameCache.setObject(catFrames as NSArray, forKey: catKey)
+            return catFrames
         }
-        let themed = applyCurrentTheme(to: base)
-        frameCache.setObject(themed as NSArray, forKey: key)
-        return themed
+        frameCache.setObject(base as NSArray, forKey: key)
+        return base
     }
 
     /// Single frame by skin id + index (for settings preview).
@@ -256,52 +254,10 @@ final class SkinManager: @unchecked Sendable {
     }
 
     // ═════════════════════════════════════════════════════════
-    // MARK: - Theme
+    // MARK: - Cache
     // ═════════════════════════════════════════════════════════
 
-    private var themeHash: String {
-        switch currentTheme {
-        case .system: return "sys"
-        case .dark:  return "dark"
-        case .light: return "light"
-        }
-    }
-
     private func clearCache() { frameCache.removeAllObjects() }
-
-    private func applyCurrentTheme(to images: [NSImage]) -> [NSImage] {
-        let isDark: Bool
-        switch currentTheme {
-        case .system:
-            isDark = MainActor.assumeIsolated {
-                NSApp?.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            }
-        case .dark:  isDark = true
-        case .light: isDark = false
-        }
-        guard isDark else { return images }
-        return images.map { recolorForDarkMode($0) }
-    }
-
-    private func recolorForDarkMode(_ image: NSImage) -> NSImage {
-        guard let cgImg = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else { return image }
-        let ciImage = CIImage(cgImage: cgImg)
-
-        guard let filter = CIFilter(name: "CIColorControls") else { return image }
-        filter.setValue(ciImage, forKey: kCIInputImageKey)
-        filter.setValue(-1.0, forKey: kCIInputBrightnessKey)
-        filter.setValue(1.2, forKey: kCIInputContrastKey)
-        filter.setValue(0.0, forKey: kCIInputSaturationKey)
-
-        guard let output = filter.outputImage,
-              let cgOutput = ciContext
-                .createCGImage(output, from: CGRect(origin: .zero, size: CGSize(width: cgImg.width, height: cgImg.height)))
-        else { return image }
-
-        let result = NSImage(cgImage: cgOutput, size: image.size)
-        result.isTemplate = false
-        return result
-    }
 }
 
 // ═══════════════════════════════════════════════════════════════

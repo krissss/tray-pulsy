@@ -91,45 +91,31 @@ final class SkinIntegrationTests: XCTestCase {
         XCTAssertFalse(manager.allSkins.contains(where: { $0.id == "tempskin" }))
     }
 
-    // MARK: - Theme change → frame re-rendering
+    // MARK: - Cache invalidation
+    //
+    // Note: there is deliberately no "theme change → different frames" test anymore.
+    // Skin frames are appearance-independent (see
+    // `SkinManagerTests.testFrames_areNotRecoloredPerAppearance`); the only thing
+    // that invalidates the frame cache is a reload.
 
-    func testThemeChange_lightToDark_producesDifferentFrames() {
-        createSkinDir(name: "themetest", frameCount: 2)
-        Defaults[.externalSkinPath] = tempDir
-        manager.reload()
-
-        let skin = SkinInfo(id: "themetest", displayName: "themetest")
-
-        manager.setTheme(.light)
-        let lightFrames = manager.frames(for: skin)
-
-        manager.setTheme(.dark)
-        let darkFrames = manager.frames(for: skin)
-
-        XCTAssertEqual(lightFrames.count, darkFrames.count)
-        // Dark theme should produce different image objects (cache was cleared)
-        XCTAssertFalse(lightFrames[0] === darkFrames[0])
-    }
-
-    func testThemeChange_invalidatesCache() {
+    func testReload_invalidatesCache() {
         createSkinDir(name: "cachetest", frameCount: 2)
         Defaults[.externalSkinPath] = tempDir
         manager.reload()
 
         let skin = SkinInfo(id: "cachetest", displayName: "cachetest")
 
-        manager.setTheme(.light)
         let first = manager.frames(for: skin)
         let cached = manager.frames(for: skin)
 
         // Same object from cache
         XCTAssertTrue(first[0] === cached[0])
 
-        manager.setTheme(.dark)
-        let afterTheme = manager.frames(for: skin)
+        manager.reload()
+        let afterReload = manager.frames(for: skin)
 
-        // Different object after theme change
-        XCTAssertFalse(first[0] === afterTheme[0])
+        // Different object after the cache is cleared
+        XCTAssertFalse(first[0] === afterReload[0])
     }
 
     // MARK: - SkinManager → TrayAnimator integration
