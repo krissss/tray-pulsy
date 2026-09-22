@@ -88,6 +88,36 @@ final class ThresholdTests: XCTestCase {
         XCTAssertEqual(color, .textColor)
     }
 
+    // MARK: - thresholdColor(forRawValue:thresholds:) — nil means "normal range"
+
+    func testThresholdColor_belowWarning_isNil() {
+        let config = ThresholdConfig.defaults
+        XCTAssertNil(MetricDisplayItem.cpu.thresholdColor(forRawValue: 50, thresholds: config))
+    }
+
+    func testThresholdColor_atWarning_isYellow() {
+        let config = ThresholdConfig.defaults
+        XCTAssertEqual(MetricDisplayItem.cpu.thresholdColor(forRawValue: 70, thresholds: config), .systemYellow)
+    }
+
+    func testThresholdColor_atCritical_isRed() {
+        let config = ThresholdConfig.defaults
+        XCTAssertEqual(MetricDisplayItem.cpu.thresholdColor(forRawValue: 90, thresholds: config), .systemRed)
+    }
+
+    /// `nil` must never be produced for a crossed threshold, otherwise the menu bar and
+    /// the floating window would silently fall back to the base text color.
+    func testThresholdColor_acrossAllMetrics_nilOnlyInNormalRange() {
+        let config = ThresholdConfig.defaults
+        for item in MetricDisplayItem.allCases {
+            XCTAssertNil(item.thresholdColor(forRawValue: 0, thresholds: config),
+                         "\(item.rawValue) at 0 should be in range")
+            let critical = config[keyPath: item.thresholdKeyPath].critical
+            XCTAssertEqual(item.thresholdColor(forRawValue: critical, thresholds: config), .systemRed,
+                           "\(item.rawValue) at its critical value should be red")
+        }
+    }
+
     // MARK: - color for network metrics
 
     func testColor_networkDown_belowWarning_textColor() {

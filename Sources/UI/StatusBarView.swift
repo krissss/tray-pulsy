@@ -12,9 +12,14 @@ final class StatusBarView: NSView {
     private(set) var currentFrame: NSImage?
     private var items: [MetricDisplayItem] = []
     private var values: [String] = []
-    private var colors: [NSColor] = []
+    /// Per-value threshold overrides; `nil` means "within normal range" and falls back
+    /// to `textColor`. Mirrors the floating window's behaviour so both surfaces show the
+    /// user-selected color normally and switch to yellow/red only past a threshold.
+    private var valueOverrideColors: [NSColor?] = []
     private var columnXPositions: [CGFloat] = []  // cached per-column X start positions
     private var columnWidths: [CGFloat] = []       // cached per-column widths
+    /// 生效的文字颜色，标签与数值统一使用。
+    private var textColor: NSColor = .labelColor
 
     // MARK: - Cached attributed strings (rebuilt only when values/items change)
     private var cachedLabels: [NSAttributedString] = []
@@ -38,21 +43,31 @@ final class StatusBarView: NSView {
     }
 
     /// Call when selected metric items change. Recalculates column layout.
-    func setItems(_ newItems: [MetricDisplayItem], sampleValues: [String], colors: [NSColor]) {
-        guard newItems.map(\.rawValue) != items.map(\.rawValue) else { return }
+    ///
+    /// Also re-syncs when only the threshold overrides changed, so a caller that keeps the
+    /// same item set but crosses a threshold cannot be left showing stale colors.
+    func setItems(
+        _ newItems: [MetricDisplayItem],
+        sampleValues: [String],
+        valueOverrideColors: [NSColor?]
+    ) {
+        guard newItems.map(\.rawValue) != items.map(\.rawValue)
+            || valueOverrideColors != self.valueOverrideColors
+        else { return }
         items = newItems
         values = sampleValues
-        self.colors = colors
+        self.valueOverrideColors = valueOverrideColors
         recalculateLayout()
         rebuildAttributedStringCache()
         needsDisplay = true
     }
 
-    /// Call every tick with new values. Triggers redraw only if values changed.
-    func updateValues(_ newValues: [String], colors: [NSColor]) {
-        guard newValues != values || colors != self.colors else { return }
+    /// Call every tick with new values. Triggers redraw only if values or threshold
+    /// overrides changed — an unchanged tick must not rebuild attributed strings.
+    func updateValues(_ newValues: [String], valueOverrideColors: [NSColor?]) {
+        guard newValues != values || valueOverrideColors != self.valueOverrideColors else { return }
         values = newValues
-        self.colors = colors
+        self.valueOverrideColors = valueOverrideColors
         rebuildAttributedStringCache()
         needsDisplay = true
     }
@@ -61,7 +76,7 @@ final class StatusBarView: NSView {
     func clear() {
         items = []
         values = []
-        colors = []
+        valueOverrideColors = []
         columnXPositions = []
         columnWidths = []
         cachedLabels = []
@@ -69,6 +84,32 @@ final class StatusBarView: NSView {
         cachedValues = []
         cachedValueX = []
         needsDisplay = true
+    }
+
+    /// Update the effective text color (used for labels and values).
+    func setTextColor(_ color: NSColor) {
+        guard color != textColor else { return }
+        textColor = color
+        if !cachedLabels.isEmpty {
+            rebuildAttributedStringCache()
+        }
+        needsDisplay = true
+    }
+
+    // MARK: - Test Support
+
+    /// Foreground colors currently baked into the cached attributed strings, in column
+    /// order. Read-only and side-effect free; exists so unit tests can assert that both
+    /// the base text color and the per-value threshold overrides actually reach the
+    /// strings that get drawn (the previous `colors` removal was untested).
+    var renderedForegroundColors: (labels: [NSColor], values: [NSColor]) {
+        func colors(of strings: [NSAttributedString]) -> [NSColor] {
+            strings.compactMap { string in
+                guard string.length > 0 else { return nil }
+                return string.attribute(.foregroundColor, at: 0, effectiveRange: nil) as? NSColor
+            }
+        }
+        return (colors(of: cachedLabels), colors(of: cachedValues))
     }
 
     // MARK: - Layout
@@ -107,7 +148,7 @@ final class StatusBarView: NSView {
 
             let labelStr = NSAttributedString(
                 string: items[i].shortLabel,
-                attributes: [.font: labelFont, .foregroundColor: NSColor.labelColor]
+                attributes: [.font: labelFont, .foregroundColor: textColor]
             )
             let labelW = labelStr.size().width
             labels.append(labelStr)
@@ -115,7 +156,12 @@ final class StatusBarView: NSView {
 
             let valueStr = NSAttributedString(
                 string: values.indices.contains(i) ? values[i] : "",
-                attributes: [.font: valueFont, .foregroundColor: colors.indices.contains(i) ? colors[i] : .textColor]
+                attributes: [
+                    .font: valueFont,
+                    .foregroundColor: valueOverrideColors.indices.contains(i)
+                        ? (valueOverrideColors[i] ?? textColor)
+                        : textColor
+                ]
             )
             let valueW = valueStr.size().width
             vals.append(valueStr)

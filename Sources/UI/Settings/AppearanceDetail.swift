@@ -889,6 +889,15 @@ private struct PulsySliderRow: View {
 // ═══════════════════════════════════════════════════════════════
 
 struct MetricsDetail: View {
+    @Default(.statusBarTextColor) private var statusBarTextColor
+
+    private var statusBarTextColorBinding: Binding<Color> {
+        Binding(
+            get: { statusBarTextColor.color },
+            set: { statusBarTextColor = FloatingWindowColor(color: $0) }
+        )
+    }
+
     var body: some View {
         SettingsFormPage {
             Section {
@@ -899,6 +908,20 @@ struct MetricsDetail: View {
                 Text(L10n.metricsHeader)
             } footer: {
                 Text(L10n.metricsFooter)
+            }
+
+            Section {
+                ColorPicker(selection: statusBarTextColorBinding, supportsOpacity: false) {
+                    SettingsRowLabel(
+                        title: L10n.menuBarColorPicker,
+                        systemImage: "textformat",
+                        color: .indigo
+                    )
+                }
+            } header: {
+                Text(L10n.menuBarColorHeader)
+            } footer: {
+                Text(L10n.menuBarColorFooter)
             }
         }
     }

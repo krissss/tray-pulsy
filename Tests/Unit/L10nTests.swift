@@ -157,9 +157,34 @@ struct L10nTests {
     }
 
     /// Verify both language tables have exactly the same keys.
+    ///
+    /// Compares the raw tables as whole sets. This has to inspect `translationTables`
+    /// rather than call `tr()`: `tr()` falls back to the caller's default string, so a key
+    /// added to `en` but forgotten in `zh-Hans` still renders (in Chinese) and slips
+    /// through any resolution-based check.
     @Test("English and Chinese tables have same keys")
     func keyParity() {
-        // Load English and Chinese; verify every en key exists in zh-Hans and vice versa
+        guard let en = L10n.translationTables["en"],
+              let zh = L10n.translationTables["zh-Hans"] else {
+            Issue.record("Both 'en' and 'zh-Hans' tables must exist, got: \(L10n.translationTables.keys.sorted())")
+            return
+        }
+
+        let missingInZh = Set(en.keys).subtracting(zh.keys).sorted()
+        let missingInEn = Set(zh.keys).subtracting(en.keys).sorted()
+        #expect(missingInZh.isEmpty, "Keys present in 'en' but missing in 'zh-Hans': \(missingInZh)")
+        #expect(missingInEn.isEmpty, "Keys present in 'zh-Hans' but missing in 'en': \(missingInEn)")
+
+        let emptyInEn = en.filter { $0.value.isEmpty }.keys.sorted()
+        let emptyInZh = zh.filter { $0.value.isEmpty }.keys.sorted()
+        #expect(emptyInEn.isEmpty, "Empty 'en' values: \(emptyInEn)")
+        #expect(emptyInZh.isEmpty, "Empty 'zh-Hans' values: \(emptyInZh)")
+    }
+
+    /// Every key in this whitelist must resolve through `tr()` in both languages,
+    /// i.e. the Swift accessor + key wiring works for the representative set.
+    @Test("Whitelisted keys resolve in both languages")
+    func whitelistKeysResolveInBothLanguages() {
         Defaults[.language] = .en
         L10n.reload()
         let enKeys = Set([

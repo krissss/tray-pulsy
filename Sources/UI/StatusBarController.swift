@@ -60,6 +60,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         // 5. Configure button: left click toggles the popover, right click opens settings
         setupButton()
         syncStatusBarIcon()
+        syncStatusBarTextColor()
 
         // 6. Start animator and update loop
         animator.start()
@@ -89,6 +90,9 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
         appState.onStatusBarIconConfigChanged = { [weak self] in
             self?.syncStatusBarIcon()
+        }
+        appState.onStatusBarTextColorChanged = { [weak self] in
+            self?.syncStatusBarTextColor()
         }
         appState.onPulsyConfigChanged = { [weak self] in
             self?.animator.updateFrames(self?.appState.regeneratePulsyFrames() ?? [])
@@ -169,16 +173,19 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     // MARK: - Menu Bar Appearance
     // ═════════════════════════════════════════════════════════
 
-    /// The status item is drawn on the SYSTEM menu bar, so it must always follow the
-    /// system appearance — never the in-app override chosen in General ▸ Appearance.
+    /// The status item is drawn on the SYSTEM menu bar, so its button chrome must follow
+    /// the system appearance — never the in-app override chosen in General ▸ Appearance.
     ///
     /// `NSStatusItem.button` inherits `NSApp.appearance` (verified: forcing the app to
     /// dark while macOS is light turns the button's effective appearance from
-    /// `VibrantLight` into `VibrantDark`). `StatusBarView` draws its metric text with
-    /// `NSColor.labelColor`, which resolves to black on light vibrancy and white on
-    /// dark vibrancy — so an app-level override would render white text on a light
-    /// menu bar (or black text on a dark one), i.e. an invisible status item.
-    /// Pinning the button's appearance keeps the menu bar chrome tied to the system.
+    /// `VibrantLight` into `VibrantDark`), which would make the status item's own chrome
+    /// — button highlight, menu bar treatment — disagree with the real menu bar.
+    ///
+    /// Note: the metric text does NOT depend on this any more. `StatusBarView` draws with
+    /// the fixed user-selected `statusBarTextColor`, which is legible on either vibrancy,
+    /// so this pin is now kept for the button chrome only. It can only be dropped together
+    /// with the in-app appearance override (`ThemeMode.apply()`) — that override is what
+    /// makes the inheritance observable in the first place.
     private func pinStatusItemToSystemAppearance() {
         statusItem.button?.appearance = NSAppearance(
             named: Self.isSystemDark ? .vibrantDark : .vibrantLight
@@ -194,6 +201,8 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         // Distributed notifications may arrive off the main thread.
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            // Re-pin so the button chrome follows the new system vibrancy (the metric
+            // text itself is a fixed color and does not need re-resolving).
             self.pinStatusItemToSystemAppearance()
             self.statusBarView.needsDisplay = true
         }
@@ -305,17 +314,16 @@ final class StatusBarController: NSObject, NSWindowDelegate {
                 } else {
                     let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
                     let values = items.map { $0.formatValue(from: self.monitor) }
-                    let thresholds = Defaults[.thresholds]
-                    let colors = items.map { $0.color(forRawValue: $0.rawValue(from: self.monitor), thresholds: thresholds) }
+                    let overrides = self.thresholdOverrides(for: items)
                     let joined = values.joined(separator: " ")
                     if joined != self.lastDisplayedMetricText {
                         self.lastDisplayedMetricText = joined
-                        self.statusBarView.setItems(items, sampleValues: values, colors: colors)
-                        self.statusBarView.updateValues(values, colors: colors)
+                        self.statusBarView.setItems(items, sampleValues: values, valueOverrideColors: overrides)
+                        self.statusBarView.updateValues(values, valueOverrideColors: overrides)
                         self.syncStatusItemLength()
                         self.updateAccessibilityLabel()
                     } else {
-                        self.statusBarView.updateValues(values, colors: colors)
+                        self.statusBarView.updateValues(values, valueOverrideColors: overrides)
                     }
                 }
             }
@@ -356,6 +364,24 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         statusItem.isVisible = Defaults[.statusBarIconEnabled]
     }
 
+    /// Resolve the effective menu-bar text color and push it to StatusBarView.
+    /// Uses the user-selected fixed color; it won't change with the system.
+    private func syncStatusBarTextColor() {
+        let c = Defaults[.statusBarTextColor]
+        let color = NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: 1)
+        statusBarView.setTextColor(color)
+    }
+
+    /// Per-metric threshold overrides for the menu bar values. `nil` entries stay in the
+    /// user-selected text color — the same semantics the floating window uses, so a
+    /// normal value never gets recoloured and only a crossed threshold turns it yellow/red.
+    private func thresholdOverrides(for items: [MetricDisplayItem]) -> [NSColor?] {
+        let thresholds = Defaults[.thresholds]
+        return items.map { item in
+            item.thresholdColor(forRawValue: item.rawValue(from: monitor), thresholds: thresholds)
+        }
+    }
+
     /// Force-refresh metric display (called by observers when settings change).
     private func refreshMetricDisplay() {
         let selected = Defaults[.metricDisplayItems]
@@ -368,11 +394,10 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
         let items = MetricDisplayItem.allCases.filter { selected.contains($0) }
         let values = items.map { $0.formatValue(from: monitor) }
-        let thresholds = Defaults[.thresholds]
-        let colors = items.map { $0.color(forRawValue: $0.rawValue(from: monitor), thresholds: thresholds) }
+        let overrides = thresholdOverrides(for: items)
         lastDisplayedMetricText = values.joined(separator: " ")
-        statusBarView.setItems(items, sampleValues: values, colors: colors)
-        statusBarView.updateValues(values, colors: colors)
+        statusBarView.setItems(items, sampleValues: values, valueOverrideColors: overrides)
+        statusBarView.updateValues(values, valueOverrideColors: overrides)
         syncStatusItemLength()
         updateAccessibilityLabel()
     }

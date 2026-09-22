@@ -82,6 +82,12 @@ extension Defaults.Keys {
         default: .unset
     )
 
+    // 菜单栏（状态栏）文字颜色
+    static let statusBarTextColor = Key<FloatingWindowColor>(
+        "traypulsy_statusBarTextColor",
+        default: .menuBarWhite
+    )
+
     // 采样间隔
     static let sampleInterval = Key<SampleInterval>("traypulsy_sampleInterval", default: .oneSec)
 
@@ -160,6 +166,9 @@ struct FloatingWindowColor: Codable, Defaults.Serializable, Sendable, Equatable 
 
     static let defaultBackground = FloatingWindowColor(red: 0.88, green: 0.88, blue: 0.88)
     static let defaultText = FloatingWindowColor(red: 0.03, green: 0.03, blue: 0.03)
+    /// 菜单栏默认文字色：纯白。贴合 macOS 菜单栏白色模板图标的观感，
+    /// 且在深色菜单栏上清晰可读，无需依赖系统深浅色解析。
+    static let menuBarWhite = FloatingWindowColor(red: 1, green: 1, blue: 1)
 
     init(red: Double, green: Double, blue: Double) {
         self.red = red
@@ -658,6 +667,16 @@ enum MetricDisplayItem: String, CaseIterable, Defaults.Serializable, Identifiabl
         if value >= t.critical { return .systemRed }
         if value >= t.warning  { return .systemYellow }
         return .textColor
+    }
+
+    /// Threshold override color, or `nil` while the value is within its normal range.
+    ///
+    /// This is the API both text surfaces (menu bar, floating window) use: `nil` means
+    /// "no threshold crossed", so each surface falls back to its own user-selected base
+    /// text color instead of the `.textColor` sentinel leaking into the view layer.
+    func thresholdColor(forRawValue value: Double, thresholds: ThresholdConfig) -> NSColor? {
+        let color = color(forRawValue: value, thresholds: thresholds)
+        return color == .textColor ? nil : color
     }
 
     /// Key path for accessing this metric's thresholds in ThresholdConfig.

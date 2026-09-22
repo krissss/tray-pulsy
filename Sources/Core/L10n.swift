@@ -45,6 +45,13 @@ enum L10n {
         NotificationCenter.default.post(name: languageDidChangeNotification, object: nil)
     }
 
+    /// Raw translation tables keyed by language code.
+    ///
+    /// Exposed so tests can compare the tables as a whole: `tr()` silently falls back to
+    /// the caller's default string, so a key present in `en` but missing from `zh-Hans`
+    /// still renders and can only be caught by inspecting the tables directly.
+    static var translationTables: [String: [String: String]] { tables }
+
     // MARK: - Translation Tables
 
     private static let tables: [String: [String: String]] = [
@@ -159,7 +166,7 @@ enum L10n {
             "settings.metrics.floatingWindow": "Floating",
             "settings.metrics.advanced": "Advanced",
             "settings.metrics.colorThreshold": "Color threshold",
-            "settings.metrics.colorThreshold.description": "Turns the metric yellow or red after it reaches these values.",
+            "settings.metrics.colorThreshold.description": "Turns the metric yellow or red in the menu bar, charts, and floating window once it reaches these values.",
             "settings.metrics.warningThreshold": "Yellow %@",
             "settings.metrics.criticalThreshold": "Red %@",
             "settings.metrics.spikeDelta": "Spike trigger",
@@ -179,6 +186,11 @@ enum L10n {
             "settings.floating.metrics.header": "Floating Window Metrics",
             "settings.floating.metrics.footer": "Choose which metrics appear in the floating window. Turning off the last metric also turns off the floating window.",
             "settings.floating.hide": "Hide Floating Window",
+
+            // Menu Bar Color
+            "settings.menuBar.color.header": "Menu Bar Text Color",
+            "settings.menuBar.color.footer": "White text by default, matching the menu bar look. On a light menu bar it may be faint — pick a darker color here if needed.",
+            "settings.menuBar.color.picker": "Text Color",
 
             // Performance Settings
             "performance.source.label": "Animation Drive",
@@ -297,7 +309,6 @@ enum L10n {
             // Update
             "update.autoCheck.header": "Updates",
             "update.autoCheck.toggle": "Check for Updates Automatically",
-            "update.autoCheck.footer": "Click to check for new versions of %@.",
             "update.checkNow": "Check for Updates",
             "update.error.debug": "Update check is not available in debug mode.",
             "update.interval.header": "Check Frequency",
@@ -443,7 +454,7 @@ enum L10n {
             "settings.metrics.floatingWindow": "悬浮窗",
             "settings.metrics.advanced": "高级设置",
             "settings.metrics.colorThreshold": "颜色阈值",
-            "settings.metrics.colorThreshold.description": "指标达到这些值后，会在菜单栏和图表里标黄或标红。",
+            "settings.metrics.colorThreshold.description": "指标达到这些值后，会在菜单栏、图表和悬浮窗里标黄或标红。",
             "settings.metrics.warningThreshold": "黄色 %@",
             "settings.metrics.criticalThreshold": "红色 %@",
             "settings.metrics.spikeDelta": "尖峰判定",
@@ -463,6 +474,11 @@ enum L10n {
             "settings.floating.metrics.header": "悬浮窗指标",
             "settings.floating.metrics.footer": "选择要显示在悬浮窗中的指标；关闭最后一个指标也会关闭悬浮窗。",
             "settings.floating.hide": "隐藏悬浮窗",
+
+            // Menu Bar Color
+            "settings.menuBar.color.header": "菜单栏文字颜色",
+            "settings.menuBar.color.footer": "默认为白色文字，贴合菜单栏观感。浅色菜单栏下若不清晰，可在此改为深色文字。",
+            "settings.menuBar.color.picker": "文字颜色",
 
             // Performance Settings
             "performance.source.label": "动画驱动",
@@ -736,7 +752,7 @@ enum L10n {
     static var metricsFloatingWindow: String { tr("settings.metrics.floatingWindow", "悬浮窗") }
     static var metricsAdvancedSettings: String { tr("settings.metrics.advanced", "高级设置") }
     static var metricsColorThresholdLabel: String { tr("settings.metrics.colorThreshold", "颜色阈值") }
-    static var metricsColorThresholdDescription: String { tr("settings.metrics.colorThreshold.description", "指标达到这些值后，会在菜单栏和图表里标黄或标红。") }
+    static var metricsColorThresholdDescription: String { tr("settings.metrics.colorThreshold.description", "指标达到这些值后，会在菜单栏、图表和悬浮窗里标黄或标红。") }
     static var metricsSpikeDeltaLabel: String { tr("settings.metrics.spikeDelta", "尖峰判定") }
     static var metricsSpikeDeltaDescription: String { tr("settings.metrics.spikeDelta.description", "二次确认后的跳升至少达到这个值，才会记录一次尖峰。") }
     static func metricsWarningThreshold(_ value: String) -> String { String(format: tr("settings.metrics.warningThreshold", "黄色 %@"), value) }
@@ -756,6 +772,12 @@ enum L10n {
     static var floatingWindowMetricsHeader: String { tr("settings.floating.metrics.header", "悬浮窗指标") }
     static var floatingWindowMetricsFooter: String { tr("settings.floating.metrics.footer", "选择要显示在悬浮窗中的指标；关闭最后一个指标也会关闭悬浮窗。") }
     static var floatingWindowHide: String { tr("settings.floating.hide", "隐藏悬浮窗") }
+
+    // MARK: - Menu Bar (状态栏) 文字颜色
+
+    static var menuBarColorHeader: String { tr("settings.menuBar.color.header", "菜单栏文字颜色") }
+    static var menuBarColorFooter: String { tr("settings.menuBar.color.footer", "默认为白色文字，贴合菜单栏观感。浅色菜单栏下若不清晰，可在此改为深色文字。") }
+    static var menuBarColorPicker: String { tr("settings.menuBar.color.picker", "文字颜色") }
 
     // MARK: - Performance Settings
 

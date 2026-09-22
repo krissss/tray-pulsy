@@ -89,8 +89,13 @@ struct FloatingMetricsView: View {
     }
 
     private func valueColor(for item: MetricDisplayItem) -> Color {
-        let nsColor = item.color(forRawValue: item.rawValue(from: systemMonitor), thresholds: thresholds)
-        return nsColor == .textColor ? textColor.color : Color(nsColor: nsColor)
+        guard let override = item.thresholdColor(
+            forRawValue: item.rawValue(from: systemMonitor),
+            thresholds: thresholds
+        ) else {
+            return textColor.color
+        }
+        return Color(nsColor: override)
     }
 }
 

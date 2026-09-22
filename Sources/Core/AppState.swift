@@ -32,6 +32,7 @@ final class AppState {
     var onSkinLibraryChanged: (() -> Void)?
     var onFloatingWindowConfigChanged: (() -> Void)?
     var onStatusBarIconConfigChanged: (() -> Void)?
+    var onStatusBarTextColorChanged: (() -> Void)?
 
     private static var defaultOnlineSkinCatalog: OnlineSkinCatalog {
         let saved = Defaults[.onlineSkinManifestURL].trimmingCharacters(in: .whitespacesAndNewlines)
@@ -158,6 +159,12 @@ final class AppState {
                         return
                     }
                     self?.onStatusBarIconConfigChanged?()
+                }
+            },
+            // Menu bar text color lives next to the other status-bar settings.
+            Defaults.observe(.statusBarTextColor) { [weak self] _ in
+                MainActor.assumeIsolated {
+                    self?.onStatusBarTextColorChanged?()
                 }
             },
             Defaults.observe(.floatingWindowAlwaysOnTop) { [weak self] _ in
