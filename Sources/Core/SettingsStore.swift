@@ -360,13 +360,25 @@ struct FloatingWindowPlacement: Codable, Defaults.Serializable, Sendable, Equata
 enum FloatingWindowMetricsLayout: String, CaseIterable, Defaults.Serializable, Identifiable {
     case horizontal
     case vertical
+    /// 竖向排列，但动画图标从指标左侧挪到**上方**：整体更窄，适合竖屏或贴着屏幕边缘摆。
+    case verticalIconTop
 
     var id: Self { self }
 
+    /// 图标是否排在指标**上方**（而非左侧）。
+    ///
+    /// 只有目前的三种档位能这样两分。日后若要「指标横排 + 图标在上」，别硬塞进这两个
+    /// 布尔值里（会静默错判），改成显式的图标位置 / 指标排列两个字段。
+    var placesIconAboveMetrics: Bool { self == .verticalIconTop }
+
+    /// 指标是否逐行竖排——两种竖向档位共用同一套行视图，只有图标位置不同。
+    var stacksMetricsVertically: Bool { self != .horizontal }
+
     var displayName: String {
         switch self {
-        case .horizontal: return L10n.floatingWindowLayoutHorizontal
-        case .vertical:   return L10n.floatingWindowLayoutVertical
+        case .horizontal:      return L10n.floatingWindowLayoutHorizontal
+        case .vertical:        return L10n.floatingWindowLayoutVertical
+        case .verticalIconTop: return L10n.floatingWindowLayoutIconTop
         }
     }
 }

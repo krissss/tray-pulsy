@@ -121,6 +121,7 @@ struct L10nTests {
         #expect(!L10n.floatingWindowLayout.isEmpty)
         #expect(!L10n.floatingWindowLayoutHorizontal.isEmpty)
         #expect(!L10n.floatingWindowLayoutVertical.isEmpty)
+        #expect(!L10n.floatingWindowLayoutIconTop.isEmpty)
         #expect(!L10n.floatingWindowBackgroundColor.isEmpty)
         #expect(!L10n.floatingWindowTextColor.isEmpty)
         #expect(!L10n.floatingWindowBackgroundOpacity.isEmpty)

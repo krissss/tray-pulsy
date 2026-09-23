@@ -391,6 +391,12 @@ final class FloatingMetricsPanelController: NSObject, NSWindowDelegate {
                 + CGFloat(max(count - 1, 0)) * FloatingMetricsLayoutMetrics.verticalItemSpacing
             width = padding + skinWidth + skinGap + FloatingMetricsLayoutMetrics.verticalMetricWidth
             height = padding + max(skinWidth, metricHeight)
+        case .verticalIconTop:
+            // 图标不再占宽度而是占高度：宽度由指标列决定（图标更窄时居中悬在它上方）。
+            let metricHeight = CGFloat(count) * FloatingMetricsLayoutMetrics.verticalMetricHeight
+                + CGFloat(max(count - 1, 0)) * FloatingMetricsLayoutMetrics.verticalItemSpacing
+            width = padding + max(skinWidth, FloatingMetricsLayoutMetrics.verticalMetricWidth)
+            height = padding + skinWidth + skinGap + metricHeight
         }
         return NSSize(width: width, height: height)
     }

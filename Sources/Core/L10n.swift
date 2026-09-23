@@ -179,10 +179,11 @@ enum L10n {
             "settings.floating.layout": "Metric Layout",
             "settings.floating.layout.horizontal": "Horizontal",
             "settings.floating.layout.vertical": "Vertical",
+            "settings.floating.layout.iconTop": "Icon Top",
             "settings.floating.backgroundColor": "Background Color",
             "settings.floating.textColor": "Text Color",
             "settings.floating.backgroundOpacity": "Background Opacity",
-            "settings.floating.footer": "Appearance of the compact HUD window; which metrics it shows is set by the Floating checkboxes in the Metrics section above.",
+            "settings.floating.footer": "Appearance of the compact HUD window; which metrics it shows is set by the Floating checkboxes in the Metrics section above. Icon Top moves the animation icon above the metrics (needs Show Skin Animation on).",
             "settings.floating.hide": "Hide Floating Window",
 
             // Menu Bar
@@ -470,10 +471,11 @@ enum L10n {
             "settings.floating.layout": "指标布局",
             "settings.floating.layout.horizontal": "横向",
             "settings.floating.layout.vertical": "竖向",
+            "settings.floating.layout.iconTop": "图标在上",
             "settings.floating.backgroundColor": "背景色",
             "settings.floating.textColor": "字体颜色",
             "settings.floating.backgroundOpacity": "背景透明度",
-            "settings.floating.footer": "紧凑 HUD 窗口的外观设置；显示哪几项由上方「指标」区块的「浮窗」勾选决定。",
+            "settings.floating.footer": "紧凑 HUD 窗口的外观设置；显示哪几项由上方「指标」区块的「浮窗」勾选决定。选「图标在上」时动画图标移到指标上方（需开启皮肤动画）。",
             "settings.floating.hide": "隐藏悬浮窗",
 
             // Menu Bar
@@ -771,10 +773,11 @@ enum L10n {
     static var floatingWindowLayout: String { tr("settings.floating.layout", "指标布局") }
     static var floatingWindowLayoutHorizontal: String { tr("settings.floating.layout.horizontal", "横向") }
     static var floatingWindowLayoutVertical: String { tr("settings.floating.layout.vertical", "竖向") }
+    static var floatingWindowLayoutIconTop: String { tr("settings.floating.layout.iconTop", "图标在上") }
     static var floatingWindowBackgroundColor: String { tr("settings.floating.backgroundColor", "背景色") }
     static var floatingWindowTextColor: String { tr("settings.floating.textColor", "字体颜色") }
     static var floatingWindowBackgroundOpacity: String { tr("settings.floating.backgroundOpacity", "背景透明度") }
-    static var floatingWindowFooter: String { tr("settings.floating.footer", "紧凑 HUD 窗口的外观设置；显示哪几项由上方「指标」区块的「浮窗」勾选决定。") }
+    static var floatingWindowFooter: String { tr("settings.floating.footer", "紧凑 HUD 窗口的外观设置；显示哪几项由上方「指标」区块的「浮窗」勾选决定。选「图标在上」时动画图标移到指标上方（需开启皮肤动画）。") }
     static var floatingWindowHide: String { tr("settings.floating.hide", "隐藏悬浮窗") }
 
     // MARK: - Menu Bar (菜单栏)

@@ -43,38 +43,55 @@ struct FloatingMetricsView: View {
 
     @ViewBuilder
     private var content: some View {
-        HStack(alignment: .center, spacing: showsSkin ? FloatingMetricsLayoutMetrics.skinGap : 0) {
-            if showsSkin {
-                FloatingSkinFrameRepresentable(frameView: skinFrameView)
-                    .frame(
-                        width: FloatingMetricsLayoutMetrics.skinSize,
-                        height: FloatingMetricsLayoutMetrics.skinSize
-                    )
-                    .accessibilityHidden(true)
+        // 图标位置与指标排列是两个正交的轴：图标在上/在左由档位决定，
+        // 指标自己横排还是竖排由 `stacksMetricsVertically` 决定。
+        if metricsLayout.placesIconAboveMetrics {
+            VStack(alignment: .center, spacing: showsSkin ? FloatingMetricsLayoutMetrics.skinGap : 0) {
+                skinIcon
+                metricsArea
             }
+        } else {
+            HStack(alignment: .center, spacing: showsSkin ? FloatingMetricsLayoutMetrics.skinGap : 0) {
+                skinIcon
+                metricsArea
+            }
+        }
+    }
 
-            switch metricsLayout {
-            case .horizontal:
-                HStack(alignment: .center, spacing: FloatingMetricsLayoutMetrics.horizontalItemSpacing) {
-                    ForEach(items) { item in
-                        FloatingMetricColumn(
-                            item: item,
-                            valueText: valueText(for: item),
-                            valueColor: valueColor(for: item),
-                            textColor: textColor.color
-                        )
-                    }
+    @ViewBuilder
+    private var skinIcon: some View {
+        if showsSkin {
+            FloatingSkinFrameRepresentable(frameView: skinFrameView)
+                .frame(
+                    width: FloatingMetricsLayoutMetrics.skinSize,
+                    height: FloatingMetricsLayoutMetrics.skinSize
+                )
+                .accessibilityHidden(true)
+        }
+    }
+
+    @ViewBuilder
+    private var metricsArea: some View {
+        if metricsLayout.stacksMetricsVertically {
+            VStack(alignment: .leading, spacing: FloatingMetricsLayoutMetrics.verticalItemSpacing) {
+                ForEach(items) { item in
+                    FloatingMetricRow(
+                        item: item,
+                        valueText: valueText(for: item),
+                        valueColor: valueColor(for: item),
+                        textColor: textColor.color
+                    )
                 }
-            case .vertical:
-                VStack(alignment: .leading, spacing: FloatingMetricsLayoutMetrics.verticalItemSpacing) {
-                    ForEach(items) { item in
-                        FloatingMetricRow(
-                            item: item,
-                            valueText: valueText(for: item),
-                            valueColor: valueColor(for: item),
-                            textColor: textColor.color
-                        )
-                    }
+            }
+        } else {
+            HStack(alignment: .center, spacing: FloatingMetricsLayoutMetrics.horizontalItemSpacing) {
+                ForEach(items) { item in
+                    FloatingMetricColumn(
+                        item: item,
+                        valueText: valueText(for: item),
+                        valueColor: valueColor(for: item),
+                        textColor: textColor.color
+                    )
                 }
             }
         }

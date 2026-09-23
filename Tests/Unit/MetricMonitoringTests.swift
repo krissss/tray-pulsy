@@ -444,7 +444,91 @@ final class MetricMonitoringTests: XCTestCase {
         )
     }
 
+    // MARK: - 图标在上（竖向的另一种摆法）
+
+    /// 「图标在上」只是把图标从左侧挪到上方：宽度少掉图标那一列，高度多出图标那一行。
+    func testIconTopLayoutTradesIconColumnForIconRow() {
+        Defaults[.floatingWindowShowsSkin] = true
+        Defaults[.floatingWindowMetricItems] = [.cpu, .memory, .gpu]
+        Defaults[.metricMonitorItems] = [.cpu, .memory, .gpu]
+
+        Defaults[.floatingWindowMetricsLayout] = .vertical
+        let iconLeft = FloatingMetricsPanelController.contentSize()
+
+        Defaults[.floatingWindowMetricsLayout] = .verticalIconTop
+        let iconTop = FloatingMetricsPanelController.contentSize()
+
+        XCTAssertLessThan(iconTop.width, iconLeft.width, "图标不再占一列宽度")
+        XCTAssertGreaterThan(iconTop.height, iconLeft.height, "图标改成占一行高度")
+    }
+
+    /// 不显示皮肤动画时两种竖向档位应当完全一样——这个档位只负责图标去哪。
+    func testIconTopLayoutDiffersOnlyByTheIconPlacement() {
+        Defaults[.floatingWindowShowsSkin] = false
+        Defaults[.floatingWindowMetricItems] = [.cpu, .memory]
+        Defaults[.metricMonitorItems] = [.cpu, .memory]
+
+        Defaults[.floatingWindowMetricsLayout] = .vertical
+        let iconLeft = FloatingMetricsPanelController.contentSize()
+
+        Defaults[.floatingWindowMetricsLayout] = .verticalIconTop
+        let iconTop = FloatingMetricsPanelController.contentSize()
+
+        XCTAssertEqual(iconTop.width, iconLeft.width, accuracy: 0.01)
+        XCTAssertEqual(iconTop.height, iconLeft.height, accuracy: 0.01)
+    }
+
+    /// 视图侧接线：换了档位 SwiftUI 真的把图标挪到指标上方（宽度少一列、高度多一行）。
+    func testIconTopLayoutReordersIconInTheView() {
+        Defaults[.floatingWindowShowsSkin] = true
+        Defaults[.floatingWindowMetricItems] = [.cpu, .memory]
+        Defaults[.metricMonitorItems] = [.cpu, .memory]
+
+        Defaults[.floatingWindowMetricsLayout] = .vertical
+        let iconLeft = floatingMetricsViewSize()
+
+        Defaults[.floatingWindowMetricsLayout] = .verticalIconTop
+        let iconTop = floatingMetricsViewSize()
+
+        XCTAssertLessThan(iconTop.width, iconLeft.width, "图标不再占视图的一列")
+        XCTAssertGreaterThan(iconTop.height, iconLeft.height, "图标改成占视图的一行")
+    }
+
+    /// 手算的 `contentSize()` 必须和视图真实布局**逐像素**对得上，否则面板会裁切。
+    ///
+    /// 这条是唯一能抓住「改了视图没改手算」的测试：三种档位 × 皮肤开/关 × 1~3 项全覆盖。
+    func testContentSizeMatchesTheRenderedView() {
+        for layout in FloatingWindowMetricsLayout.allCases {
+            for showsSkin in [true, false] {
+                for count in 1...3 {
+                    let items = Set(MetricDisplayItem.allCases.prefix(count))
+                    Defaults[.floatingWindowMetricsLayout] = layout
+                    Defaults[.floatingWindowShowsSkin] = showsSkin
+                    Defaults[.floatingWindowMetricItems] = items
+                    Defaults[.metricMonitorItems] = items
+
+                    let computed = FloatingMetricsPanelController.contentSize()
+                    let rendered = floatingMetricsViewSize()
+                    let context = "\(layout.rawValue) 皮肤\(showsSkin ? "开" : "关") \(count) 项"
+
+                    XCTAssertEqual(
+                        computed.width, rendered.width, accuracy: 0.01,
+                        "\(context)：宽度手算 \(computed.width) ≠ 视图 \(rendered.width)"
+                    )
+                    XCTAssertEqual(
+                        computed.height, rendered.height, accuracy: 0.01,
+                        "\(context)：高度手算 \(computed.height) ≠ 视图 \(rendered.height)"
+                    )
+                }
+            }
+        }
+    }
+
     private func floatingMetricsViewWidth() -> CGFloat {
+        floatingMetricsViewSize().width
+    }
+
+    private func floatingMetricsViewSize() -> NSSize {
         let hostingView = NSHostingView(rootView: FloatingMetricsView(
             systemMonitor: SystemMonitor(),
             skinFrameView: FloatingSkinFrameView(),
@@ -459,8 +543,8 @@ final class MetricMonitoringTests: XCTestCase {
         )
         window.contentView = hostingView
         hostingView.layoutSubtreeIfNeeded()
-        let width = hostingView.fittingSize.width
+        let size = hostingView.fittingSize
         window.contentView = nil
-        return width
+        return size
     }
 }
