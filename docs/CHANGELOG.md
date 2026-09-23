@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-09-23
+
+### Added
+
+- settings: 添加主题外观设置（跟随系统 / 浅色 / 深色）
+- settings: 菜单栏文字颜色支持自定义，默认跟随系统
+- settings: 指标页改为监听开关与展示勾选，悬浮窗设置并入指标页
+- floating: 悬浮窗指标布局新增「图标在上」档位
+
+### Fixed
+
+- floating: 修复 macOS 27 中浮动面板无法拖拽的问题
+- settings: 修复暗黑模式下皮肤显示异常
+- metrics: 「关闭」的指标不再被悬浮窗列表拉回采样
+
 ## [1.6.1] - 2026-09-06
 
 ### Fixed
@@ -221,7 +236,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 First release. TrayPulsy is a lightweight macOS menu bar app that displays animated characters whose speed responds in real time to system usage. Supports multiple skins (Cat, Parrot, Horse, Pulsy waveform, etc.), real-time system metrics (CPU, GPU, RAM, SSD, Network), and full customization through a Settings window.
 
-[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.6.1...HEAD
+[Unreleased]: https://github.com/krissss/tray-pulsy/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/krissss/tray-pulsy/compare/v1.6.1...v1.7.0
 [1.6.1]: https://github.com/krissss/tray-pulsy/compare/v1.6.0...v1.6.1
 [1.6.0]: https://github.com/krissss/tray-pulsy/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/krissss/tray-pulsy/compare/v1.4.0...v1.5.0
