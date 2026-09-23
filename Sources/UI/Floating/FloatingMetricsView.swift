@@ -18,10 +18,9 @@ struct FloatingMetricsView: View {
     @Default(.thresholds) private var thresholds
 
     private var items: [MetricDisplayItem] {
-        let selected = FloatingMetricsSelection.resolvedItems(
+        let selected = FloatingMetricsSelection.displayedItems(
             stored: floatingWindowMetricItems,
-            monitored: metricMonitorItems,
-            fallbackWhenEmpty: true
+            monitored: metricMonitorItems
         )
         return MetricDisplayItem.allCases.filter { selected.contains($0) }
     }

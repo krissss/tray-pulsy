@@ -82,10 +82,14 @@ extension Defaults.Keys {
         default: .unset
     )
 
-    // 菜单栏（状态栏）文字颜色
+    // 菜单栏（状态栏）文字颜色；默认跟随系统（见 MenuBarTextColorPolicy）。
+    //
+    // 键名从 `traypulsy_statusBarTextColor` 换成 `traypulsy_menuBarTextColor` 是有意的：
+    // 旧键里可能存着「固定的纯白」——那正是当时的默认值，继续沿用会把所有人（包括从未
+    // 主动改过颜色的用户）钉死在白字上，浅色壁纸下看不清。换键等于让旧值自然失效。
     static let statusBarTextColor = Key<FloatingWindowColor>(
-        "traypulsy_statusBarTextColor",
-        default: .menuBarWhite
+        "traypulsy_menuBarTextColor",
+        default: .followsSystem
     )
 
     // 采样间隔
@@ -132,27 +136,69 @@ enum WindowVisibilityPolicy {
     }
 }
 
-/// 悬浮窗列表与「受监控指标」之间的约束。
+/// 菜单栏文字颜色的两种模式。
+enum MenuBarTextColorMode: String, CaseIterable, Identifiable {
+    case followsSystem
+    case custom
+
+    var id: Self { self }
+
+    var label: String {
+        switch self {
+        case .followsSystem: return L10n.menuBarTextColorModeSystem
+        case .custom:        return L10n.menuBarTextColorModeCustom
+        }
+    }
+}
+
+/// 菜单栏文字颜色的读写策略。
 ///
-/// 指标 Tab 设为「关闭」会停止采样并隐藏指标（见 `settings.metrics.footer`），
-/// 因此悬浮窗只能展示正在监控的指标——否则会出现「已关闭却仍在刷新」的假象：
-/// 数据继续跳，而设置页显示为关闭。
+/// **默认跟随系统**：菜单栏图标本身会随壁纸明暗自动换成黑/白，文字必须能用同一条规则
+/// ——用动态色 `NSColor.labelColor`，交给 AppKit 在绘制时按当前菜单栏外观解析。
+/// 固定颜色（哪怕是很保险的白色）都会在另一半壁纸上失效，所以它只能作为用户主动选择的
+/// 兜底，不能当默认值。
+enum MenuBarTextColorPolicy {
+    /// 存值 → 模式。哨兵即「跟随系统」。
+    static func mode(for stored: FloatingWindowColor) -> MenuBarTextColorMode {
+        stored.isFollowsSystem ? .followsSystem : .custom
+    }
+
+    /// 从「跟随系统」切到「自定义」时的起点：深色。
+    /// 用户主动切过来通常正是因为浅色菜单栏下白字看不清。
+    static let customSeed: FloatingWindowColor = .defaultText
+
+    /// 模式 → 存值。切到自定义时保留用户原先选过的颜色，没有才用起点色。
+    static func storedValue(
+        for mode: MenuBarTextColorMode,
+        current: FloatingWindowColor
+    ) -> FloatingWindowColor {
+        switch mode {
+        case .followsSystem: return .followsSystem
+        case .custom:        return current.isFollowsSystem ? customSeed : current
+        }
+    }
+
+    /// 交给 `StatusBarView` 的颜色；`nil` = 跟随系统（由视图回落到 `labelColor`）。
+    static func resolvedColor(for stored: FloatingWindowColor) -> NSColor? {
+        guard !stored.isFollowsSystem else { return nil }
+        return NSColor(srgbRed: stored.red, green: stored.green, blue: stored.blue, alpha: 1)
+    }
+}
+
+/// 展示目标（菜单栏 / 悬浮窗）实际展示哪些指标。
 ///
-/// 但「不能展示」不等于「要替用户丢掉选择」：指标 Tab 的「关闭」**不改动悬浮窗的
-/// 任何设置**（既不改列表也不关总开关），只让该项在悬浮窗页的开关变成禁用。
-/// 于是该项重新启用时，悬浮窗会自动恢复到用户原先的勾选状态。
-///
-/// 所有需要知道「悬浮窗实际展示哪些指标」的地方都必须走这里
-/// （悬浮窗视图、悬浮窗面板尺寸、设置页开关、面板可见性），不要各自复制一份解析逻辑。
-enum FloatingMetricsSelection {
-    /// 悬浮窗实际展示（因而也需要采样）的指标。
-    ///
+/// 两个展示目标共用同一条规则：**用户勾选 ∩ 正在监听**。指标页的监听开关关掉时
+/// 只把两个勾选框变禁用、**不清理勾选**（用户的选择要保留），所以存下来的列表里可能
+/// 留着未监听的项；而采样只由 `metricMonitorItems` 驱动，把未监听的项展示出来只会
+/// 显示陈旧值。所有需要知道「某处到底显示哪些指标」的地方都必须走这里
+/// （菜单栏渲染、悬浮窗视图、悬浮窗面板尺寸、面板可见性），不要各自复制一份解析逻辑。
+enum MetricDisplaySelection {
     /// - Parameters:
-    ///   - stored: `floatingWindowMetricItems` 中保存的列表。
-    ///   - monitored: 指标 Tab 中处于「仅监控 / 菜单栏」的指标。
+    ///   - stored: 该展示目标自己的勾选列表。
+    ///   - monitored: 指标页里开关处于打开状态的指标。
     ///   - fallbackWhenEmpty: `stored` 为空时是否回退到默认指标集合。
-    ///     悬浮窗开启时为 `true`（与 SettingsStore 默认值一致，避免空 HUD），
-    ///     关闭时为 `false`（设置页开关应显示为全关）。
+    ///     只有悬浮窗用 `true`（总开关开着却没有列表项不该出现空 HUD）；
+    ///     菜单栏恒为 `false`——空列表就是「菜单栏不显示指标」。
     static func resolvedItems(
         stored: Set<MetricDisplayItem>,
         monitored: Set<MetricDisplayItem>,
@@ -163,12 +209,48 @@ enum FloatingMetricsSelection {
             : stored
         return selected.intersection(monitored)
     }
+}
+
+/// 悬浮窗对「展示哪些指标」的约定。
+enum FloatingMetricsSelection {
+    /// 悬浮窗面板上要画的指标；列表为空时回退到默认指标集合。
+    ///
+    /// 只在面板真的可见时才有意义（总开关关着时 `shouldShowPanel` 就是 `false`），
+    /// 所以这里可以放心让空列表等同于默认集合。**写入侧不要用这个**——见 `checkedItems`。
+    static func displayedItems(
+        stored: Set<MetricDisplayItem>,
+        monitored: Set<MetricDisplayItem>
+    ) -> Set<MetricDisplayItem> {
+        MetricDisplaySelection.resolvedItems(
+            stored: stored,
+            monitored: monitored,
+            fallbackWhenEmpty: true
+        )
+    }
+
+    /// 指标页「浮窗」勾选框所表达的集合——**勾选框的读写两侧共用这一个口径**。
+    ///
+    /// 「列表为空」的含义取决于总开关：悬浮窗开着的时候用户看到的是默认指标集合，关着的
+    /// 时候就是「一项都没勾」。所以读（`toggleState`）与写（`MetricRowPolicy`）必须传同一个
+    /// `windowEnabled`；任一侧改口径，都会出现「取消全部勾选 → 再勾回一个」时一次勾回一整片
+    /// 的分叉（用户看到一格，落库一片）。
+    static func checkedItems(
+        stored: Set<MetricDisplayItem>,
+        monitored: Set<MetricDisplayItem>,
+        windowEnabled: Bool
+    ) -> Set<MetricDisplayItem> {
+        MetricDisplaySelection.resolvedItems(
+            stored: stored,
+            monitored: monitored,
+            fallbackWhenEmpty: windowEnabled
+        )
+    }
 
     /// 悬浮窗面板是否应当显示。
     ///
-    /// 总开关之外还要看「是否真有可展示的指标」：指标 Tab 把某项设为「关闭」时不再
+    /// 总开关之外还要看「是否真有可展示的指标」：指标页把某项的监听开关关掉时不再
     /// 改动悬浮窗设置，所以总开关可能是开着的、而列表里没有任何可展示项。这时把面板
-    /// **暂时隐藏**，而不是把用户的总开关关掉——重新启用该项后面板自动回来，
+    /// **暂时隐藏**，而不是把用户的总开关关掉——重新打开该项的开关后面板自动回来，
     /// 位置与勾选都不会丢。
     static func shouldShowPanel(
         windowEnabled: Bool,
@@ -176,15 +258,14 @@ enum FloatingMetricsSelection {
         monitored: Set<MetricDisplayItem>
     ) -> Bool {
         guard windowEnabled else { return false }
-        return !resolvedItems(stored: stored, monitored: monitored, fallbackWhenEmpty: true).isEmpty
+        return !displayedItems(stored: stored, monitored: monitored).isEmpty
     }
 
-    /// 悬浮窗页里某个开关的显示状态。
+    /// 指标页「浮窗」勾选框的显示状态。
     ///
-    /// - 监控中：显示「现在是否真的展示它」= 总开关开着且它落在展示集合里。
-    /// - 未监控：开关会被禁用，此时显示的是**用户勾过什么**（列表里有没有它），
-    ///   而不是展示集合——用展示集合求交后会显示成未勾选，与「勾选会被保留、
-    ///   重新启用后自动恢复」的说法自相矛盾。
+    /// 勾选框表达的是**归属**（这个指标属于悬浮窗），所以不掺总开关：总开关关掉时
+    /// 勾选照样保留，重新打开后展示的仍是原来那几项。未监听的项显示的是用户勾过什么
+    /// （勾选框同时被禁用）。
     static func toggleState(
         for item: MetricDisplayItem,
         stored: Set<MetricDisplayItem>,
@@ -192,59 +273,74 @@ enum FloatingMetricsSelection {
         windowEnabled: Bool
     ) -> Bool {
         guard monitored.contains(item) else { return stored.contains(item) }
-        return windowEnabled
-            && resolvedItems(stored: stored, monitored: monitored, fallbackWhenEmpty: windowEnabled)
-                .contains(item)
+        return checkedItems(
+            stored: stored,
+            monitored: monitored,
+            windowEnabled: windowEnabled
+        ).contains(item)
     }
 }
 
-/// 指标 Tab 每个指标的三态选择。
-enum MetricManagementMode: String, CaseIterable, Identifiable {
-    case off
-    case monitorOnly
-    case menuBar
-
-    var id: Self { self }
-
-    var label: String {
-        switch self {
-        case .off:         return L10n.metricsModeOff
-        case .monitorOnly: return L10n.metricsModeMonitorOnly
-        case .menuBar:     return L10n.metricsModeMenuBar
-        }
-    }
-}
-
-/// 三态选择写入的状态。
+/// 指标页一行的三个控件所对应的全部状态。
 ///
-/// 注意签名里**没有任何悬浮窗参数**，这是有意的：指标 Tab 的「关闭」不得改动悬浮窗设置
-/// （列表与总开关都由悬浮窗页独占管理），所以重新启用监控时用户原先的勾选还在。
-/// 悬浮窗页那边由 `FloatingMetricsSelection` 负责把「未监控」表现为开关禁用。
-enum MetricMonitoringPolicy {
-    struct Selection: Equatable {
-        var monitored: Set<MetricDisplayItem>
-        var displayed: Set<MetricDisplayItem>
-    }
+/// 整套进、整套出，测试便能逐字段断言「某个控件没有顺手改动别人的键」。
+struct MetricRowSettings: Equatable {
+    /// 监听开关 → `metricMonitorItems`，全局唯一的采样来源。
+    var monitored: Set<MetricDisplayItem>
+    /// 「菜单栏」勾选框 → `metricDisplayItems`。
+    var displayed: Set<MetricDisplayItem>
+    /// 「浮窗」勾选框 → `floatingWindowMetricItems`。
+    var floatingItems: Set<MetricDisplayItem>
+    /// 悬浮窗总开关 → `floatingWindowEnabled`。
+    var floatingWindowEnabled: Bool
+}
 
+/// 指标页一行的三种操作。
+enum MetricRowAction: Equatable {
+    case setMonitoring(Bool)
+    case setMenuBar(Bool)
+    case setFloating(Bool)
+}
+
+/// 指标页一行的写入规则。
+///
+/// 三个控件各写各的键、互不越界：监听开关关掉时**不清理**菜单栏与悬浮窗的勾选
+/// （两个勾选框只是变禁用），重新打开开关后原选择自动生效。这条约束由
+/// `MetricRowSettings` 全套进全套出、测试逐字段比对来守住。
+enum MetricRowPolicy {
     static func apply(
-        _ mode: MetricManagementMode,
+        _ action: MetricRowAction,
         to item: MetricDisplayItem,
-        monitored: Set<MetricDisplayItem>,
-        displayed: Set<MetricDisplayItem>
-    ) -> Selection {
-        var selection = Selection(monitored: monitored, displayed: displayed)
-        switch mode {
-        case .off:
-            selection.monitored.remove(item)
-            selection.displayed.remove(item)
-        case .monitorOnly:
-            selection.monitored.insert(item)
-            selection.displayed.remove(item)
-        case .menuBar:
-            selection.monitored.insert(item)
-            selection.displayed.insert(item)
+        settings: MetricRowSettings
+    ) -> MetricRowSettings {
+        var updated = settings
+        switch action {
+        case .setMonitoring(let isOn):
+            if isOn { updated.monitored.insert(item) } else { updated.monitored.remove(item) }
+
+        case .setMenuBar(let isVisible):
+            if isVisible { updated.displayed.insert(item) } else { updated.displayed.remove(item) }
+
+        case .setFloating(let isVisible):
+            // 基准集合必须和勾选框的**显示**用同一个口径（`checkedItems`，含总开关）。
+            // 曾经这里用的是「空列表即默认集合」的展示口径，于是「取消全部勾选 → 再勾回一个」
+            // 会把默认集合一起勾回来：用户看到勾的是一格，落库的是一片。
+            var items = FloatingMetricsSelection.checkedItems(
+                stored: settings.floatingItems,
+                monitored: settings.monitored,
+                windowEnabled: settings.floatingWindowEnabled
+            )
+            if isVisible {
+                items.insert(item)
+                updated.floatingWindowEnabled = true
+            } else {
+                items.remove(item)
+                // 取消最后一项就把总开关也关掉，免得留下一个空面板。
+                if items.isEmpty { updated.floatingWindowEnabled = false }
+            }
+            updated.floatingItems = items
         }
-        return selection
+        return updated
     }
 }
 
@@ -282,9 +378,13 @@ struct FloatingWindowColor: Codable, Defaults.Serializable, Sendable, Equatable 
 
     static let defaultBackground = FloatingWindowColor(red: 0.88, green: 0.88, blue: 0.88)
     static let defaultText = FloatingWindowColor(red: 0.03, green: 0.03, blue: 0.03)
-    /// 菜单栏默认文字色：纯白。贴合 macOS 菜单栏白色模板图标的观感，
-    /// 且在深色菜单栏上清晰可读，无需依赖系统深浅色解析。
-    static let menuBarWhite = FloatingWindowColor(red: 1, green: 1, blue: 1)
+    /// 「跟随系统」哨兵：不使用固定颜色，交给动态色 `NSColor.labelColor` 在绘制时解析。
+    /// 菜单栏图标本身就会随壁纸明暗自动换成黑/白，文字必须能用同一条规则，否则浅色壁纸下
+    /// 白字会看不见。负值不会与任何真实颜色冲突（sRGB 分量与 ColorPicker 都非负）。
+    static let followsSystem = FloatingWindowColor(red: -1, green: -1, blue: -1)
+
+    /// 是否为「跟随系统」哨兵（而非某个具体颜色）。
+    var isFollowsSystem: Bool { red < 0 }
 
     init(red: Double, green: Double, blue: Double) {
         self.red = red
@@ -455,8 +555,10 @@ enum ThemeMode: String, CaseIterable, Defaults.Serializable {
     /// Apply this theme to the whole app UI (settings window, popover, floating panel).
     /// `.system` clears the override so the app follows the macOS appearance again.
     /// - Note: this affects only the app's own chrome — skin sprite frames are never
-    ///   recolored, and the menu bar status item is deliberately pinned to the system
-    ///   appearance (see `StatusBarView`) so its text stays legible on the menu bar.
+    ///   recolored, and the menu bar status item is unaffected: `NSApp.appearance` does not
+    ///   reach `NSStatusItem.button`, whose window is owned by the system (verified). The
+    ///   status item therefore keeps matching the real menu bar, which follows the wallpaper
+    ///   rather than this override. Do not "restore" a pin here — see `StatusBarController`.
     @MainActor
     func apply() {
         switch self {

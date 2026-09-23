@@ -134,11 +134,6 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         settingsWindow?.close()
         settingsWindow = nil
         NotificationCenter.default.removeObserver(self, name: L10n.languageDidChangeNotification, object: nil)
-        DistributedNotificationCenter.default().removeObserver(
-            self,
-            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
-            object: nil
-        )
     }
 
     nonisolated func pause() {
@@ -160,13 +155,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         button.image = NSImage()  // clear native image — StatusBarView handles all drawing
         button.addSubview(statusBarView)
-        pinStatusItemToSystemAppearance()
-        DistributedNotificationCenter.default().addObserver(
-            self,
-            selector: #selector(handleSystemAppearanceChange),
-            name: NSNotification.Name("AppleInterfaceThemeChangedNotification"),
-            object: nil
-        )
+        // 不给按钮设 `appearance`：系统自己会把菜单栏的当前外观交给我们（见下方 MARK 注释）。
         // Defer to avoid layoutSubtreeIfNeeded recursion during initial layout
         DispatchQueue.main.async { [weak self] in
             self?.syncStatusItemLength()
@@ -177,40 +166,25 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     // MARK: - Menu Bar Appearance
     // ═════════════════════════════════════════════════════════
 
-    /// The status item is drawn on the SYSTEM menu bar, so its button chrome must follow
-    /// the system appearance — never the in-app override chosen in General ▸ Appearance.
-    ///
-    /// `NSStatusItem.button` inherits `NSApp.appearance` (verified: forcing the app to
-    /// dark while macOS is light turns the button's effective appearance from
-    /// `VibrantLight` into `VibrantDark`), which would make the status item's own chrome
-    /// — button highlight, menu bar treatment — disagree with the real menu bar.
-    ///
-    /// Note: the metric text does NOT depend on this any more. `StatusBarView` draws with
-    /// the fixed user-selected `statusBarTextColor`, which is legible on either vibrancy,
-    /// so this pin is now kept for the button chrome only. It can only be dropped together
-    /// with the in-app appearance override (`ThemeMode.apply()`) — that override is what
-    /// makes the inheritance observable in the first place.
-    private func pinStatusItemToSystemAppearance() {
-        statusItem.button?.appearance = NSAppearance(
-            named: Self.isSystemDark ? .vibrantDark : .vibrantLight
-        )
-    }
-
-    /// `AppleInterfaceStyle` is only present while the system is in dark mode.
-    private static var isSystemDark: Bool {
-        UserDefaults.standard.string(forKey: "AppleInterfaceStyle") == "Dark"
-    }
-
-    @objc private func handleSystemAppearanceChange() {
-        // Distributed notifications may arrive off the main thread.
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            // Re-pin so the button chrome follows the new system vibrancy (the metric
-            // text itself is a fixed color and does not need re-resolving).
-            self.pinStatusItemToSystemAppearance()
-            self.statusBarView.needsDisplay = true
-        }
-    }
+    // 不要给 `statusItem.button` 设 `appearance`。
+    //
+    // 曾有过一个 pin：按 `AppleInterfaceStyle`（系统深浅色设置）把按钮钉成
+    // vibrantDark/vibrantLight。理由是「按钮会继承 `NSApp.appearance`，app 内的主题覆盖
+    // 会让它和真实菜单栏不一致」。两半都不成立，实测（探针程序 + 本机 Light 系统 + 深色壁纸）：
+    //
+    //   按钮 appearance | 按钮 effectiveAppearance | labelColor
+    //   nil（不设）     | VibrantDark（系统给的）   | 白 ✓ 与相邻图标一致
+    //   vibrantLight    | VibrantLight              | 黑 ✗ 与相邻图标相反
+    //
+    // 1. 菜单栏的明暗跟随**壁纸**（本机系统是 Light，但壁纸偏暗 → 系统把整个菜单栏画成暗底、
+    //    图标全白）。`AppleInterfaceStyle` 只反映 Light/Dark 设置，据此推导必然推错一半场景——
+    //    这正是用户看到的「其他图标是白色，我的文字却是黑的」。
+    // 2. `NSApp.appearance = .aqua/.darkAqua` **不会**漏进状态项按钮：按钮的窗口是系统拥有的
+    //    `NSStatusBarWindow`，它自带外观，`NSApp.appearance` 只是没有自身外观的对象的兜底。
+    //
+    // 所以按钮的 effectiveAppearance 就是「系统当前给菜单栏的外观」，把它留给系统即可——
+    // `StatusBarView` 里的动态 `labelColor` 会在绘制时按它解析，和相邻图标永远同色。
+    // 外观变化（含壁纸切换）由 `StatusBarView.viewDidChangeEffectiveAppearance()` 兜住重绘。
 
     @objc private func statusItemClicked() {
         guard let event = NSApp.currentEvent else { return }
@@ -389,11 +363,12 @@ final class StatusBarController: NSObject, NSWindowDelegate {
     }
 
     /// Resolve the effective menu-bar text color and push it to StatusBarView.
-    /// Uses the user-selected fixed color; it won't change with the system.
+    /// `nil` (the default) means "follow the system" — the view then uses the dynamic
+    /// `labelColor`, matching however macOS renders the menu bar right now.
     private func syncStatusBarTextColor() {
-        let c = Defaults[.statusBarTextColor]
-        let color = NSColor(srgbRed: c.red, green: c.green, blue: c.blue, alpha: 1)
-        statusBarView.setTextColor(color)
+        statusBarView.setTextColor(
+            MenuBarTextColorPolicy.resolvedColor(for: Defaults[.statusBarTextColor])
+        )
     }
 
     /// Per-metric threshold overrides for the menu bar values. `nil` entries stay in the
@@ -406,9 +381,21 @@ final class StatusBarController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// 菜单栏实际显示的指标 = 「菜单栏」勾选 ∩ 正在监听。
+    ///
+    /// 监听开关关掉时不清理勾选（勾选框只是变禁用），列表里会留着未监听的项；
+    /// 而采样只由 `metricMonitorItems` 驱动，直接照列表渲染会显示陈旧值。
+    private var displayedMetricItems: Set<MetricDisplayItem> {
+        MetricDisplaySelection.resolvedItems(
+            stored: Defaults[.metricDisplayItems],
+            monitored: Defaults[.metricMonitorItems],
+            fallbackWhenEmpty: false
+        )
+    }
+
     /// Force-refresh metric display (called by observers when settings change).
     private func refreshMetricDisplay() {
-        let selected = Defaults[.metricDisplayItems]
+        let selected = displayedMetricItems
         guard !selected.isEmpty else {
             lastDisplayedMetricText = ""
             statusBarView.clear()
@@ -428,7 +415,7 @@ final class StatusBarController: NSObject, NSWindowDelegate {
 
     private func updateAccessibilityLabel() {
         let text: String
-        if !Defaults[.metricDisplayItems].isEmpty, !lastDisplayedMetricText.isEmpty {
+        if !displayedMetricItems.isEmpty, !lastDisplayedMetricText.isEmpty {
             text = "\(AppConstants.appName) \(lastDisplayedMetricText)\(L10n.accClickToOpen)"
         } else {
             text = "\(AppConstants.appName)\(L10n.accClickToOpen)"

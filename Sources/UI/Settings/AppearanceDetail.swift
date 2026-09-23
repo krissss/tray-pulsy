@@ -888,60 +888,44 @@ private struct PulsySliderRow: View {
 // MARK: - 指标 Tab
 // ═══════════════════════════════════════════════════════════════
 
+/// 指标页 = 一份「监听开关 + 两个展示勾选框」的指标清单，下面接菜单栏与悬浮窗自己的设置。
+///
+/// 开关决定是否监听（全局唯一的采样来源）；「菜单栏」「浮窗」两个勾选框决定它显示在哪，
+/// 可以同时勾或只勾一个。勾选框在未监听时禁用、勾选保留，重新打开开关后自动生效。
 struct MetricsDetail: View {
-    @Default(.statusBarTextColor) private var statusBarTextColor
-
-    private var statusBarTextColorBinding: Binding<Color> {
-        Binding(
-            get: { statusBarTextColor.color },
-            set: { statusBarTextColor = FloatingWindowColor(color: $0) }
-        )
-    }
-
-    var body: some View {
-        SettingsFormPage {
-            Section {
-                ForEach(MetricDisplayItem.allCases) { item in
-                    MetricRowView(item: item)
-                }
-            } header: {
-                Text(L10n.metricsHeader)
-            } footer: {
-                Text(L10n.metricsFooter)
-            }
-
-            Section {
-                ColorPicker(selection: statusBarTextColorBinding, supportsOpacity: false) {
-                    SettingsRowLabel(
-                        title: L10n.menuBarColorPicker,
-                        systemImage: "textformat",
-                        color: .indigo
-                    )
-                }
-            } header: {
-                Text(L10n.menuBarColorHeader)
-            } footer: {
-                Text(L10n.menuBarColorFooter)
-            }
-        }
-    }
-}
-
-// ═══════════════════════════════════════════════════════════════
-// MARK: - 悬浮窗 Tab
-// ═══════════════════════════════════════════════════════════════
-
-struct FloatingWindowDetail: View {
     @Default(.floatingWindowEnabled) private var floatingWindowEnabled
     @Default(.statusBarIconEnabled) private var statusBarIconEnabled
+    @Default(.statusBarTextColor) private var statusBarTextColor
     @Default(.floatingWindowAlwaysOnTop) private var floatingWindowAlwaysOnTop
     @Default(.floatingWindowShowsSkin) private var floatingWindowShowsSkin
     @Default(.floatingWindowMetricsLayout) private var floatingWindowMetricsLayout
     @Default(.floatingWindowBackgroundColor) private var floatingWindowBackgroundColor
     @Default(.floatingWindowBackgroundOpacity) private var floatingWindowBackgroundOpacity
     @Default(.floatingWindowTextColor) private var floatingWindowTextColor
-    @Default(.floatingWindowMetricItems) private var floatingWindowMetricItems
-    @Default(.metricMonitorItems) private var metricMonitorItems
+
+    /// 自定义颜色的绑定。跟随系统时不显示选择器，这里的 get 只是兜底
+    /// （哨兵色是负值，绝不能直接喂给 `Color`）。
+    private var statusBarTextColorBinding: Binding<Color> {
+        Binding(
+            get: {
+                MenuBarTextColorPolicy.resolvedColor(for: statusBarTextColor)
+                    .map { Color(nsColor: $0) } ?? Color(nsColor: .textColor)
+            },
+            set: { statusBarTextColor = FloatingWindowColor(color: $0) }
+        )
+    }
+
+    private var menuBarTextColorModeBinding: Binding<MenuBarTextColorMode> {
+        Binding(
+            get: { MenuBarTextColorPolicy.mode(for: statusBarTextColor) },
+            set: {
+                statusBarTextColor = MenuBarTextColorPolicy.storedValue(
+                    for: $0,
+                    current: statusBarTextColor
+                )
+            }
+        )
+    }
 
     private var floatingWindowBackgroundColorBinding: Binding<Color> {
         Binding(
@@ -964,6 +948,7 @@ struct FloatingWindowDetail: View {
         )
     }
 
+    /// 悬浮窗关着的时候状态栏图标必须留着，否则用户再没有入口打开设置。
     private var statusBarIconBinding: Binding<Bool> {
         Binding(
             get: {
@@ -982,16 +967,57 @@ struct FloatingWindowDetail: View {
         )
     }
 
-    private var selectedFloatingMetricItems: Set<MetricDisplayItem> {
-        FloatingMetricsSelection.resolvedItems(
-            stored: floatingWindowMetricItems,
-            monitored: metricMonitorItems,
-            fallbackWhenEmpty: floatingWindowEnabled
-        )
-    }
-
     var body: some View {
         SettingsFormPage {
+            Section {
+                ForEach(MetricDisplayItem.allCases) { item in
+                    MetricRowView(item: item)
+                }
+            } header: {
+                Text(L10n.metricsHeader)
+            } footer: {
+                Text(L10n.metricsFooter)
+            }
+
+            Section {
+                Toggle(isOn: statusBarIconBinding) {
+                    SettingsRowLabel(
+                        title: L10n.menuBarStatusBarIcon,
+                        systemImage: "menubar.rectangle",
+                        color: .indigo
+                    )
+                }
+                .disabled(!floatingWindowEnabled)
+                .help(L10n.menuBarStatusBarIconHelp)
+
+                Picker(selection: menuBarTextColorModeBinding) {
+                    ForEach(MenuBarTextColorMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                } label: {
+                    SettingsRowLabel(
+                        title: L10n.menuBarTextColor,
+                        systemImage: "textformat",
+                        color: .indigo
+                    )
+                }
+                .pickerStyle(.segmented)
+
+                if !statusBarTextColor.isFollowsSystem {
+                    ColorPicker(selection: statusBarTextColorBinding, supportsOpacity: false) {
+                        SettingsRowLabel(
+                            title: L10n.menuBarCustomColor,
+                            systemImage: "paintpalette.fill",
+                            color: .indigo
+                        )
+                    }
+                }
+            } header: {
+                Text(L10n.menuBarHeader)
+            } footer: {
+                Text(L10n.menuBarFooter)
+            }
+
             Section {
                 Toggle(isOn: $floatingWindowEnabled) {
                     SettingsRowLabel(
@@ -1000,15 +1026,6 @@ struct FloatingWindowDetail: View {
                         color: .teal
                     )
                 }
-
-                Toggle(isOn: statusBarIconBinding) {
-                    SettingsRowLabel(
-                        title: L10n.floatingWindowStatusBarIcon,
-                        systemImage: "menubar.rectangle",
-                        color: .teal
-                    )
-                }
-                .disabled(!floatingWindowEnabled)
 
                 if floatingWindowEnabled {
                     Toggle(isOn: $floatingWindowAlwaysOnTop) {
@@ -1082,27 +1099,6 @@ struct FloatingWindowDetail: View {
             } footer: {
                 Text(L10n.floatingWindowFooter)
             }
-
-            Section {
-                ForEach(MetricDisplayItem.allCases) { item in
-                    // 未监控的指标不能勾选：勾了也不会被采样/展示。
-                    // 开关本身不代表「不在悬浮窗里」——状态照旧显示，只是禁用，
-                    // 这样在指标 Tab 重新启用后，这里会自动恢复成原来的勾选。
-                    Toggle(isOn: floatingMetricBinding(for: item)) {
-                        SettingsRowLabel(
-                            title: item.displayName,
-                            systemImage: item.chartIcon,
-                            color: Color(nsColor: item.accentColor)
-                        )
-                    }
-                    .disabled(!metricMonitorItems.contains(item))
-                    .help(metricMonitorItems.contains(item) ? "" : L10n.floatingWindowMetricNotMonitored)
-                }
-            } header: {
-                Text(L10n.floatingWindowMetricsHeader)
-            } footer: {
-                Text(L10n.floatingWindowMetricsFooter)
-            }
         }
         .onAppear {
             normalizeWindowVisibilitySettings()
@@ -1121,44 +1117,17 @@ struct FloatingWindowDetail: View {
             statusBarIconEnabled = normalized
         }
     }
-
-    private func floatingMetricBinding(for item: MetricDisplayItem) -> Binding<Bool> {
-        Binding(
-            get: {
-                // 显示状态由 FloatingMetricsSelection 单点决定：未监控的项显示的是
-                // 「用户勾过什么」（会被保留），监控中的项显示「现在是否真的展示」。
-                FloatingMetricsSelection.toggleState(
-                    for: item,
-                    stored: floatingWindowMetricItems,
-                    monitored: metricMonitorItems,
-                    windowEnabled: floatingWindowEnabled
-                )
-            },
-            set: { isEnabled in
-                var items = selectedFloatingMetricItems
-                if isEnabled {
-                    items.insert(item)
-                    floatingWindowMetricItems = items
-                    floatingWindowEnabled = true
-                } else {
-                    items.remove(item)
-                    floatingWindowMetricItems = items
-                    if items.isEmpty {
-                        floatingWindowEnabled = false
-                    }
-                }
-            }
-        )
-    }
 }
 
-// MARK: - Metric Row (toggle + thresholds combined)
+// MARK: - Metric Row (monitoring switch + display targets + thresholds)
 
 private struct MetricRowView: View {
     let item: MetricDisplayItem
     @Default(.speedSource) private var speedSource
     @Default(.metricMonitorItems) private var metricMonitorItems
     @Default(.metricDisplayItems) private var metricDisplayItems
+    @Default(.floatingWindowMetricItems) private var floatingWindowMetricItems
+    @Default(.floatingWindowEnabled) private var floatingWindowEnabled
     @Default(.thresholds) private var thresholds
     @Default(.spikeDeltas) private var spikeDeltas
     @State private var isAdvancedExpanded = false
@@ -1167,45 +1136,74 @@ private struct MetricRowView: View {
         metricMonitorItems.contains(item)
     }
 
-    private var mode: MetricManagementMode {
-        if metricDisplayItems.contains(item) {
-            return .menuBar
-        }
-        if metricMonitorItems.contains(item) {
-            return .monitorOnly
-        }
-        return .off
+    /// 一行三件套共用的状态：监听开关 + 菜单栏/浮窗勾选（「浮窗」勾选还会联动悬浮窗总开关）。
+    private var settings: MetricRowSettings {
+        MetricRowSettings(
+            monitored: metricMonitorItems,
+            displayed: metricDisplayItems,
+            floatingItems: floatingWindowMetricItems,
+            floatingWindowEnabled: floatingWindowEnabled
+        )
     }
 
-    private var modeBinding: Binding<MetricManagementMode> {
+    /// 落盘策略算出的新状态；只写真正变化的键，避免多余的通知与重绘。
+    private func write(_ updated: MetricRowSettings) {
+        if updated.monitored != metricMonitorItems {
+            metricMonitorItems = updated.monitored
+        }
+        if updated.displayed != metricDisplayItems {
+            metricDisplayItems = updated.displayed
+        }
+        if updated.floatingItems != floatingWindowMetricItems {
+            floatingWindowMetricItems = updated.floatingItems
+        }
+        if updated.floatingWindowEnabled != floatingWindowEnabled {
+            floatingWindowEnabled = updated.floatingWindowEnabled
+        }
+    }
+
+    private var monitoringBinding: Binding<Bool> {
         Binding(
-            get: { mode },
-            set: { newMode in
-                // 三态只写「监控」与「菜单栏显示」两个键（见 MetricMonitoringPolicy：
-                // 它的签名里根本没有悬浮窗参数）。悬浮窗列表与总开关由悬浮窗页独占，
-                // 所以「关闭」不会丢掉用户在那边勾选的内容，重新启用后自动恢复。
-                let selection = MetricMonitoringPolicy.apply(
-                    newMode,
-                    to: item,
-                    monitored: metricMonitorItems,
-                    displayed: metricDisplayItems
-                )
-                if selection.monitored != metricMonitorItems {
-                    metricMonitorItems = selection.monitored
+            get: { isMonitored },
+            set: { isOn in
+                // 开关只写监听集合，菜单栏与浮窗的勾选原样保留（见 MetricRowPolicy）。
+                let updated = MetricRowPolicy.apply(.setMonitoring(isOn), to: item, settings: settings)
+                write(updated)
+
+                guard !isOn else { return }
+                // 停掉的正好是动画来源时，换到下一个还在监听的指标。
+                if item.requiredMetric == speedSource.requiredMetric,
+                   let nextSource = SpeedSource.firstAvailable(in: updated.monitored) {
+                    speedSource = nextSource
                 }
-                if selection.displayed != metricDisplayItems {
-                    metricDisplayItems = selection.displayed
-                }
-                if newMode == .off {
-                    if item.requiredMetric == speedSource.requiredMetric,
-                       let nextSource = SpeedSource.firstAvailable(in: metricMonitorItems) {
-                        speedSource = nextSource
-                    }
-                    withAnimation(ContainedExpansionMotion.layoutAnimation(expanding: false)) {
-                        isAdvancedExpanded = false
-                    }
+                withAnimation(ContainedExpansionMotion.layoutAnimation(expanding: false)) {
+                    isAdvancedExpanded = false
                 }
             }
+        )
+    }
+
+    /// 「菜单栏」勾选框：读用户勾过什么，未监听时也照旧显示（只是禁用）。
+    private var menuBarBinding: Binding<Bool> {
+        Binding(
+            get: { metricDisplayItems.contains(item) },
+            set: { write(MetricRowPolicy.apply(.setMenuBar($0), to: item, settings: settings)) }
+        )
+    }
+
+    /// 「浮窗」勾选框：显示状态单点交给 FloatingMetricsSelection（未监听时显示勾过什么，
+    /// 监听中显示是否落在实际展示集合里）。
+    private var floatingBinding: Binding<Bool> {
+        Binding(
+            get: {
+                FloatingMetricsSelection.toggleState(
+                    for: item,
+                    stored: floatingWindowMetricItems,
+                    monitored: metricMonitorItems,
+                    windowEnabled: floatingWindowEnabled
+                )
+            },
+            set: { write(MetricRowPolicy.apply(.setFloating($0), to: item, settings: settings)) }
         )
     }
 
@@ -1268,8 +1266,10 @@ private struct MetricRowView: View {
         HStack(spacing: 12) {
             metricLabel
             Spacer(minLength: 16)
-            modePicker
+            displayTargetToggles
+            monitoringToggle
         }
+        .controlSize(.small)
     }
 
     private var metricLabel: some View {
@@ -1280,16 +1280,27 @@ private struct MetricRowView: View {
         )
     }
 
-    private var modePicker: some View {
-        Picker(L10n.metricsModePickerLabel, selection: modeBinding) {
-            ForEach(MetricManagementMode.allCases) { mode in
-                Text(mode.label).tag(mode)
-            }
-        }
-        .pickerStyle(.segmented)
-        .labelsHidden()
-        .controlSize(.small)
-        .frame(width: 220)
+    /// 「菜单栏」「浮窗」两个勾选框 —— 决定这个指标显示在哪，可以同时勾或只勾一个。
+    /// 未监听时变灰但保留勾选，重新打开开关后自动生效。
+    @ViewBuilder
+    private var displayTargetToggles: some View {
+        Toggle(L10n.metricsShowInMenuBar, isOn: menuBarBinding)
+            .toggleStyle(.checkbox)
+            .disabled(!isMonitored)
+            .help(isMonitored ? L10n.metricsShowInMenuBarHelp : L10n.metricsNotMonitoredHelp)
+
+        Toggle(L10n.metricsShowInFloatingWindow, isOn: floatingBinding)
+            .toggleStyle(.checkbox)
+            .disabled(!isMonitored)
+            .help(isMonitored ? L10n.metricsShowInFloatingWindowHelp : L10n.metricsNotMonitoredHelp)
+    }
+
+    private var monitoringToggle: some View {
+        Toggle(L10n.metricsMonitoring, isOn: monitoringBinding)
+            .toggleStyle(.switch)
+            .labelsHidden()
+            .help(L10n.metricsMonitoringHelp)
+            .accessibilityLabel("\(item.displayName) \(L10n.metricsMonitoring)")
     }
 
     private var isPercent: Bool {

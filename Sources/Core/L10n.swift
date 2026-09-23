@@ -60,7 +60,6 @@ enum L10n {
             "tab.overview": "Overview",
             "tab.skin": "Skins",
             "tab.metrics": "Metrics",
-            "tab.floating": "Floating Window",
             "tab.performance": "Performance",
             "tab.general": "General",
             "tab.about": "About",
@@ -158,12 +157,14 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "Metrics",
-            "settings.metrics.footer": "Off stops sampling and hides the metric everywhere, but keeps its Floating Window selection — turning the metric back on restores it automatically. Monitor keeps history, charts, and spike diagnostics. Menu Bar shows it next to the icon. Which monitored metrics appear in the HUD is picked on the Floating Window tab.",
-            "settings.metrics.mode.picker": "Mode",
-            "settings.metrics.mode.off": "Off",
-            "settings.metrics.mode.monitorOnly": "Monitor",
-            "settings.metrics.mode.menuBar": "Menu Bar",
-            "settings.metrics.floatingWindow": "Floating",
+            "settings.metrics.footer": "The switch decides whether this metric is sampled. Turning it off stops sampling and hides it, keeping your Menu Bar and Floating selections for when you turn it back on. Menu Bar shows it next to the icon; Floating adds it to the HUD.",
+            "settings.metrics.monitoring": "Monitor",
+            "settings.metrics.monitoring.help": "Turn on to start sampling this metric.",
+            "settings.metrics.showInMenuBar": "Menu Bar",
+            "settings.metrics.showInMenuBar.help": "Show it next to the status bar icon.",
+            "settings.metrics.showInFloatingWindow": "Floating",
+            "settings.metrics.showInFloatingWindow.help": "Add it to the floating window, switching the window on if needed.",
+            "settings.metrics.notMonitored.help": "Turn on Monitor first.",
             "settings.metrics.advanced": "Advanced",
             "settings.metrics.colorThreshold": "Color threshold",
             "settings.metrics.colorThreshold.description": "Turns the metric yellow or red in the menu bar, charts, and floating window once it reaches these values.",
@@ -173,7 +174,6 @@ enum L10n {
             "settings.metrics.spikeDelta.description": "Records a spike only when the confirmed jump is at least this large.",
             "settings.floating.header": "Floating Window",
             "settings.floating.toggle": "Show Floating Window",
-            "settings.floating.statusBarIcon": "Show Menu Bar Icon",
             "settings.floating.alwaysOnTop": "Keep Above Other Windows",
             "settings.floating.showSkin": "Show Skin Animation",
             "settings.floating.layout": "Metric Layout",
@@ -182,16 +182,18 @@ enum L10n {
             "settings.floating.backgroundColor": "Background Color",
             "settings.floating.textColor": "Text Color",
             "settings.floating.backgroundOpacity": "Background Opacity",
-            "settings.floating.footer": "Controls the compact HUD window. Turning it off always restores the menu bar icon.",
-            "settings.floating.metrics.header": "Floating Window Metrics",
-            "settings.floating.metrics.footer": "Choose which metrics appear in the floating window. Metrics turned off on the Metrics tab are disabled here, but their selection is kept and comes back once you re-enable them; if none of the selected metrics are available, the floating window hides for now. Turning off the last switch also turns off the floating window.",
-            "settings.floating.metrics.notMonitored.help": "This metric is turned off on the Metrics tab — enable it there first.",
+            "settings.floating.footer": "Appearance of the compact HUD window; which metrics it shows is set by the Floating checkboxes in the Metrics section above.",
             "settings.floating.hide": "Hide Floating Window",
 
-            // Menu Bar Color
-            "settings.menuBar.color.header": "Menu Bar Text Color",
-            "settings.menuBar.color.footer": "White text by default, matching the menu bar look. On a light menu bar it may be faint — pick a darker color here if needed.",
-            "settings.menuBar.color.picker": "Text Color",
+            // Menu Bar
+            "settings.menuBar.header": "Menu Bar",
+            "settings.menuBar.footer": "Menu bar text follows the system by default, switching with it; choose Custom only if you want a fixed color.",
+            "settings.menuBar.statusBarIcon": "Show Menu Bar Icon",
+            "settings.menuBar.statusBarIcon.help": "Turning the floating window off restores the icon, so settings stay reachable.",
+            "settings.menuBar.textColor": "Text Color",
+            "settings.menuBar.textColor.mode.system": "Follow System",
+            "settings.menuBar.textColor.mode.custom": "Custom",
+            "settings.menuBar.customColor": "Color",
 
             // Performance Settings
             "performance.source.label": "Animation Drive",
@@ -349,7 +351,6 @@ enum L10n {
             "tab.overview": "概览",
             "tab.skin": "皮肤",
             "tab.metrics": "指标",
-            "tab.floating": "悬浮窗",
             "tab.performance": "性能",
             "tab.general": "通用",
             "tab.about": "关于",
@@ -447,12 +448,14 @@ enum L10n {
 
             // Metrics Settings
             "settings.metrics.header": "指标",
-            "settings.metrics.footer": "关闭会停止采样并在各处隐藏指标，但保留它在悬浮窗里的勾选——重新启用后自动恢复。仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。悬浮窗展示哪几项，在「悬浮窗」页从正在监控的指标中选择。",
-            "settings.metrics.mode.picker": "模式",
-            "settings.metrics.mode.off": "关闭",
-            "settings.metrics.mode.monitorOnly": "仅监控",
-            "settings.metrics.mode.menuBar": "菜单栏",
-            "settings.metrics.floatingWindow": "悬浮窗",
+            "settings.metrics.footer": "开关决定是否采集该指标。关闭后停止采样并隐藏，但勾选会保留，重新打开即恢复。勾选「菜单栏」显示在图标旁，勾选「浮窗」放进悬浮窗。",
+            "settings.metrics.monitoring": "监听",
+            "settings.metrics.monitoring.help": "打开后开始采集该指标。",
+            "settings.metrics.showInMenuBar": "菜单栏",
+            "settings.metrics.showInMenuBar.help": "在状态栏图标旁显示。",
+            "settings.metrics.showInFloatingWindow": "浮窗",
+            "settings.metrics.showInFloatingWindow.help": "放进悬浮窗，必要时自动开启悬浮窗。",
+            "settings.metrics.notMonitored.help": "请先打开「监听」开关。",
             "settings.metrics.advanced": "高级设置",
             "settings.metrics.colorThreshold": "颜色阈值",
             "settings.metrics.colorThreshold.description": "指标达到这些值后，会在菜单栏、图表和悬浮窗里标黄或标红。",
@@ -462,7 +465,6 @@ enum L10n {
             "settings.metrics.spikeDelta.description": "二次确认后的跳升至少达到这个值，才会记录一次尖峰。",
             "settings.floating.header": "悬浮窗",
             "settings.floating.toggle": "显示悬浮窗",
-            "settings.floating.statusBarIcon": "显示状态栏图标",
             "settings.floating.alwaysOnTop": "保持在其他窗口上方",
             "settings.floating.showSkin": "显示皮肤动画",
             "settings.floating.layout": "指标布局",
@@ -471,16 +473,18 @@ enum L10n {
             "settings.floating.backgroundColor": "背景色",
             "settings.floating.textColor": "字体颜色",
             "settings.floating.backgroundOpacity": "背景透明度",
-            "settings.floating.footer": "控制紧凑 HUD 窗口；关闭悬浮窗后会自动恢复状态栏图标。",
-            "settings.floating.metrics.header": "悬浮窗指标",
-            "settings.floating.metrics.footer": "选择要显示在悬浮窗中的指标。在「指标」页关闭的指标，这里的开关会变为禁用，但勾选会被保留——重新启用后自动恢复；勾选项都没在监控时悬浮窗会暂时隐藏。关闭最后一个开关也会关闭悬浮窗。",
-            "settings.floating.metrics.notMonitored.help": "该指标已在「指标」页关闭，请先在那里启用。",
+            "settings.floating.footer": "紧凑 HUD 窗口的外观设置；显示哪几项由上方「指标」区块的「浮窗」勾选决定。",
             "settings.floating.hide": "隐藏悬浮窗",
 
-            // Menu Bar Color
-            "settings.menuBar.color.header": "菜单栏文字颜色",
-            "settings.menuBar.color.footer": "默认为白色文字，贴合菜单栏观感。浅色菜单栏下若不清晰，可在此改为深色文字。",
-            "settings.menuBar.color.picker": "文字颜色",
+            // Menu Bar
+            "settings.menuBar.header": "菜单栏",
+            "settings.menuBar.footer": "文字默认跟随系统，随菜单栏明暗自动切换；需要固定颜色时再选自定义。",
+            "settings.menuBar.statusBarIcon": "显示状态栏图标",
+            "settings.menuBar.statusBarIcon.help": "关闭悬浮窗时会自动恢复图标，免得没有入口打开设置。",
+            "settings.menuBar.textColor": "文字颜色",
+            "settings.menuBar.textColor.mode.system": "跟随系统",
+            "settings.menuBar.textColor.mode.custom": "自定义",
+            "settings.menuBar.customColor": "颜色",
 
             // Performance Settings
             "performance.source.label": "动画驱动",
@@ -639,7 +643,6 @@ enum L10n {
     static var tabOverview:    String { tr("tab.overview", "概览") }
     static var tabSkin:        String { tr("tab.skin", "皮肤") }
     static var tabMetrics:     String { tr("tab.metrics", "指标") }
-    static var tabFloating:    String { tr("tab.floating", "悬浮窗") }
     static var tabPerformance: String { tr("tab.performance", "性能") }
     static var tabGeneral:     String { tr("tab.general", "通用") }
     static var tabAbout:       String { tr("tab.about", "关于") }
@@ -746,12 +749,14 @@ enum L10n {
     // MARK: - Metrics Settings
 
     static var metricsHeader: String { tr("settings.metrics.header", "指标") }
-    static var metricsFooter: String { tr("settings.metrics.footer", "关闭会停止采样并在各处隐藏指标，但保留它在悬浮窗里的勾选——重新启用后自动恢复。仅监控会保留历史、图表和尖峰诊断；菜单栏会额外显示在图标旁。悬浮窗展示哪几项，在「悬浮窗」页从正在监控的指标中选择。") }
-    static var metricsModePickerLabel: String { tr("settings.metrics.mode.picker", "模式") }
-    static var metricsModeOff: String { tr("settings.metrics.mode.off", "关闭") }
-    static var metricsModeMonitorOnly: String { tr("settings.metrics.mode.monitorOnly", "仅监控") }
-    static var metricsModeMenuBar: String { tr("settings.metrics.mode.menuBar", "菜单栏") }
-    static var metricsFloatingWindow: String { tr("settings.metrics.floatingWindow", "悬浮窗") }
+    static var metricsFooter: String { tr("settings.metrics.footer", "开关决定是否采集该指标。关闭后停止采样并隐藏，但勾选会保留，重新打开即恢复。勾选「菜单栏」显示在图标旁，勾选「浮窗」放进悬浮窗。") }
+    static var metricsMonitoring: String { tr("settings.metrics.monitoring", "监听") }
+    static var metricsMonitoringHelp: String { tr("settings.metrics.monitoring.help", "打开后开始采集该指标。") }
+    static var metricsShowInMenuBar: String { tr("settings.metrics.showInMenuBar", "菜单栏") }
+    static var metricsShowInMenuBarHelp: String { tr("settings.metrics.showInMenuBar.help", "在状态栏图标旁显示。") }
+    static var metricsShowInFloatingWindow: String { tr("settings.metrics.showInFloatingWindow", "浮窗") }
+    static var metricsShowInFloatingWindowHelp: String { tr("settings.metrics.showInFloatingWindow.help", "放进悬浮窗，必要时自动开启悬浮窗。") }
+    static var metricsNotMonitoredHelp: String { tr("settings.metrics.notMonitored.help", "请先打开「监听」开关。") }
     static var metricsAdvancedSettings: String { tr("settings.metrics.advanced", "高级设置") }
     static var metricsColorThresholdLabel: String { tr("settings.metrics.colorThreshold", "颜色阈值") }
     static var metricsColorThresholdDescription: String { tr("settings.metrics.colorThreshold.description", "指标达到这些值后，会在菜单栏、图表和悬浮窗里标黄或标红。") }
@@ -761,7 +766,6 @@ enum L10n {
     static func metricsCriticalThreshold(_ value: String) -> String { String(format: tr("settings.metrics.criticalThreshold", "红色 %@"), value) }
     static var floatingWindowHeader: String { tr("settings.floating.header", "悬浮窗") }
     static var floatingWindowToggle: String { tr("settings.floating.toggle", "显示悬浮窗") }
-    static var floatingWindowStatusBarIcon: String { tr("settings.floating.statusBarIcon", "显示状态栏图标") }
     static var floatingWindowAlwaysOnTop: String { tr("settings.floating.alwaysOnTop", "保持在其他窗口上方") }
     static var floatingWindowShowSkin: String { tr("settings.floating.showSkin", "显示皮肤动画") }
     static var floatingWindowLayout: String { tr("settings.floating.layout", "指标布局") }
@@ -770,17 +774,19 @@ enum L10n {
     static var floatingWindowBackgroundColor: String { tr("settings.floating.backgroundColor", "背景色") }
     static var floatingWindowTextColor: String { tr("settings.floating.textColor", "字体颜色") }
     static var floatingWindowBackgroundOpacity: String { tr("settings.floating.backgroundOpacity", "背景透明度") }
-    static var floatingWindowFooter: String { tr("settings.floating.footer", "控制紧凑 HUD 窗口；关闭悬浮窗后会自动恢复状态栏图标。") }
-    static var floatingWindowMetricsHeader: String { tr("settings.floating.metrics.header", "悬浮窗指标") }
-    static var floatingWindowMetricsFooter: String { tr("settings.floating.metrics.footer", "选择要显示在悬浮窗中的指标。在「指标」页关闭的指标，这里的开关会变为禁用，但勾选会被保留——重新启用后自动恢复；勾选项都没在监控时悬浮窗会暂时隐藏。关闭最后一个开关也会关闭悬浮窗。") }
-    static var floatingWindowMetricNotMonitored: String { tr("settings.floating.metrics.notMonitored.help", "该指标已在「指标」页关闭，请先在那里启用。") }
+    static var floatingWindowFooter: String { tr("settings.floating.footer", "紧凑 HUD 窗口的外观设置；显示哪几项由上方「指标」区块的「浮窗」勾选决定。") }
     static var floatingWindowHide: String { tr("settings.floating.hide", "隐藏悬浮窗") }
 
-    // MARK: - Menu Bar (状态栏) 文字颜色
+    // MARK: - Menu Bar (菜单栏)
 
-    static var menuBarColorHeader: String { tr("settings.menuBar.color.header", "菜单栏文字颜色") }
-    static var menuBarColorFooter: String { tr("settings.menuBar.color.footer", "默认为白色文字，贴合菜单栏观感。浅色菜单栏下若不清晰，可在此改为深色文字。") }
-    static var menuBarColorPicker: String { tr("settings.menuBar.color.picker", "文字颜色") }
+    static var menuBarHeader: String { tr("settings.menuBar.header", "菜单栏") }
+    static var menuBarFooter: String { tr("settings.menuBar.footer", "文字默认跟随系统，随菜单栏明暗自动切换；需要固定颜色时再选自定义。") }
+    static var menuBarStatusBarIcon: String { tr("settings.menuBar.statusBarIcon", "显示状态栏图标") }
+    static var menuBarStatusBarIconHelp: String { tr("settings.menuBar.statusBarIcon.help", "关闭悬浮窗时会自动恢复图标，免得没有入口打开设置。") }
+    static var menuBarTextColor: String { tr("settings.menuBar.textColor", "文字颜色") }
+    static var menuBarTextColorModeSystem: String { tr("settings.menuBar.textColor.mode.system", "跟随系统") }
+    static var menuBarTextColorModeCustom: String { tr("settings.menuBar.textColor.mode.custom", "自定义") }
+    static var menuBarCustomColor: String { tr("settings.menuBar.customColor", "颜色") }
 
     // MARK: - Performance Settings
 

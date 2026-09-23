@@ -211,7 +211,6 @@ private extension SettingsSection {
         case .overview:    OverviewDetail()
         case .skin:        SkinDetail()
         case .metrics:     MetricsDetail()
-        case .floating:    FloatingWindowDetail()
         case .performance: PerformanceDetail()
         case .general:     GeneralDetail()
         case .about:       AboutDetail()

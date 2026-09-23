@@ -87,12 +87,29 @@ final class StatusBarView: NSView {
     }
 
     /// Update the effective text color (used for labels and values).
-    func setTextColor(_ color: NSColor) {
-        guard color != textColor else { return }
-        textColor = color
+    ///
+    /// `nil` means "follow the system": fall back to the dynamic `labelColor`, which AppKit
+    /// resolves against the real menu bar appearance at draw time. That is what keeps the
+    /// text readable when macOS flips the menu bar between light and dark (e.g. following
+    /// the wallpaper) — a fixed color would only ever match one of the two.
+    func setTextColor(_ color: NSColor?) {
+        let resolved = color ?? .labelColor
+        guard resolved != textColor else { return }
+        textColor = resolved
         if !cachedLabels.isEmpty {
             rebuildAttributedStringCache()
         }
+        needsDisplay = true
+    }
+
+    // MARK: - Appearance
+
+    /// 菜单栏的明暗会变（壁纸切换、系统深浅色切换），缓存的富文本里存的是**动态色**
+    /// `labelColor`，AppKit 每次绘制都会按当前外观重新解析——但前提是这一帧得重绘。
+    /// AppKit 在视图的 effectiveAppearance 变化时会调到这里，于是「跟随系统」的文字
+    /// 能跟着相邻图标一起换色，不需要任何轮询或分布式通知。
+    override func viewDidChangeEffectiveAppearance() {
+        super.viewDidChangeEffectiveAppearance()
         needsDisplay = true
     }
 
