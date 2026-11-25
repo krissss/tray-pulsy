@@ -28,6 +28,24 @@ struct ProcessNetworkMonitorTests {
         #expect(samples[2].name == "Google Chrome H")
     }
 
+    @Test("truncated UTF-8 in a process name does not drop the whole sample")
+    func truncatedUTF8ProcessName() {
+        // nettop truncates a multibyte name mid-character, leaving a lone 0xE7 0x89 tail.
+        var data = Data(",bytes_in,bytes_out,\n".utf8)
+        data.append(contentsOf: "MyApp ".utf8)
+        data.append(contentsOf: [0xE4, 0xBC, 0x81, 0xE4, 0xB8, 0x9A, 0xE7, 0x89])
+        data.append(contentsOf: ".5277,2182,4418,\n".utf8)
+        data.append(contentsOf: "mDNSResponder.714,42323289,74871,\n".utf8)
+
+        let samples = ProcessNetworkReader.parseNettopData(data)
+
+        #expect(samples.count == 2)
+        #expect(samples[0].pid == 5277)
+        #expect(samples[0].downloadBytes == 2_182)
+        #expect(samples[1].pid == 714)
+        #expect(samples[1].name == "mDNSResponder")
+    }
+
     @Test("active process diff clamps negative counters and sorts by activity")
     func activeProcessDiff() {
         let previous = [

@@ -116,10 +116,15 @@ enum ProcessNetworkReader {
             throw ProcessNetworkReaderError.nettopFailed(errorText)
         }
 
-        guard let output = String(data: outputData, encoding: .utf8), !output.isEmpty else {
-            return []
-        }
-        return parseNettopOutput(output)
+        guard !outputData.isEmpty else { return [] }
+        return parseNettopData(outputData)
+    }
+
+    /// nettop truncates process names by byte count, which can cut a multibyte UTF-8
+    /// character in half (e.g. a Chinese app name). Strict decoding would fail the
+    /// entire output and drop every process, so decode lossily instead.
+    static func parseNettopData(_ data: Data) -> [RawProcessNetworkSample] {
+        parseNettopOutput(String(decoding: data, as: UTF8.self))
     }
 
     static func readSampleFrame(

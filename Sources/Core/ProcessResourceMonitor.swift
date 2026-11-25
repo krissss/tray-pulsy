@@ -78,9 +78,10 @@ enum ProcessResourceReader {
             throw ProcessResourceReaderError.psFailed(errorText)
         }
 
-        guard let output = String(data: outputData, encoding: .utf8), !output.isEmpty else {
-            return []
-        }
+        // Same lossy decoding as ProcessNetworkReader.parseNettopData: a single
+        // malformed process name must not drop the whole sample.
+        let output = String(decoding: outputData, as: UTF8.self)
+        guard !output.isEmpty else { return [] }
         return parsePSOutput(output)
     }
 
